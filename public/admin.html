@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Administrador - VIP Norte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans p-6">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <h1 class="text-3xl font-extrabold text-orange-500">Panel de Control Gerencial</h1>
+            <span class="bg-purple-600 px-3 py-1 rounded text-sm font-semibold">Perfil: Administrador (Control Total)</span>
+        </header>
+
+        <!-- Métricas Rápidas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
+                <p class="text-gray-400 text-sm">Total Reservas</p>
+                <h3 id="totalReservas" class="text-3xl font-bold text-white mt-1">0</h3>
+            </div>
+            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
+                <p class="text-gray-400 text-sm">Asistencias Confirmadas (Llegó)</p>
+                <h3 id="totalAsistencias" class="text-3xl font-bold text-green-500 mt-1">0</h3>
+            </div>
+            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
+                <p class="text-gray-400 text-sm">Ausencias (No-Show)</p>
+                <h3 id="totalNoShow" class="text-3xl font-bold text-red-500 mt-1">0</h3>
+            </div>
+        </div>
+
+        <!-- Tabla General de Auditoría -->
+        <h2 class="text-xl font-bold mb-4 text-gray-200">Auditoría General de Reservas</h2>
+        <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-800 text-xs uppercase text-gray-400">
+                        <th class="p-4">ID</th>
+                        <th class="p-4">Cliente / Teléfono</th>
+                        <th class="p-4">Fecha / Zona</th>
+                        <th class="p-4">Mesa</th>
+                        <th class="p-4">QR Cortesía</th>
+                        <th class="p-4">Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaAdmin" class="divide-y divide-gray-800 text-sm">
+                    <!-- Dinámico -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function cargarAdmin() {
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+            
+            document.getElementById('totalReservas').textContent = data.length;
+            document.getElementById('totalAsistencias').textContent = data.filter(r => r.estadoAsistencia === 'Presente').length;
+            document.getElementById('totalNoShow').textContent = data.filter(r => r.estadoAsistencia === 'No-Show').length;
+
+            const tbody = document.getElementById('tablaAdmin');
+            tbody.innerHTML = '';
+            
+            data.forEach(r => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-850">
+                        <td class="p-4 font-mono text-xs text-orange-400">${r.id}</td>
+                        <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
+                        <td class="p-4">${r.fecha}<br><span class="text-xs text-yellow-400">${r.zona}</span></td>
+                        <td class="p-4 font-bold text-orange-300">Mesa ${r.mesa}</td>
+                        <td class="p-4 font-mono text-xs text-gray-400">${r.cortesiasQR || 'N/A'}</td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${r.estadoAsistencia === 'Presente' ? 'bg-green-900 text-green-300' : r.estadoAsistencia === 'No-Show' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'}">
+                                ${r.estadoAsistencia}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        cargarAdmin();
+        setInterval(cargarAdmin, 10000);
+    </script>
+</body>
+</html>

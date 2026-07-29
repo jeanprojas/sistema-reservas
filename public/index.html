@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta de Reserva - VIP Norte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans flex items-center justify-center h-screen">
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-700 text-center">
+        <h1 class="text-2xl font-bold text-orange-500 mb-2">Consulta tu Reserva</h1>
+        <p class="text-gray-400 text-sm mb-6">Ingresa tu número de teléfono registrado</p>
+        
+        <input type="text" id="telefonoBusqueda" placeholder="Ej: 3001234567" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4 text-center text-lg">
+        <button onclick="buscarReserva()" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-3 rounded-lg transition">Consultar Estado</button>
+        
+        <div id="resultado" class="mt-6 text-left"></div>
+    </div>
+
+    <script>
+        async function buscarReserva() {
+            const tel = document.getElementById('telefonoBusqueda').value;
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+            const cliente = data.find(r => r.telefono === tel);
+            const div = document.getElementById('resultado');
+
+            if (!cliente) {
+                div.innerHTML = `<p class="text-red-400 text-center text-sm">No encontramos reservas con este número.</p>`;
+                return;
+            }
+
+            div.innerHTML = `
+                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 text-sm space-y-2">
+                    <p><strong class="text-orange-400">Cliente:</strong> ${cliente.nombreCliente}</p>
+                    <p><strong class="text-orange-400">Zona / Mesa:</strong> ${cliente.zona} - Mesa${cliente.mesa}</p>
+                    <p><strong class="text-orange-400">Estado:</strong> ${cliente.estadoAsistencia}</p>${cliente.cortesiasQR ? `<p class="pt-2 border-t border-gray-800"><strong class="text-yellow-400">QR Cortesía:</strong> <span class="font-mono text-xs">${cliente.cortesiasQR}</span></p>` : ''}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "RES-036544",
+    "nombreCliente": "Carlos Mendoza",
+    "telefono": "3001234567",
+    "fecha": "2026-08-06",
+    "zona": "VIP",
+    "mesa": "05",
+    "cortesiasQR": "QR-CORTESIA-ZGZC58",
+    "estadoAsistencia": "Presente",
+    "creadoEn": "2026-07-29T01:37:16.544Z"
+  }
+]
