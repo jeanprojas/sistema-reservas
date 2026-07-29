@@ -1,27 +1,38 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const DATA_FILE = path.join(__dirname, 'data', 'reservas.json');
+const archivoReservas = path.join(__dirname, 'data', 'reservas.json');
 
-// Función auxiliar para leer reservas
+// Función para leer reservas
 function leerReservas() {
-    if (!fs.existsSync(DATA_FILE)) return [];
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data || '[]');
+    if (!fs.existsSync(archivoReservas)) {
+        if (!fs.existsSync(path.dirname(archivoReservas))) {
+            fs.mkdirSync(path.dirname(archivoReservas), { recursive: true });
+        }
+        fs.writeFileSync(archivoReservas, JSON.stringify([]));
+        return [];
+    }
+    const data = fs.readFileSync(archivoReservas, 'utf8');
+    try {
+        return JSON.parse(data);
+    } catch (e) {
+        return [];
+    }
 }
 
-// Función auxiliar para guardar reservas
+// Función para guardar reservas
 function guardarReservas(reservas) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(reservas, null, 2));
+    fs.writeFileSync(archivoReservas, JSON.stringify(reservas, null, 2));
 }
 
-// 1. WEBHOOK / ENDPOINT para recibir datos desde Google Forms
+// 1. WEBHOOK / ENDPOINT para recibir datos (Con soporte de Sede)
 app.post('/api/reservas', (req, res) => {
     const reservas = leerReservas();
     const nuevaReserva = {
@@ -29,11 +40,11 @@ app.post('/api/reservas', (req, res) => {
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
         fecha: req.body.fecha,
-        sede: req.body.sede || 'Salvaje', // <--- Sede integrada (por defecto Salvaje)
-        zona: req.body.zona, // 'Palco', 'VIP', 'General'
+        sede: req.body.sede || 'Salvaje',
+        zona: req.body.zona,
         mesa: req.body.mesa || 'Asignar',
         cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
-        estadoAsistencia: 'Pendiente', // Pendiente, Presente, No-Show
+        estadoAsistencia: 'Pendiente',
         creadoEn: new Date().toISOString()
     };
 
@@ -42,34 +53,45 @@ app.post('/api/reservas', (req, res) => {
     res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
 });
 
-// 2. OBTENER RESERVAS (En tiempo real para Admin y Staff)
+// 2. OBTENER TODAS LAS RESERVAS
 app.get('/api/reservas', (req, res) => {
     const reservas = leerReservas();
     res.json(reservas);
 });
 
-// 3. ACTUALIZAR ESTADO DE ASISTENCIA (Llegó / No llegó)
-app.patch('/api/reservas/:id/asistencia', (req, res) => {
+// 3. ACTUALIZAR ASISTENCIA (Staff)
+app.put('/api/reservas/:id/asistencia', (req, res) => {
     const { id } = req.params;
-    const { estadoAsistencia } = req.body; // 'Presente' o 'No-Show'
+    const { estadoAsistencia } = req.body;
     let reservas = leerReservas();
-    
-    let encontrada = false;
-    reservas = reservas.map(r => {
-        if (r.id === id) {
-            encontrada = true;
-            return { ...r, estadoAsistencia };
-        }
-        return r;
-    });
+    const index = reservas.findIndex(r => r.id === id);
 
-    if (!encontrada) return res.status(404).json({ error: 'Reserva no encontrada' });
-    
+    if (index === -1) {
+        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+    }
+
+    reservas[index].estadoAsistencia = estadoAsistencia;
     guardarReservas(reservas);
-    res.json({ success: true, mensaje: `Estado actualizado a ${estadoAsistencia}` });
+    res.json({ success: true, mensaje: 'Asistencia actualizada', reserva: reservas[index] });
 });
 
-// 4. VALIDAR CÓDIGO QR DE CORTESÍA
+// 4. CAMBIAR ESTADO EXCLUSIVO ADMINISTRADOR (Incluye estado "Prueba")
+app.put('/api/reservas/:id/estado', (req, res) => {
+    const { id } = req.params;
+    const { nuevoEstado } = req.body;
+    let reservas = leerReservas();
+    const index = reservas.findIndex(r => r.id === id);
+
+    if (index === -1) {
+        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+    }
+
+    reservas[index].estadoAsistencia = nuevoEstado;
+    guardarReservas(reservas);
+    res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva: reservas[index] });
+});
+
+// 5. VALIDAR CÓDIGO QR DE CORTESÍA
 app.post('/api/validar-qr', (req, res) => {
     const { codigoQR } = req.body;
     let reservas = leerReservas();
@@ -79,7 +101,12 @@ app.post('/api/validar-qr', (req, res) => {
         return res.status(404).json({ valido: false, mensaje: 'Código QR de cortesía inválido o inexistente.' });
     }
 
-    res.json({ valido: true, mensaje: `Cortesía válida para ${reserva.nombreCliente}`, zona: reserva.zona });
+    res.json({ 
+        valido: true, 
+        mensaje: `Cortesía válida para ${reserva.nombreCliente}`, 
+        sede: reserva.sede || 'Salvaje',
+        zona: reserva.zona 
+    });
 });
 
 app.listen(PORT, () => {
