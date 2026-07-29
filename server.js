@@ -29,6 +29,7 @@ app.post('/api/reservas', (req, res) => {
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
         fecha: req.body.fecha,
+        sede: req.body.sede || 'Salvaje', // <--- Sede integrada (por defecto Salvaje)
         zona: req.body.zona, // 'Palco', 'VIP', 'General'
         mesa: req.body.mesa || 'Asignar',
         cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
