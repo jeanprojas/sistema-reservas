@@ -7,18 +7,25 @@
 </head>
 <body class="bg-gray-900 text-white font-sans p-6">
     <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-800 pb-4 gap-4">
             <div>
                 <h1 class="text-3xl font-extrabold text-orange-500">Control Operativo en Pista</h1>
-                <p class="text-gray-400 text-sm mt-1">Selecciona tu sede para filtrar el ingreso de la noche.</p>
+                <p class="text-gray-400 text-sm mt-1">Filtra por sede y fecha para gestionar el ingreso.</p>
             </div>
-            <div class="flex items-center gap-3">
-                <label class="text-sm font-semibold text-gray-300">Sede Actual:</label>
-                <select id="filtroSede" onchange="cargarReservas()" class="bg-gray-800 border border-gray-700 text-orange-400 font-bold px-4 py-2 rounded-lg focus:outline-none">
-                    <option value="Salvaje">Salvaje</option>
-                    <option value="Soho">Soho</option>
-                    <option value="220 Voltios">220 Voltios</option>
-                </select>
+            <!-- Filtros de Sede y Día -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Sede:</label>
+                    <select id="filtroSede" onchange="cargarReservas()" class="bg-gray-800 border border-gray-700 text-orange-400 font-bold px-3 py-2 rounded-lg focus:outline-none text-sm">
+                        <option value="Salvaje">Salvaje</option>
+                        <option value="Soho">Soho</option>
+                        <option value="220 Voltios">220 Voltios</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                    <input type="date" id="filtroFecha" onchange="cargarReservas()" class="bg-gray-800 border border-gray-700 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
+                </div>
             </div>
         </header>
 
@@ -32,15 +39,16 @@
             <div id="resultadoQR" class="mt-3 text-sm"></div>
         </div>
 
-        <!-- Tabla de Reservas por Sede -->
-        <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Activas para la Noche</h2>
+        <!-- Tabla de Reservas -->
+        <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Filtradas</h2>
         <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-xl">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-gray-700 text-xs uppercase text-gray-300">
                         <th class="p-4">ID</th>
                         <th class="p-4">Cliente</th>
-                        <th class="p-4">Zona / Mesa</th>
+                        <th class="p-4">Fecha / Zona</th>
+                        <th class="p-4">Mesa</th>
                         <th class="p-4">Estado</th>
                         <th class="p-4 text-center">Acción de Asistencia</th>
                     </tr>
@@ -53,19 +61,28 @@
     </div>
 
     <script>
+        // Establecer la fecha de hoy por defecto en el selector
+        document.getElementById('filtroFecha').value = new Date().toISOString().split('T')[0];
+
         async function cargarReservas() {
             const sedeSeleccionada = document.getElementById('filtroSede').value;
+            const fechaSeleccionada = document.getElementById('filtroFecha').value;
+            
             const res = await fetch('/api/reservas');
             const data = await res.json();
             
-            // Filtramos únicamente las reservas de la sede seleccionada
-            const reservasFiltradas = data.filter(r => (r.sede || 'Salvaje') === sedeSeleccionada);
+            // Filtrar por Sede y por Fecha seleccionada
+            const reservasFiltradas = data.filter(r => {
+                const coincideSede = (r.sede || 'Salvaje') === sedeSeleccionada;
+                const coincideFecha = !fechaSeleccionada || r.fecha === fechaSeleccionada;
+                return coincideSede && coincideFecha;
+            });
             
             const tbody = document.getElementById('tablaReservas');
             tbody.innerHTML = '';
 
             if (reservasFiltradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay reservas activas para ${sedeSeleccionada} hoy.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">No hay reservas para ${sedeSeleccionada} en la fecha ${fechaSeleccionada || 'seleccionada'}.</td></tr>`;
                 return;
             }
 
@@ -74,9 +91,10 @@
                     <tr class="hover:bg-gray-750">
                         <td class="p-4 font-mono text-xs text-orange-400">${r.id}</td>
                         <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
-                        <td class="p-4">${r.zona} - <span class="font-bold text-yellow-400">Mesa ${r.mesa}</span></td>
+                        <td class="p-4">${r.fecha}<br><span class="text-xs text-yellow-400">${r.zona}</span></td>
+                        <td class="p-4 font-bold text-orange-300">Mesa ${r.mesa}</td>
                         <td class="p-4">
-                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${r.estadoAsistencia === 'Presente' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${r.estadoAsistencia === 'Presente' ? 'bg-green-900 text-green-350' : r.estadoAsistencia === 'No-Show' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'}">
                                 ${r.estadoAsistencia}
                             </span>
                         </td>
@@ -108,14 +126,13 @@
             const data = await res.json();
             const div = document.getElementById('resultadoQR');
             if (data.valido) {
-                div.innerHTML = `<span class="text-green-400 font-bold">✔ ${data.mensaje} (Sede: ${data.sede})</span>`;
+                div.innerHTML = `<span class="text-green-400 font-bold">✔ ${data.mensaje}</span>`;
             } else {
                 div.innerHTML = `<span class="text-red-400 font-bold">✖ ${data.mensaje}</span>`;
             }
         }
 
         cargarReservas();
-        setInterval(cargarReservas, 10000);
     </script>
 </body>
 </html>
