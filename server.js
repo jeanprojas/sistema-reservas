@@ -472,6 +472,27 @@ app.delete('/api/admin/reservas/:id', async (req, res) => {
     }
 });
 
+// ================= NUEVA RUTA ADMIN: LIMPIAR TODA LA BASE DE DATOS =================
+app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
+    try {
+        // Elimina todas las reservas de la base de datos
+        const resultadoReservas = await Reserva.deleteMany({});
+        
+        // Opcional: Si también deseas limpiar usuarios adicionales y dejar solo al admin por defecto
+        await Usuario.deleteMany({ username: { $ne: 'admin' } });
+        await inicializarAdmin();
+
+        console.log(`🧹 Base de datos limpiada. Se eliminaron ${resultadoReservas.deletedCount} reservas.`);
+        res.json({ 
+            success: true, 
+            mensaje: `Base de datos limpiada exitosamente. Se eliminaron ${resultadoReservas.deletedCount} reservas.` 
+        });
+    } catch (e) {
+        console.error('❌ Error al limpiar la base de datos:', e);
+        res.status(500).json({ success: false, mensaje: 'Error al limpiar la base de datos' });
+    }
+});
+
 app.put('/api/reservas/:id/estado', async (req, res) => {
     try {
         const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
@@ -550,7 +571,7 @@ app.post('/api/sincronizar-externo', async (req, res) => {
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             estadoAsistencia: 'Reservado',
             nocheOperativa: req.body.fecha || new Date().toISOString().split('T')[0],
-            usuarioCreador: 'Google Sheets' // Para que sepas de dónde vino
+            usuarioCreador: 'Google Sheets'
         });
         
         await nuevaReserva.save();
@@ -561,6 +582,7 @@ app.post('/api/sincronizar-externo', async (req, res) => {
         res.status(500).json({ success: false, mensaje: 'Error al procesar la reserva' });
     }
 });
+
 app.listen(PORT, () => {
     console.log(`Sistema VIP Norte operando en puerto ${PORT}`);
 });
