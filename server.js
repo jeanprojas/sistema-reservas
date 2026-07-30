@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const archivoReservas = path.join(__dirname, 'data', 'reservas.json');
 const archivoUsuarios = path.join(__dirname, 'data', 'usuarios.json');
 
-// Funciones auxiliares para leer y guardar datos
 function leerDatos(ruta, inicial = []) {
     if (!fs.existsSync(ruta)) {
         if (!fs.existsSync(path.dirname(ruta))) {
@@ -31,14 +30,14 @@ function guardarDatos(ruta, datos) {
     fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
 }
 
-// Inicializar un usuario Administrador por defecto si no existe
+// Inicializar Administrador por defecto
 function inicializarAdminPorDefecto() {
     let usuarios = leerDatos(archivoUsuarios, []);
     if (usuarios.length === 0) {
         usuarios.push({
             id: 'USR-ADMIN',
             username: 'admin',
-            password: '123', // Contraseña inicial por defecto
+            password: '123',
             rol: 'Administrador',
             sede: 'TODAS'
         });
@@ -47,7 +46,7 @@ function inicializarAdminPorDefecto() {
 }
 inicializarAdminPorDefecto();
 
-// ================= ROUTES: LOGIN =================
+// ================= LOGIN =================
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const usuarios = leerDatos(archivoUsuarios);
@@ -57,10 +56,16 @@ app.post('/api/login', (req, res) => {
         return res.status(401).json({ success: false, mensaje: 'Usuario o contraseña incorrectos' });
     }
 
-    res.json({ success: true, rol: usuario.rol, sede: usuario.sede, mensaje: 'Autenticación exitosa' });
+    res.json({ 
+        success: true, 
+        rol: usuario.rol, 
+        sede: usuario.sede, 
+        username: usuario.username,
+        mensaje: 'Autenticación exitosa' 
+    });
 });
 
-// ================= ROUTES: USUARIOS (CRUD) =================
+// ================= GESTIÓN DE USUARIOS (Solo Admins) =================
 app.get('/api/usuarios', (req, res) => {
     res.json(leerDatos(archivoUsuarios));
 });
@@ -71,7 +76,7 @@ app.post('/api/usuarios', (req, res) => {
         id: 'USR-' + Date.now().toString().slice(-6),
         username: req.body.username,
         password: req.body.password,
-        rol: req.body.rol, // 'Administrador' o 'Staff'
+        rol: req.body.rol, 
         sede: req.body.sede || 'Salvaje'
     };
 
@@ -101,13 +106,14 @@ app.put('/api/usuarios/:id', (req, res) => {
 app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
     let usuarios = leerDatos(archivoUsuarios);
+    
+    // Evitar eliminar al admin principal si es el único o por seguridad
     const filtrados = usuarios.filter(u => u.id !== id);
-
     guardarDatos(archivoUsuarios, filtrados);
     res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
 });
 
-// ================= ROUTES: RESERVAS =================
+// ================= RESERVAS =================
 app.post('/api/reservas', (req, res) => {
     const reservas = leerDatos(archivoReservas, []);
     const nuevaReserva = {
