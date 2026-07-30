@@ -8,19 +8,24 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const archivoReservas = path.join(__dirname, 'data', 'reservas.json');
-const archivoUsuarios = path.join(__dirname, 'data', 'usuarios.json');
+const dirData = path.join(__dirname, 'data');
+const archivoReservas = path.join(dirData, 'reservas.json');
+const archivoUsuarios = path.join(dirData, 'usuarios.json');
 
+// Asegurar que la carpeta data exista
+if (!fs.existsSync(dirData)) {
+    fs.mkdirSync(dirData, { recursive: true });
+}
+
+// Funciones auxiliares de lectura y escritura robustas
 function leerDatos(ruta, inicial = []) {
     if (!fs.existsSync(ruta)) {
-        if (!fs.existsSync(path.dirname(ruta))) {
-            fs.mkdirSync(path.dirname(ruta), { recursive: true });
-        }
         fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2));
         return inicial;
     }
     try {
-        return JSON.parse(fs.readFileSync(ruta, 'utf8'));
+        const contenido = fs.readFileSync(ruta, 'utf8');
+        return JSON.parse(contenido);
     } catch (e) {
         return inicial;
     }
@@ -30,17 +35,21 @@ function guardarDatos(ruta, datos) {
     fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
 }
 
-// Inicializar Administrador por defecto
+// Inicializar Administrador por defecto solo si el archivo no existe o está vacío
 function inicializarAdminPorDefecto() {
     let usuarios = leerDatos(archivoUsuarios, []);
-    if (usuarios.length === 0) {
-        usuarios.push({
-            id: 'USR-ADMIN',
-            username: 'admin',
-            password: '123',
-            rol: 'Administrador',
-            sede: 'TODAS'
-        });
+    const existeAdmin = usuarios.some(u => u.username === 'admin');
+    
+    if (usuarios.length === 0 || !existeAdmin) {
+        if (!existeAdmin) {
+            usuarios.push({
+                id: 'USR-ADMIN',
+                username: 'admin',
+                password: '123',
+                rol: 'Administrador',
+                sede: 'TODAS'
+            });
+        }
         guardarDatos(archivoUsuarios, usuarios);
     }
 }
@@ -65,7 +74,7 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// ================= GESTIÓN DE USUARIOS (Solo Admins) =================
+// ================= GESTIÓN DE USUARIOS (CRUD) =================
 app.get('/api/usuarios', (req, res) => {
     res.json(leerDatos(archivoUsuarios));
 });
@@ -106,9 +115,8 @@ app.put('/api/usuarios/:id', (req, res) => {
 app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
     let usuarios = leerDatos(archivoUsuarios);
-    
-    // Evitar eliminar al admin principal si es el único o por seguridad
     const filtrados = usuarios.filter(u => u.id !== id);
+
     guardarDatos(archivoUsuarios, filtrados);
     res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
 });
