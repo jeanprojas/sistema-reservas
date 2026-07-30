@@ -12,12 +12,10 @@ const dirData = path.join(__dirname, 'data');
 const archivoReservas = path.join(dirData, 'reservas.json');
 const archivoUsuarios = path.join(dirData, 'usuarios.json');
 
-// Asegurar que la carpeta data exista de forma sincrónica y estricta
 if (!fs.existsSync(dirData)) {
     fs.mkdirSync(dirData, { recursive: true });
 }
 
-// Usuarios base iniciales obligatorios del sistema
 const usuariosBaseIniciales = [
     {
         id: 'USR-ADMIN',
@@ -35,7 +33,6 @@ const usuariosBaseIniciales = [
     }
 ];
 
-// Funciones auxiliares ultra seguras para evitar pérdida de datos
 function leerDatosSeguro(ruta, inicial) {
     try {
         if (!fs.existsSync(ruta)) {
@@ -66,7 +63,6 @@ function guardarDatosSeguro(ruta, datos) {
     }
 }
 
-// Inicializar archivos garantizando que nunca se pierdan usuarios creados
 function inicializarSistema() {
     if (!fs.existsSync(archivoReservas)) {
         guardarDatosSeguro(archivoReservas, []);
@@ -161,7 +157,6 @@ app.delete('/api/usuarios/:id', (req, res) => {
         return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
     }
 
-    // Únicamente protegemos al superadministrador principal ('admin') para no perder acceso total
     if (usuarioAEliminar.username === 'admin') {
         return res.status(403).json({ success: false, mensaje: 'Por seguridad, el usuario administrador principal no se puede eliminar' });
     }
@@ -182,6 +177,14 @@ app.post('/api/reservas', (req, res) => {
         sede: req.body.sede || 'Salvaje',
         zona: req.body.zona,
         mesa: req.body.mesa || 'Asignar',
+        
+        // Nuevos campos detallados solicitados
+        cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+        personasLlegadas: Number(req.body.personasLlegadas) || 0,
+        cortesias: Number(req.body.cortesias) || 0,
+        pagaronCover: Number(req.body.pagaronCover) || 0,
+        precioCover: Number(req.body.precioCover) || 0,
+
         cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
         estadoAsistencia: 'Pendiente',
         creadoEn: new Date().toISOString()
@@ -196,7 +199,39 @@ app.get('/api/reservas', (req, res) => {
     res.json(leerDatosSeguro(archivoReservas, []));
 });
 
-// Endpoints estandarizados para asistencia y estado
+// Endpoint para consultar el detalle completo de una reserva específica
+app.get('/api/reservas/:id', (req, res) => {
+    const { id } = req.params;
+    const reservas = leerDatosSeguro(archivoReservas, []);
+    const reserva = reservas.find(r => r.id === id);
+
+    if (!reserva) {
+        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+    }
+
+    res.json({ success: true, reserva });
+});
+
+// Endpoint para actualizar la información detallada de personas y pagos de una reserva
+app.put('/api/reservas/:id/detalle', (req, res) => {
+    const { id } = req.params;
+    let reservas = leerDatosSeguro(archivoReservas, []);
+    const index = reservas.findIndex(r => r.id === id);
+
+    if (index === -1) {
+        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+    }
+
+    reservas[index].cantidadPersonasInicial = req.body.cantidadPersonasInicial !== undefined ? Number(req.body.cantidadPersonasInicial) : reservas[index].cantidadPersonasInicial;
+    reservas[index].personasLlegadas = req.body.personasLlegadas !== undefined ? Number(req.body.personasLlegadas) : reservas[index].personasLlegadas;
+    reservas[index].cortesias = req.body.cortesias !== undefined ? Number(req.body.cortesias) : reservas[index].cortesias;
+    reservas[index].pagaronCover = req.body.pagaronCover !== undefined ? Number(req.body.pagaronCover) : reservas[index].pagaronCover;
+    reservas[index].precioCover = req.body.precioCover !== undefined ? Number(req.body.precioCover) : reservas[index].precioCover;
+
+    guardarDatosSeguro(archivoReservas, reservas);
+    res.json({ success: true, mensaje: 'Detalle de la reserva actualizado con éxito', reserva: reservas[index] });
+});
+
 app.put('/api/reservas/:id/asistencia', (req, res) => {
     const { id } = req.params;
     const nuevoEstado = req.body.estadoAsistencia || req.body.nuevoEstado;
