@@ -39,11 +39,11 @@ const usuariosBaseIniciales = [
     }
 ];
 
-// Funciones auxiliares de lectura y escritura robustas con respaldo
+// Funciones auxiliares de lectura y escritura robustas con respaldo y manejo de errores
 function leerDatos(ruta, inicial = []) {
     try {
         if (!fs.existsSync(ruta)) {
-            fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2));
+            fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2), 'utf8');
             return inicial;
         }
         const contenido = fs.readFileSync(ruta, 'utf8');
@@ -59,9 +59,9 @@ function leerDatos(ruta, inicial = []) {
 
 function guardarDatos(ruta, datos) {
     try {
-        fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
+        fs.writeFileSync(ruta, JSON.stringify(datos, null, 2), 'utf8');
     } catch (e) {
-        console.error("Error al guardar en disco:", e);
+        console.error("Error crítico al guardar en disco:", e);
     }
 }
 
@@ -171,9 +171,10 @@ app.get('/api/reservas', (req, res) => {
     res.json(leerDatos(archivoReservas, []));
 });
 
+// Endpoints estandarizados para aceptar tanto 'estadoAsistencia' como 'nuevoEstado'
 app.put('/api/reservas/:id/asistencia', (req, res) => {
     const { id } = req.params;
-    const { estadoAsistencia } = req.body;
+    const nuevoEstado = req.body.estadoAsistencia || req.body.nuevoEstado;
     let reservas = leerDatos(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
@@ -181,14 +182,14 @@ app.put('/api/reservas/:id/asistencia', (req, res) => {
         return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
     }
 
-    reservas[index].estadoAsistencia = estadoAsistencia;
+    reservas[index].estadoAsistencia = nuevoEstado;
     guardarDatos(archivoReservas, reservas);
     res.json({ success: true, mensaje: 'Asistencia actualizada', reserva: reservas[index] });
 });
 
 app.put('/api/reservas/:id/estado', (req, res) => {
     const { id } = req.params;
-    const { nuevoEstado } = req.body;
+    const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
     let reservas = leerDatos(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
