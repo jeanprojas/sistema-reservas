@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,23 +17,15 @@ if (!fs.existsSync(dirData)) {
     fs.mkdirSync(dirData, { recursive: true });
 }
 
-// Configuración del Transporter de Nodemailer para GMAIL usando Variables de Entorno
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_SECURE === 'true' || true,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
-});
+// Configuración de Resend usando la variable de entorno RESEND_API_KEY
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Función auxiliar para enviar correos de reserva
+// Función auxiliar para enviar correos de reserva utilizando Resend
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr) {
     try {
-        await transporter.sendMail({
-            from: '"Portal VIP Norte" <' + (process.env.SMTP_USER || 'no-reply@vipnorte.com') + '>',
-            to: destinatario,
+        const data = await resend.emails.send({
+            from: process.env.RESEND_FROM || 'Portal VIP Norte <onboarding@resend.dev>',
+            to: [destinatario],
             subject: `¡Reserva Confirmada! #${idReserva} - VIP Norte`,
             html: `
                 <div style="background-color: #09090b; color: #ffffff; padding: 20px; font-family: sans-serif; border-radius: 10px;">
@@ -54,9 +46,9 @@ async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha
                 </div>
             `
         });
-        return { success: true };
+        return { success: true, data };
     } catch (error) {
-        console.error('Error al enviar correo:', error);
+        console.error('Error al enviar correo con Resend:', error);
         return { success: false, mensaje: error.message };
     }
 }
@@ -246,7 +238,7 @@ app.delete('/api/usuarios/:id', (req, res) => {
 
 // ================= RESERVAS =================
 
-app.post('/api/reservas', (req, res) => {
+app.post('/api/reservas', async (req, res) => {
     const reservas = leerDatosSeguro(archivoReservas, []);
     const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -255,7 +247,7 @@ app.post('/api/reservas', (req, res) => {
         codigoQr: codigoQrPin,
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
-        email: req.body.email || '', // Captura del correo electrónico
+        email: req.body.email || '', 
         fecha: req.body.fecha,
         sede: req.body.sede || 'Salvaje',
         zona: req.body.zona,
@@ -276,10 +268,24 @@ app.post('/api/reservas', (req, res) => {
 
     reservas.push(nuevaReserva);
     guardarDatosSeguro(archivoReservas, reservas);
+
+    // Envío automático de correo al registrarse si cuenta con email
+    if (nuevaReserva.email) {
+        await enviarCorreoReserva(
+            nuevaReserva.email,
+            nuevaReserva.nombreCliente,
+            nuevaReserva.id,
+            nuevaReserva.fecha,
+            nuevaReserva.zona,
+            nuevaReserva.mesa,
+            nuevaReserva.codigoQr
+        );
+    }
+
     res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
 });
 
-app.post('/api/admin/reservas', (req, res) => {
+app.post('/api/admin/reservas', async (req, res) => {
     const reservas = leerDatosSeguro(archivoReservas, []);
     const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -288,7 +294,7 @@ app.post('/api/admin/reservas', (req, res) => {
         codigoQr: codigoQrPin,
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
-        email: req.body.email || '', // Captura del correo electrónico
+        email: req.body.email || '', 
         fecha: req.body.fecha,
         sede: req.body.sede || 'Salvaje',
         zona: req.body.zona,
@@ -308,6 +314,19 @@ app.post('/api/admin/reservas', (req, res) => {
 
     reservas.push(nuevaReserva);
     guardarDatosSeguro(archivoReservas, reservas);
+
+    if (nuevaReserva.email) {
+        await enviarCorreoReserva(
+            nuevaReserva.email,
+            nuevaReserva.nombreCliente,
+            nuevaReserva.id,
+            nuevaReserva.fecha,
+            nuevaReserva.zona,
+            nuevaReserva.mesa,
+            nuevaReserva.codigoQr
+        );
+    }
+
     res.status(201).json({ success: true, mensaje: 'Reserva creada por Admin', reserva: nuevaReserva });
 });
 
