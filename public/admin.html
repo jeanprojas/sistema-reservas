@@ -73,7 +73,32 @@
                     <div class="flex items-end gap-2">
                         <button onclick="filtrarAdminRango('hoy')" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Hoy</button>
                         <button onclick="filtrarAdminRango('semana')" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Semana</button>
-                        <button onclick="filtrarAdminRango('todo')" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px] shadow">Ver Todo</button>
+                        
+                        <!-- NUEVOS FILTROS DESPLEGABLES DE AÑO Y MES -->
+                        <div class="flex items-center gap-2 h-[38px]">
+                            <select id="filtroAno" onchange="cambiarFiltroPeriodo()" class="bg-gray-950 border border-gray-800 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold h-full focus:outline-none focus:border-orange-500 cursor-pointer">
+                                <option value="">Todos los Años</option>
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                            
+                            <select id="filtroMes" onchange="cargarAdmin()" disabled class="bg-gray-950 border border-gray-800 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold h-full focus:outline-none focus:border-orange-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                <option value="">Todos los Meses</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -388,6 +413,27 @@
         function filtrarAdminRango(modo) {
             filtroModoActual = modo;
             document.getElementById('adminFecha').value = '';
+            document.getElementById('filtroAno').value = '';
+            document.getElementById('filtroMes').value = '';
+            document.getElementById('filtroMes').disabled = true;
+            cargarAdmin();
+        }
+
+        function cambiarFiltroPeriodo() {
+            const anoVal = document.getElementById('filtroAno').value;
+            const selectMes = document.getElementById('filtroMes');
+            
+            if (anoVal) {
+                selectMes.disabled = false;
+            } else {
+                selectMes.disabled = true;
+                selectMes.value = '';
+            }
+            
+            if (anoVal) {
+                filtroModoActual = 'periodo';
+                document.getElementById('adminFecha').value = '';
+            }
             cargarAdmin();
         }
 
@@ -466,6 +512,8 @@
         async function cargarAdmin() {
             const sedeSel = document.getElementById('adminSede').value;
             const fechaInputVal = document.getElementById('adminFecha').value;
+            const anioSel = document.getElementById('filtroAno').value;
+            const mesSel = document.getElementById('filtroMes').value;
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
@@ -485,6 +533,17 @@
 
                 if (fechaInputVal) {
                     return fechaReserva === fechaInputVal;
+                }
+
+                if (filtroModoActual === 'periodo') {
+                    if (!fechaReserva) return false;
+                    const partesFecha = fechaReserva.split('-');
+                    const reservaAnio = partesFecha[0];
+                    const reservaMes = partesFecha[1];
+
+                    const cumpleAno = anioSel ? reservaAnio === anioSel : true;
+                    const cumpleMes = mesSel ? reservaMes === mesSel : true;
+                    return cumpleAno && cumpleMes;
                 }
 
                 if (filtroModoActual === 'todo') {
