@@ -57,6 +57,21 @@ function guardarDatosSeguro(ruta, datos) {
     }
 }
 
+// Función auxiliar para calcular la "Noche Operativa" (8 PM a 5 AM del día siguiente)
+function obtenerNocheOperativa(fechaStr, horaStr = "21:00") {
+    if (!fechaStr) return new Date().toISOString().split('T')[0];
+    const [anio, mes, dia] = fechaStr.split('-').map(Number);
+    const [hora] = (horaStr || "21:00").split(':').map(Number);
+    
+    // Si la hora de la reserva o registro es de madrugada (00:00 a 05:59), pertenece a la noche comercial del día anterior
+    if (hora >= 0 && hora < 6) {
+        const d = new Date(anio, mes - 1, dia);
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }
+    return fechaStr;
+}
+
 function inicializarSistema() {
     if (!fs.existsSync(archivoReservas)) {
         guardarDatosSeguro(archivoReservas, []);
@@ -161,10 +176,15 @@ app.delete('/api/usuarios/:id', (req, res) => {
 });
 
 // ================= RESERVAS =================
+
+// 1. Crear reserva pública (Estado por defecto "Reservado" + Generación de código QR/PIN de entrada)
 app.post('/api/reservas', (req, res) => {
     const reservas = leerDatosSeguro(archivoReservas, []);
+    const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString(); // PIN de 4 dígitos para validar en puerta
+
     const nuevaReserva = {
         id: 'RES-' + Date.now().toString().slice(-6),
+        codigoQr: codigoQrPin,
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
         fecha: req.body.fecha,
@@ -172,15 +192,16 @@ app.post('/api/reservas', (req, res) => {
         zona: req.body.zona,
         mesa: req.body.mesa || 'Asignar',
         
-        // Nuevos campos de control de personas y cobros
         cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
-        personasLlegadas: Number(req.body.personasLlegadas) || 0,
-        cortesias: Number(req.body.cortesias) || 0,
-        pagaronCover: Number(req.body.pagaronCover) || 0,
-        precioCover: Number(req.body.precioCover) || 0,
+        personasLlegadas: 0,
+        cortesias: 0,
+        pagaronCover: 0,
+        precioCover: Number(req.body.precioCover) || 30000,
 
         cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
-        estadoAsistencia: 'Pendiente',
+        estadoAsistencia: 'Reservado', // Estado por defecto solicitado
+        usuarioCreador: req.body.usuarioCreador || 'Web Pública',
+        nocheOperativa: obtenerNocheOperativa(req.body.fecha),
         creadoEn: new Date().toISOString()
     };
 
@@ -189,11 +210,42 @@ app.post('/api/reservas', (req, res) => {
     res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
 });
 
+// 2. Creación directa de reserva exclusiva para el Administrador desde su panel
+app.post('/api/admin/reservas', (req, res) => {
+    const reservas = leerDatosSeguro(archivoReservas, []);
+    const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const nuevaReserva = {
+        id: 'RES-' + Date.now().toString().slice(-6),
+        codigoQr: codigoQrPin,
+        nombreCliente: req.body.nombreCliente,
+        telefono: req.body.telefono,
+        fecha: req.body.fecha,
+        sede: req.body.sede || 'Salvaje',
+        zona: req.body.zona,
+        mesa: req.body.mesa || 'Asignar',
+        
+        cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+        personasLlegadas: Number(req.body.personasLlegadas) || 0,
+        cortesias: Number(req.body.cortesias) || 0,
+        pagaronCover: Number(req.body.pagaronCover) || 0,
+        precioCover: Number(req.body.precioCover) || 30000,
+
+        estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
+        usuarioCreador: req.body.usuarioCreador || 'Administrador',
+        nocheOperativa: obtenerNocheOperativa(req.body.fecha),
+        creadoEn: new Date().toISOString()
+    };
+
+    reservas.push(nuevaReserva);
+    guardarDatosSeguro(archivoReservas, reservas);
+    res.status(201).json({ success: true, mensaje: 'Reserva creada por Admin', reserva: nuevaReserva });
+});
+
 app.get('/api/reservas', (req, res) => {
     res.json(leerDatosSeguro(archivoReservas, []));
 });
 
-// Consultar una reserva en específico
 app.get('/api/reservas/:id', (req, res) => {
     const { id } = req.params;
     const reservas = leerDatosSeguro(archivoReservas, []);
@@ -206,7 +258,6 @@ app.get('/api/reservas/:id', (req, res) => {
     res.json({ success: true, reserva });
 });
 
-// Actualizar contadores y detalles de personas/cobros de una reserva
 app.put('/api/reservas/:id/detalle', (req, res) => {
     const { id } = req.params;
     let reservas = leerDatosSeguro(archivoReservas, []);
@@ -226,24 +277,12 @@ app.put('/api/reservas/:id/detalle', (req, res) => {
     res.json({ success: true, mensaje: 'Detalle actualizado correctamente', reserva: reservas[index] });
 });
 
-app.put('/api/reservas/:id/asistencia', (req, res) => {
-    const { id } = req.params;
-    const nuevoEstado = req.body.estadoAsistencia || req.body.nuevoEstado;
-    let reservas = leerDatosSeguro(archivoReservas, []);
-    const index = reservas.findIndex(r => r.id === id);
-
-    if (index === -1) {
-        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
-    }
-
-    reservas[index].estadoAsistencia = nuevoEstado;
-    guardarDatosSeguro(archivoReservas, reservas);
-    res.json({ success: true, mensaje: 'Asistencia actualizada', reserva: reservas[index] });
-});
-
+// Actualización de estado con validaciones exigidas (Fecha >= hoy y verificación de código QR/PIN)
 app.put('/api/reservas/:id/estado', (req, res) => {
     const { id } = req.params;
     const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
+    const codigoIngresado = req.body.codigoIngresado;
+
     let reservas = leerDatosSeguro(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
@@ -251,9 +290,39 @@ app.put('/api/reservas/:id/estado', (req, res) => {
         return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
     }
 
-    reservas[index].estadoAsistencia = nuevoEstado;
+    const reserva = reservas[index];
+    const hoyStr = new Date().toISOString().split('T')[0];
+
+    // Validación estricta para estado "Presente"
+    if (nuevoEstado === 'Presente') {
+        // 1. No permitir cambiar a Presente si la fecha de la reserva es posterior al día de hoy
+        if (reserva.fecha > hoyStr) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: 'No es posible cambiar a Presente: la fecha de la reserva es futura.' 
+            });
+        }
+        // 2. Validar el código QR / PIN provisto por el cliente en la entrada
+        if (!reserva.codigoQr) {
+            reserva.codigoQr = Math.floor(1000 + Math.random() * 9000).toString(); // Fallback por seguridad si es antigua
+        }
+        if (codigoIngresado && codigoIngresado !== reserva.codigoQr) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: 'Código QR / PIN incorrecto proporcionado por el cliente.' 
+            });
+        }
+    }
+
+    reserva.estadoAsistencia = nuevoEstado;
+    
+    // Si pasa a presente y no tenía registro de personas llegadas, asignar por defecto el total planeado
+    if (nuevoEstado === 'Presente' && (!reserva.personasLlegadas || reserva.personasLlegadas === 0)) {
+        reserva.personasLlegadas = reserva.cantidadPersonasInicial;
+    }
+
     guardarDatosSeguro(archivoReservas, reservas);
-    res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva: reservas[index] });
+    res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva });
 });
 
 app.post('/api/validar-qr', (req, res) => {
