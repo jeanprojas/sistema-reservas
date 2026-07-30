@@ -75,7 +75,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE REGISTRO EN PUERTA (LLEGADAS, CORTESÍAS Y COBROS) -->
+    <!-- MODAL DE REGISTRO EN PUERTA (LLEGADAS, CORTESÍAS, COBROS Y PIN/QR) -->
     <div id="modalStaffDetalle" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
         <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-md w-full shadow-2xl">
             <h3 class="text-lg font-bold text-orange-400 mb-1">Registrar Ingresos en Puerta</h3>
@@ -103,10 +103,17 @@
                     <label class="block text-xs text-gray-400 mb-1">Precio Unitario Cover ($):</label>
                     <input type="number" id="staffEditPrecio" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500">
                 </div>
+                <!-- NUEVO: Campo para introducir el código PIN / QR provisto por el cliente en puerta -->
+                <div>
+                    <label class="block text-xs text-orange-400 mb-1 font-bold">Código QR / PIN de Ingreso del Cliente:</label>
+                    <input type="text" id="staffEditCodigoQr" placeholder="Ej. 4821" class="w-full bg-gray-950 border border-orange-800 rounded px-3 py-2 text-orange-300 font-mono tracking-widest text-center focus:outline-none focus:border-orange-500">
+                </div>
             </div>
 
+            <p id="errorModalStaff" class="text-red-400 text-xs mt-3 hidden"></p>
+
             <div class="flex gap-3 mt-6">
-                <button onclick="guardarDetalleStaff()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Registro y Marcar Presente</button>
+                <button onclick="guardarDetalleStaff()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar y Marcar Presente</button>
                 <button onclick="cerrarModalStaff()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
             </div>
         </div>
@@ -201,6 +208,7 @@
                 if (r.estadoAsistencia === 'Presente') colorEstado = 'bg-green-900 text-green-300';
                 if (r.estadoAsistencia === 'No-Show') colorEstado = 'bg-red-900 text-red-300';
                 if (r.estadoAsistencia === 'Prueba') colorEstado = 'bg-purple-900 text-purple-300';
+                if (r.estadoAsistencia === 'Reservado') colorEstado = 'bg-blue-900 text-blue-300';
 
                 const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
 
@@ -211,7 +219,7 @@
                         <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-4 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
-                            <span class="text-green-400 font-bold">Llegaron: ${r.personasLlegadas || 0}</span>
+                            <span class="text-green-400 font-bold">Llegadas: ${r.personasLlegadas || 0}</span>
                         </td>
                         <td class="p-4 text-center text-xs">
                             <span class="text-yellow-400">Cortesías: ${r.cortesias || 0}</span><br>
@@ -237,6 +245,8 @@
             document.getElementById('staffEditCortesias').value = cortesias;
             document.getElementById('staffEditPagaron').value = pagaron;
             document.getElementById('staffEditPrecio').value = precio;
+            document.getElementById('staffEditCodigoQr').value = '';
+            document.getElementById('errorModalStaff').classList.add('hidden');
             document.getElementById('modalStaffDetalle').classList.remove('hidden');
         }
 
@@ -251,31 +261,44 @@
             const cortesias = document.getElementById('staffEditCortesias').value;
             const pagaronCover = document.getElementById('staffEditPagaron').value;
             const precioCover = document.getElementById('staffEditPrecio').value;
+            const codigoIngresado = document.getElementById('staffEditCodigoQr').value.trim();
 
-            // 1. Guardar los detalles numéricos (llegadas, cortesías, pagos)
+            // 1. Guardar primero los detalles numéricos en el servidor
             await fetch(`/api/reservas/${id}/detalle`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cantidadPersonasInicial, personasLlegadas, cortesias, pagaronCover, precioCover })
             });
 
-            // 2. Automáticamente cambiar el estado a 'Presente' al registrar la entrada en puerta
-            await fetch(`/api/reservas/${id}/estado`, {
+            // 2. Intentar cambiar el estado a 'Presente' pasando el código QR / PIN para validación estricta
+            const resEstado = await fetch(`/api/reservas/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nuevoEstado: 'Presente' })
+                body: JSON.stringify({ nuevoEstado: 'Presente', codigoIngresado })
             });
+            const dataEstado = await resEstado.json();
+
+            if (!dataEstado.success) {
+                const errorBox = document.getElementById('errorModalStaff');
+                errorBox.textContent = dataEstado.mensaje;
+                errorBox.classList.remove('hidden');
+                return; // Detiene el cierre si hubo un error (ej. fecha futura o PIN incorrecto)
+            }
 
             cerrarModalStaff();
             cargarReservasStaff();
         }
 
         async function cambiarAsistenciaStaff(id, nuevoEstado) {
-            await fetch(`/api/reservas/${id}/estado`, {
+            const res = await fetch(`/api/reservas/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nuevoEstado })
             });
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.mensaje);
+            }
             cargarReservasStaff();
         }
     </script>
