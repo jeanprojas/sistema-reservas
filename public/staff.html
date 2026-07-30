@@ -29,10 +29,10 @@
     </div>
 
     <!-- PANEL PRINCIPAL DE STAFF -->
-    <div id="staffPanel" class="max-w-5xl mx-auto hidden">
+    <div id="staffPanel" class="max-w-6xl mx-auto hidden">
         <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
             <div>
-                <h1 class="text-2xl font-extrabold text-orange-500">Portal Operativo - Staff</h1>
+                <h1 class="text-2xl font-extrabold text-orange-500">Portal Operativo - Staff (Control de Puerta)</h1>
                 <p id="infoSedeStaff" class="text-yellow-400 text-sm font-bold mt-1"></p>
             </div>
             <button onclick="cerrarSesionStaff()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition">Cerrar Sesión</button>
@@ -56,7 +56,7 @@
         </div>
 
         <!-- Tabla de Reservas de la Sede -->
-        <h2 class="text-lg font-bold mb-4 text-gray-200">Reservas Vigentes de la Sede (Ordenadas por Número de Reserva)</h2>
+        <h2 class="text-lg font-bold mb-4 text-gray-200">Reservas Vigentes de la Sede & Control de Ingresos</h2>
         <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
             <table class="w-full text-left border-collapse">
                 <thead>
@@ -64,12 +64,51 @@
                         <th class="p-4">Nº Reserva (ID)</th>
                         <th class="p-4">Cliente</th>
                         <th class="p-4">Fecha / Zona / Mesa</th>
-                        <th class="p-4">Estado Asistencia</th>
-                        <th class="p-4 text-center">Acción Puerta</th>
+                        <th class="p-4 text-center">Plan / Llegadas</th>
+                        <th class="p-4 text-center">Cortesías / Pagos</th>
+                        <th class="p-4">Estado</th>
+                        <th class="p-4 text-center">Acciones Puerta</th>
                     </tr>
                 </thead>
                 <tbody id="tablaStaff" class="divide-y divide-gray-800 text-sm"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- MODAL DE REGISTRO EN PUERTA (LLEGADAS, CORTESÍAS Y COBROS) -->
+    <div id="modalStaffDetalle" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-md w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-orange-400 mb-1">Registrar Ingresos en Puerta</h3>
+            <p id="modalClienteInfo" class="text-xs text-gray-400 mb-4"></p>
+            
+            <input type="hidden" id="staffReservaId">
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Personas Planeadas Inicialmente:</label>
+                    <input type="number" id="staffEditInicial" readonly class="w-full bg-gray-950/50 border border-gray-800 rounded px-3 py-2 text-gray-400 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Total Personas que Llegaron / Ingresaron:</label>
+                    <input type="number" id="staffEditLlegadas" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white font-bold text-green-400 focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Entraron por Cortesía (Gratis):</label>
+                    <input type="number" id="staffEditCortesias" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Pagaron Cover:</label>
+                    <input type="number" id="staffEditPagaron" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Precio Unitario Cover ($):</label>
+                    <input type="number" id="staffEditPrecio" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="guardarDetalleStaff()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Registro y Marcar Presente</button>
+                <button onclick="cerrarModalStaff()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -108,7 +147,6 @@
             document.getElementById('infoSedeStaff').textContent = `Usuario: ${username} | Sede Asignada: ${sede}`;
             document.getElementById('badgeSedeStaff').textContent = sede;
 
-            // Por defecto arranca sin fecha fija para mostrar todas las vigentes desde hoy
             document.getElementById('staffFecha').value = '';
             cargarReservasStaff();
         }
@@ -134,7 +172,6 @@
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            // Filtrar estrictamente por sede asignada y por vigencia (desde hoy en adelante o fecha específica)
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeActualStaff === 'TODAS' || sedeReserva === sedeActualStaff);
@@ -143,20 +180,19 @@
                 if (fechaSel) {
                     coincideFecha = (r.fecha === fechaSel);
                 } else {
-                    coincideFecha = (r.fecha >= hoy); // Vigentes desde hoy en adelante
+                    coincideFecha = (r.fecha >= hoy);
                 }
 
                 return coincideSede && coincideFecha;
             });
 
-            // Ordenar por número de reserva (ID)
             filtradas.sort((a, b) => b.id.localeCompare(a.id));
 
             const tbody = document.getElementById('tablaStaff');
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay reservas vigentes para esta sede.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No hay reservas vigentes para esta sede.</td></tr>`;
                 return;
             }
 
@@ -166,30 +202,79 @@
                 if (r.estadoAsistencia === 'No-Show') colorEstado = 'bg-red-900 text-red-300';
                 if (r.estadoAsistencia === 'Prueba') colorEstado = 'bg-purple-900 text-purple-300';
 
+                const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
                         <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
                         <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
                         <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
+                        <td class="p-4 text-center">
+                            <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
+                            <span class="text-green-400 font-bold">Llegaron: ${r.personasLlegadas || 0}</span>
+                        </td>
+                        <td class="p-4 text-center text-xs">
+                            <span class="text-yellow-400">Cortesías: ${r.cortesias || 0}</span><br>
+                            <span class="text-blue-400">Pagaron: ${r.pagaronCover || 0} ($${totalRecaudado.toLocaleString()})</span>
+                        </td>
                         <td class="p-4">
-                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${colorEstado}">
-                                ${r.estadoAsistencia}
-                            </span>
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${colorEstado}">${r.estadoAsistencia}</span>
                         </td>
                         <td class="p-4 text-center space-x-1">
-                            <button onclick="cambiarAsistenciaStaff('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-3 py-1.5 rounded text-xs font-bold transition">Marcar Presente</button>
-                            <button onclick="cambiarAsistenciaStaff('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-3 py-1.5 rounded text-xs font-bold transition">No-Show</button>
+                            <button onclick="abrirModalStaff('${r.id}', '${r.nombreCliente}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1.5 rounded text-xs font-bold transition">Detalle / Registrar</button>
+                            <button onclick="cambiarAsistenciaStaff('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2.5 py-1.5 rounded text-xs font-bold transition">No-Show</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        async function cambiarAsistenciaStaff(id, nuevoEstado) {
-            await fetch(`/api/reservas/${id}/asistencia`, {
+        function abrirModalStaff(id, cliente, inicial, llegadas, cortesias, pagaron, precio) {
+            document.getElementById('staffReservaId').value = id;
+            document.getElementById('modalClienteInfo').textContent = `Cliente: ${cliente} (Reserva #${id})`;
+            document.getElementById('staffEditInicial').value = inicial;
+            document.getElementById('staffEditLlegadas').value = llegadas;
+            document.getElementById('staffEditCortesias').value = cortesias;
+            document.getElementById('staffEditPagaron').value = pagaron;
+            document.getElementById('staffEditPrecio').value = precio;
+            document.getElementById('modalStaffDetalle').classList.remove('hidden');
+        }
+
+        function cerrarModalStaff() {
+            document.getElementById('modalStaffDetalle').classList.add('hidden');
+        }
+
+        async function guardarDetalleStaff() {
+            const id = document.getElementById('staffReservaId').value;
+            const cantidadPersonasInicial = document.getElementById('staffEditInicial').value;
+            const personasLlegadas = document.getElementById('staffEditLlegadas').value;
+            const cortesias = document.getElementById('staffEditCortesias').value;
+            const pagaronCover = document.getElementById('staffEditPagaron').value;
+            const precioCover = document.getElementById('staffEditPrecio').value;
+
+            // 1. Guardar los detalles numéricos (llegadas, cortesías, pagos)
+            await fetch(`/api/reservas/${id}/detalle`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estadoAsistencia: nuevoEstado })
+                body: JSON.stringify({ cantidadPersonasInicial, personasLlegadas, cortesias, pagaronCover, precioCover })
+            });
+
+            // 2. Automáticamente cambiar el estado a 'Presente' al registrar la entrada en puerta
+            await fetch(`/api/reservas/${id}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nuevoEstado: 'Presente' })
+            });
+
+            cerrarModalStaff();
+            cargarReservasStaff();
+        }
+
+        async function cambiarAsistenciaStaff(id, nuevoEstado) {
+            await fetch(`/api/reservas/${id}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nuevoEstado })
             });
             cargarReservasStaff();
         }
