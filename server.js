@@ -347,7 +347,7 @@ app.put('/api/reservas/:id/estado', (req, res) => {
     
     // Si pasa a presente y no tenía registro de personas llegadas, asignar por defecto el total planeado
     if (nuevoEstado === 'Presente' && (!reserva.personasLlegadas || reserva.personasLlegadas === 0)) {
-        reserva.personasLlegadas = reserva.cantidadPersonasInicial;
+        reserva.personasLlegadas = reservas[index].cantidadPersonasInicial;
     }
 
     guardarDatosSeguro(archivoReservas, reservas);
