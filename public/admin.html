@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <title>Panel Administrador - VIP Norte</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Forzar visibilidad del icono de calendario en modo oscuro */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            opacity: 0.8;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body class="bg-gray-950 text-white font-sans p-6">
 
@@ -148,9 +159,7 @@
                 </div>
                 <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
                     <p class="text-gray-400 text-xs uppercase font-bold mb-4">6. Usuarios / Promotores que más "Venden"</p>
-                    <div id="dashRankingVendedores" class="space-y-3 text-sm">
-                        <!-- Llenado dinámico -->
-                    </div>
+                    <div id="dashRankingVendedores" class="space-y-3 text-sm"></div>
                 </div>
             </div>
         </div>
@@ -430,7 +439,7 @@
                         <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-3 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
-                            <span class="text-green-400 font-bold">Llegaron: ${r.personasLlegadas || 0}</span>
+                            <span class="text-green-400 font-bold">Llegadas: ${r.personasLlegadas || 0}</span>
                         </td>
                         <td class="p-3 text-center text-xs">
                             <span class="text-yellow-400">Cortesías: ${r.cortesias || 0}</span><br>
@@ -459,15 +468,10 @@
                 return (r.nocheOperativa === fechaSel || r.fecha === fechaSel);
             });
 
-            // 1. Clientes en el establecimiento (suma de personasLlegadas de los presentes)
             let enVivo = 0;
-            // 2. Dinero generado en cover
             let dineroCover = 0;
-            // 3. Cortesías entregadas
             let totalCortesias = 0;
-            // 5. Reservas no show
             let noShowCount = 0;
-            // 6. Ranking vendedores
             let ventasPorUsuario = {};
 
             filtradas.forEach(r => {
@@ -556,7 +560,7 @@
             let codigoIngresado = null;
             if (nuevoEstado === 'Presente') {
                 codigoIngresado = prompt("Ingrese el Código QR / PIN provisto por el cliente:");
-                if (codigoIngresado === null) return; // Cancelado
+                if (codigoIngresado === null) return;
             }
 
             const res = await fetch(`/api/reservas/${id}/estado`, {
