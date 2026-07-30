@@ -12,13 +12,9 @@ const dirData = path.join(__dirname, 'data');
 const archivoReservas = path.join(dirData, 'reservas.json');
 const archivoUsuarios = path.join(dirData, 'usuarios.json');
 
-// Asegurar que la carpeta data exista
+// Asegurar que la carpeta data exista de forma sincrónica y estricta
 if (!fs.existsSync(dirData)) {
-    try {
-        fs.mkdirSync(dirData, { recursive: true });
-    } catch (e) {
-        console.log("No se pudo crear la carpeta data físicamente, usando respaldo en memoria.");
-    }
+    fs.mkdirSync(dirData, { recursive: true });
 }
 
 // Usuarios base iniciales obligatorios del sistema
@@ -39,56 +35,66 @@ const usuariosBaseIniciales = [
     }
 ];
 
-// Funciones auxiliares robustas de lectura y escritura completamente aisladas
-function leerDatos(ruta, inicial = []) {
+// Funciones auxiliares ultra seguras para evitar pérdida de datos
+function leerDatosSeguro(ruta, inicial) {
     try {
         if (!fs.existsSync(ruta)) {
             fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2), 'utf8');
             return JSON.parse(JSON.stringify(inicial));
         }
         const contenido = fs.readFileSync(ruta, 'utf8');
+        if (!contenido || contenido.trim() === '') {
+            fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2), 'utf8');
+            return JSON.parse(JSON.stringify(inicial));
+        }
         const parsed = JSON.parse(contenido);
-        if (!Array.isArray(parsed) || parsed.length === 0) {
+        if (!Array.isArray(parsed)) {
             return JSON.parse(JSON.stringify(inicial));
         }
         return parsed;
     } catch (e) {
-        console.error("Error al leer archivo, usando valor inicial:", e);
+        console.error(`Error leyendo ${ruta}:`, e);
         return JSON.parse(JSON.stringify(inicial));
     }
 }
 
-function guardarDatos(ruta, datos) {
+function guardarDatosSeguro(ruta, datos) {
     try {
         fs.writeFileSync(ruta, JSON.stringify(datos, null, 2), 'utf8');
     } catch (e) {
-        console.error("Error crítico al guardar en disco:", e);
+        console.error(`Error crítico escribiendo ${ruta}:`, e);
     }
 }
 
-// Inicializar base de datos de usuarios fusionando los base sin tocar reservas
-function inicializarUsuariosSistema() {
-    let usuariosActuales = leerDatos(archivoUsuarios, usuariosBaseIniciales);
-    let cambiosRealizados = false;
+// Inicializar archivos garantizando que nunca se pierdan usuarios creados
+function inicializarSistema() {
+    // Inicializar reservas si no existen
+    if (!fs.existsSync(archivoReservas)) {
+        guardarDatosSeguro(archivoReservas, []);
+    }
+
+    // Inicializar usuarios asegurando fusión de base sin borrar personalizados
+    let usuariosActuales = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
+    let modificado = false;
 
     usuariosBaseIniciales.forEach(base => {
         const existe = usuariosActuales.some(u => u.username === base.username);
         if (!existe) {
             usuariosActuales.push(base);
-            cambiosRealizados = true;
+            modificado = true;
         }
     });
 
-    if (cambiosRealizados || !fs.existsSync(archivoUsuarios)) {
-        guardarDatos(archivoUsuarios, usuariosActuales);
+    if (modificado || !fs.existsSync(archivoUsuarios)) {
+        guardarDatosSeguro(archivoUsuarios, usuariosActuales);
     }
 }
-inicializarUsuariosSistema();
+inicializarSistema();
 
 // ================= LOGIN =================
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    const usuarios = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
     const usuario = usuarios.find(u => u.username === username && u.password === password);
 
     if (!usuario) {
@@ -106,12 +112,11 @@ app.post('/api/login', (req, res) => {
 
 // ================= GESTIÓN DE USUARIOS (CRUD) =================
 app.get('/api/usuarios', (req, res) => {
-    res.json(leerDatos(archivoUsuarios, usuariosBaseIniciales));
+    res.json(leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales));
 });
 
 app.post('/api/usuarios', (req, res) => {
-    // Leemos exclusivamente el archivo de usuarios, sin tocar reservas.json para nada
-    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    let usuarios = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
     
     const existeUsername = usuarios.some(u => u.username === req.body.username);
     if (existeUsername) {
@@ -127,13 +132,13 @@ app.post('/api/usuarios', (req, res) => {
     };
 
     usuarios.push(nuevoUsuario);
-    guardarDatos(archivoUsuarios, usuarios);
+    guardarDatosSeguro(archivoUsuarios, usuarios);
     res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito' });
 });
 
 app.put('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
-    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    let usuarios = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
     const index = usuarios.findIndex(u => u.id === id);
 
     if (index === -1) {
@@ -145,27 +150,32 @@ app.put('/api/usuarios/:id', (req, res) => {
     usuarios[index].rol = req.body.rol || usuarios[index].rol;
     usuarios[index].sede = req.body.sede || usuarios[index].sede;
 
-    guardarDatos(archivoUsuarios, usuarios);
+    guardarDatosSeguro(archivoUsuarios, usuarios);
     res.json({ success: true, mensaje: 'Usuario actualizado con éxito' });
 });
 
 app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
-    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    let usuarios = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
     
     const usuarioAEliminar = usuarios.find(u => u.id === id);
-    if (usuarioAEliminar && (usuarioAEliminar.username === 'admin' || usuarioAEliminar.username === 'salvaje_cover')) {
-        return res.status(403).json({ success: false, mensaje: 'No se pueden eliminar los usuarios principales del sistema' });
+    if (!usuarioAEliminar) {
+        return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+    }
+
+    // Bloquear eliminación estricta de usuarios base del sistema
+    if (usuarioAEliminar.username === 'admin' || usuarioAEliminar.username === 'salvaje_cover') {
+        return res.status(403).json({ success: false, mensaje: 'Por seguridad, este usuario principal no se puede eliminar' });
     }
 
     const filtrados = usuarios.filter(u => u.id !== id);
-    guardarDatos(archivoUsuarios, filtrados);
+    guardarDatosSeguro(archivoUsuarios, filtrados);
     res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
 });
 
 // ================= RESERVAS =================
 app.post('/api/reservas', (req, res) => {
-    const reservas = leerDatos(archivoReservas, []);
+    const reservas = leerDatosSeguro(archivoReservas, []);
     const nuevaReserva = {
         id: 'RES-' + Date.now().toString().slice(-6),
         nombreCliente: req.body.nombreCliente,
@@ -180,19 +190,19 @@ app.post('/api/reservas', (req, res) => {
     };
 
     reservas.push(nuevaReserva);
-    guardarDatos(archivoReservas, reservas);
+    guardarDatosSeguro(archivoReservas, reservas);
     res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
 });
 
 app.get('/api/reservas', (req, res) => {
-    res.json(leerDatos(archivoReservas, []));
+    res.json(leerDatosSeguro(archivoReservas, []));
 });
 
-// Endpoints estandarizados para aceptar tanto 'estadoAsistencia' como 'nuevoEstado'
+// Endpoints estandarizados para asistencia y estado
 app.put('/api/reservas/:id/asistencia', (req, res) => {
     const { id } = req.params;
     const nuevoEstado = req.body.estadoAsistencia || req.body.nuevoEstado;
-    let reservas = leerDatos(archivoReservas, []);
+    let reservas = leerDatosSeguro(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
     if (index === -1) {
@@ -200,14 +210,14 @@ app.put('/api/reservas/:id/asistencia', (req, res) => {
     }
 
     reservas[index].estadoAsistencia = nuevoEstado;
-    guardarDatos(archivoReservas, reservas);
+    guardarDatosSeguro(archivoReservas, reservas);
     res.json({ success: true, mensaje: 'Asistencia actualizada', reserva: reservas[index] });
 });
 
 app.put('/api/reservas/:id/estado', (req, res) => {
     const { id } = req.params;
     const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
-    let reservas = leerDatos(archivoReservas, []);
+    let reservas = leerDatosSeguro(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
     if (index === -1) {
@@ -215,13 +225,13 @@ app.put('/api/reservas/:id/estado', (req, res) => {
     }
 
     reservas[index].estadoAsistencia = nuevoEstado;
-    guardarDatos(archivoReservas, reservas);
+    guardarDatosSeguro(archivoReservas, reservas);
     res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva: reservas[index] });
 });
 
 app.post('/api/validar-qr', (req, res) => {
     const { codigoQR } = req.body;
-    let reservas = leerDatos(archivoReservas, []);
+    let reservas = leerDatosSeguro(archivoReservas, []);
     const reserva = reservas.find(r => r.cortesiasQR === codigoQR);
 
     if (!reserva) {
