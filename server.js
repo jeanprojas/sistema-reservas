@@ -39,22 +39,22 @@ const usuariosBaseIniciales = [
     }
 ];
 
-// Funciones auxiliares robustas de lectura y escritura con protección de datos
+// Funciones auxiliares robustas de lectura y escritura completamente aisladas
 function leerDatos(ruta, inicial = []) {
     try {
         if (!fs.existsSync(ruta)) {
             fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2), 'utf8');
-            return inicial;
+            return JSON.parse(JSON.stringify(inicial));
         }
         const contenido = fs.readFileSync(ruta, 'utf8');
         const parsed = JSON.parse(contenido);
         if (!Array.isArray(parsed) || parsed.length === 0) {
-            return inicial;
+            return JSON.parse(JSON.stringify(inicial));
         }
         return parsed;
     } catch (e) {
         console.error("Error al leer archivo, usando valor inicial:", e);
-        return inicial;
+        return JSON.parse(JSON.stringify(inicial));
     }
 }
 
@@ -66,12 +66,11 @@ function guardarDatos(ruta, datos) {
     }
 }
 
-// Inicializar base de datos de usuarios fusionando los base sin borrar nunca los existentes
+// Inicializar base de datos de usuarios fusionando los base sin tocar reservas
 function inicializarUsuariosSistema() {
     let usuariosActuales = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     let cambiosRealizados = false;
 
-    // Asegurar que los usuarios base obligatorios siempre existan sin sobrescribir los demás
     usuariosBaseIniciales.forEach(base => {
         const existe = usuariosActuales.some(u => u.username === base.username);
         if (!existe) {
@@ -111,9 +110,9 @@ app.get('/api/usuarios', (req, res) => {
 });
 
 app.post('/api/usuarios', (req, res) => {
+    // Leemos exclusivamente el archivo de usuarios, sin tocar reservas.json para nada
     let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     
-    // Validar si el username ya existe para evitar duplicados
     const existeUsername = usuarios.some(u => u.username === req.body.username);
     if (existeUsername) {
         return res.status(400).json({ success: false, mensaje: 'El nombre de usuario ya está en uso' });
@@ -154,7 +153,6 @@ app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
     let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     
-    // Evitar que se eliminen los usuarios base principales de seguridad
     const usuarioAEliminar = usuarios.find(u => u.id === id);
     if (usuarioAEliminar && (usuarioAEliminar.username === 'admin' || usuarioAEliminar.username === 'salvaje_cover')) {
         return res.status(403).json({ success: false, mensaje: 'No se pueden eliminar los usuarios principales del sistema' });
