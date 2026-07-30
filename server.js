@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,50 @@ const archivoUsuarios = path.join(dirData, 'usuarios.json');
 
 if (!fs.existsSync(dirData)) {
     fs.mkdirSync(dirData, { recursive: true });
+}
+
+// Configuración del Transporter de Nodemailer para GMAIL usando Variables de Entorno
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: process.env.SMTP_SECURE === 'true' || true,
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
+
+// Función auxiliar para enviar correos de reserva
+async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr) {
+    try {
+        await transporter.sendMail({
+            from: '"Portal VIP Norte" <' + (process.env.SMTP_USER || 'no-reply@vipnorte.com') + '>',
+            to: destinatario,
+            subject: `¡Reserva Confirmada! #${idReserva} - VIP Norte`,
+            html: `
+                <div style="background-color: #09090b; color: #ffffff; padding: 20px; font-family: sans-serif; border-radius: 10px;">
+                    <h2 style="color: #f97316;">¡Hola, ${nombreCliente}!</h2>
+                    <p>Tu reserva en <b>VIP Norte</b> ha sido registrada con éxito.</p>
+                    <hr style="border-color: #27272a;">
+                    <p><b>Detalles de tu visita:</b></p>
+                    <ul>
+                        <li>Nº de Reserva: <b>${idReserva}</b></li>
+                        <li>Fecha: <b>${fecha}</b></li>
+                        <li>Ubicación: <b>${zona} - Mesa ${mesa}</b></li>
+                    </ul>
+                    <div style="background-color: #18181b; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">Tu PIN / Código QR de Acceso en Puerta es:</p>
+                        <h1 style="color: #fb923c; font-family: monospace; letter-spacing: 5px; margin: 10px 0;">${pinQr}</h1>
+                    </div>
+                    <p style="font-size: 12px; color: #71717a; text-align: center;">Presenta este código al ingresar a la sede.</p>
+                </div>
+            `
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error al enviar correo:', error);
+        return { success: false, mensaje: error.message };
+    }
 }
 
 // Únicamente el usuario admin base del sistema
@@ -210,6 +255,7 @@ app.post('/api/reservas', (req, res) => {
         codigoQr: codigoQrPin,
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
+        email: req.body.email || '', // Captura del correo electrónico
         fecha: req.body.fecha,
         sede: req.body.sede || 'Salvaje',
         zona: req.body.zona,
@@ -242,6 +288,7 @@ app.post('/api/admin/reservas', (req, res) => {
         codigoQr: codigoQrPin,
         nombreCliente: req.body.nombreCliente,
         telefono: req.body.telefono,
+        email: req.body.email || '', // Captura del correo electrónico
         fecha: req.body.fecha,
         sede: req.body.sede || 'Salvaje',
         zona: req.body.zona,
@@ -280,6 +327,33 @@ app.get('/api/reservas/:id', (req, res) => {
     res.json({ success: true, reserva });
 });
 
+// Endpoint para enviar el correo manualmente desde el sistema
+app.post('/api/reservas/:id/enviar-correo', async (req, res) => {
+    const { id } = req.params;
+    const reservas = leerDatosSeguro(archivoReservas, []);
+    const reserva = reservas.find(r => r.id === id);
+
+    if (!reserva) {
+        return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+    }
+
+    if (!reserva.email) {
+        return res.status(400).json({ success: false, mensaje: 'El cliente no tiene un correo registrado en esta reserva' });
+    }
+
+    const resultado = await enviarCorreoReserva(
+        reserva.email,
+        reserva.nombreCliente,
+        reserva.id,
+        reserva.fecha,
+        reserva.zona,
+        reserva.mesa,
+        reserva.codigoQr
+    );
+
+    res.json(resultado);
+});
+
 app.put('/api/reservas/:id/detalle', (req, res) => {
     const { id } = req.params;
     let reservas = leerDatosSeguro(archivoReservas, []);
@@ -311,6 +385,7 @@ app.put('/api/admin/reservas/:id', (req, res) => {
 
     reservas[index].nombreCliente = req.body.nombreCliente || reservas[index].nombreCliente;
     reservas[index].telefono = req.body.telefono || reservas[index].telefono;
+    reservas[index].email = req.body.email !== undefined ? req.body.email : reservas[index].email;
     reservas[index].sede = req.body.sede || reservas[index].sede;
     reservas[index].fecha = req.body.fecha || reservas[index].fecha;
     reservas[index].zona = req.body.zona || reservas[index].zona;
