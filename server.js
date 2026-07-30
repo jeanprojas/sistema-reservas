@@ -73,22 +73,51 @@ function obtenerNocheOperativa(fechaStr, horaStr = "21:00") {
 }
 
 function inicializarSistema() {
+    // 1. Inicializar archivo de reservas y corregir registros antiguos (como 'undefined' en PIN o estados erróneos)
     if (!fs.existsSync(archivoReservas)) {
         guardarDatosSeguro(archivoReservas, []);
+    } else {
+        try {
+            let reservasActuales = leerDatosSeguro(archivoReservas, []);
+            let modificadoReservas = false;
+
+            reservasActuales = reservasActuales.map(r => {
+                let cambios = false;
+                // Si el PIN es inválido, undefined o no existe, generar uno nuevo de 4 dígitos
+                if (!r.codigoQr || r.codigoQr === 'undefined' || r.codigoQr.length !== 4) {
+                    r.codigoQr = Math.floor(1000 + Math.random() * 9000).toString();
+                    cambios = true;
+                }
+                // Si por error una reserva antigua quedó en "Presente" sin llegadas ni validación previa, corregirla a "Reservado"
+                if (r.estadoAsistencia === 'Presente' && (!r.personasLlegadas || r.personasLlegadas === 0)) {
+                    r.estadoAsistencia = 'Reservado';
+                    cambios = true;
+                }
+                if (cambios) modificadoReservas = true;
+                return r;
+            });
+
+            if (modificadoReservas) {
+                guardarDatosSeguro(archivoReservas, reservasActuales);
+            }
+        } catch (e) {
+            console.error("Error al auditar/corregir reservas iniciales:", e);
+        }
     }
 
+    // 2. Inicializar usuarios
     let usuariosActuales = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
-    let modificado = false;
+    let modificadoUsuarios = false;
 
     usuariosBaseIniciales.forEach(base => {
         const existe = usuariosActuales.some(u => u.username === base.username);
         if (!existe) {
             usuariosActuales.push(base);
-            modificado = true;
+            modificadoUsuarios = true;
         }
     });
 
-    if (modificado || !fs.existsSync(archivoUsuarios)) {
+    if (modificadoUsuarios || !fs.existsSync(archivoUsuarios)) {
         guardarDatosSeguro(archivoUsuarios, usuariosActuales);
     }
 }
@@ -199,7 +228,7 @@ app.post('/api/reservas', (req, res) => {
         precioCover: Number(req.body.precioCover) || 30000,
 
         cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
-        estadoAsistencia: 'Reservado', // Estado por defecto solicitado
+        estadoAsistencia: 'Reservado', // Estado por defecto garantizado
         usuarioCreador: req.body.usuarioCreador || 'Web Pública',
         nocheOperativa: obtenerNocheOperativa(req.body.fecha),
         creadoEn: new Date().toISOString()
@@ -231,7 +260,7 @@ app.post('/api/admin/reservas', (req, res) => {
         pagaronCover: Number(req.body.pagaronCover) || 0,
         precioCover: Number(req.body.precioCover) || 30000,
 
-        estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
+        estadoAsistencia: req.body.estadoAsistencia || 'Reservado', // Estado predeterminado o especificado
         usuarioCreador: req.body.usuarioCreador || 'Administrador',
         nocheOperativa: obtenerNocheOperativa(req.body.fecha),
         creadoEn: new Date().toISOString()
@@ -303,8 +332,8 @@ app.put('/api/reservas/:id/estado', (req, res) => {
             });
         }
         // 2. Validar el código QR / PIN provisto por el cliente en la entrada
-        if (!reserva.codigoQr) {
-            reserva.codigoQr = Math.floor(1000 + Math.random() * 9000).toString(); // Fallback por seguridad si es antigua
+        if (!reserva.codigoQr || reserva.codigoQr === 'undefined') {
+            reserva.codigoQr = Math.floor(1000 + Math.random() * 9000).toString(); // Fallback por seguridad si era antigua
         }
         if (codigoIngresado && codigoIngresado !== reserva.codigoQr) {
             return res.status(400).json({ 
