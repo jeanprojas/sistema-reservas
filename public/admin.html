@@ -45,7 +45,7 @@
         <!-- VISTA 1: RESERVAS Y AUDITORÍA -->
         <div id="seccionReservas">
             <div class="flex flex-wrap items-center justify-between mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800">
-                <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-wrap items-center gap-4">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Sede:</label>
                         <select id="adminSede" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-orange-400 font-bold px-3 py-2 rounded-lg focus:outline-none text-sm">
@@ -56,8 +56,11 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                        <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha (Opcional):</label>
                         <input type="date" id="adminFecha" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="document.getElementById('adminFecha').value=''; cargarAdmin();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Vigentes desde Hoy</button>
                     </div>
                 </div>
             </div>
@@ -65,7 +68,7 @@
             <!-- Métricas -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                    <p class="text-gray-400 text-xs">Total Reservas</p>
+                    <p class="text-gray-400 text-xs">Total Vigentes</p>
                     <h3 id="totalReservas" class="text-2xl font-bold text-white mt-1">0</h3>
                 </div>
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
@@ -83,12 +86,12 @@
             </div>
 
             <!-- Tabla Reservas -->
-            <h2 class="text-xl font-bold mb-4 text-gray-200">Gestión Gerencial de Reservas</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Vigentes (Ordenadas por Número de Reserva)</h2>
             <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-800 text-xs uppercase text-gray-400">
-                            <th class="p-4">ID</th>
+                            <th class="p-4">Nº Reserva (ID)</th>
                             <th class="p-4">Sede / Cliente</th>
                             <th class="p-4">Fecha / Zona</th>
                             <th class="p-4">Estado Actual</th>
@@ -226,16 +229,30 @@
         async function cargarAdmin() {
             const sedeSel = document.getElementById('adminSede').value;
             const fechaSel = document.getElementById('adminFecha').value;
+            
+            // Obtener fecha actual en formato YYYY-MM-DD para filtrar desde hoy en adelante por defecto
+            const hoy = new Date().toISOString().split('T')[0];
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
             
+            // Filtrar reservas vigentes (desde hoy en adelante o la fecha específica seleccionada)
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeSel === 'TODAS' || sedeReserva === sedeSel);
-                const coincideFecha = (!fechaSel || r.fecha === fechaSel);
+                
+                let coincideFecha = false;
+                if (fechaSel) {
+                    coincideFecha = (r.fecha === fechaSel);
+                } else {
+                    coincideFecha = (r.fecha >= hoy); // Desde hoy en adelante por defecto
+                }
+
                 return coincideSede && coincideFecha;
             });
+
+            // Ordenar por número de reserva (ID) de forma descendente o ascendente
+            filtradas.sort((a, b) => b.id.localeCompare(a.id));
 
             document.getElementById('totalReservas').textContent = filtradas.length;
             document.getElementById('totalAsistencias').textContent = filtradas.filter(r => r.estadoAsistencia === 'Presente').length;
@@ -246,7 +263,7 @@
             tbody.innerHTML = '';
             
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No se encontraron registros.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No se encontraron reservas vigentes.</td></tr>`;
                 return;
             }
 
@@ -258,7 +275,7 @@
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
-                        <td class="p-4 font-mono text-xs text-orange-400">${r.id}</td>
+                        <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
                         <td class="p-4 font-medium"><span class="text-yellow-400 font-bold">[${r.sede || 'Salvaje'}]</span> ${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
                         <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-4">
