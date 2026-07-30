@@ -2,89 +2,153 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reservas VIP Norte - Central</title>
+    <title>Sistema de Reservas - VIP Norte</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-white font-sans p-4 flex items-center justify-center min-h-screen">
+<body class="bg-gray-950 text-white font-sans p-4 min-h-screen flex flex-col items-center justify-center">
 
-    <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold text-orange-500">Sistema de Reservas</h1>
-            <p class="text-gray-400 text-sm mt-1">Selecciona tu destino y asegura tu mesa</p>
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-orange-500">Sistema de Reservas</h1>
+        <p class="text-gray-400 text-sm mt-1">Consulta tu reserva existente o genera una nueva</p>
+    </div>
+
+    <!-- Contenedor de Dos Columnas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl w-full">
+
+        <!-- CUADRADO IZQUIERDO: Consultar Reserva -->
+        <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-2xl flex flex-col justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-orange-400 mb-2 border-b border-gray-800 pb-2">🔍 Consultar mi Reserva</h2>
+                <p class="text-xs text-gray-400 mb-4">Ingresa tu número de celular o WhatsApp para ver los detalles de tu reserva, mesa y código PIN.</p>
+
+                <form onsubmit="consultarReserva(event)" class="space-y-4 text-sm">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Teléfono / WhatsApp:</label>
+                        <input type="text" id="consultaTelefono" required placeholder="Ej. 3001234567" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-2.5 rounded-lg transition text-sm shadow">Buscar Mis Reservas</button>
+                </form>
+            </div>
+
+            <!-- Resultados de la Consulta -->
+            <div id="resultadoConsulta" class="mt-4 space-y-3 max-h-72 overflow-y-auto">
+                <!-- Se inyectarán dinámicamente las reservas encontradas -->
+            </div>
         </div>
 
-        <form onsubmit="enviarReservaPublica(event)" class="space-y-4 text-sm">
-            <!-- Selector de Discoteca / Sede -->
-            <div>
-                <label class="block text-xs text-orange-400 font-bold mb-1">1. Selecciona la Discoteca:</label>
-                <select id="pubSede" required onchange="actualizarZonasSede()" class="w-full bg-gray-950 border border-gray-800 text-white font-bold rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500">
-                    <option value="">-- Selecciona una Sede --</option>
-                    <option value="Salvaje">Salvaje Perreo</option>
-                    <option value="Soho">Soho Club</option>
-                    <option value="220 Voltios">220 Voltios</option>
-                </select>
-            </div>
+        <!-- CUADRADO DERECHO: Crear Nueva Reserva -->
+        <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-2xl">
+            <h2 class="text-xl font-bold text-orange-400 mb-2 border-b border-gray-800 pb-2">✨ Crear Nueva Reserva</h2>
+            <p class="text-xs text-gray-400 mb-4">Selecciona tu discoteca y completa tus datos.</p>
 
-            <div class="grid grid-cols-2 gap-3">
+            <form onsubmit="enviarReservaPublica(event)" class="space-y-3 text-sm">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Tu Nombre:</label>
-                    <input type="text" id="pubNombre" required placeholder="Ej. Carlos Pérez" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Teléfono / WhatsApp:</label>
-                    <input type="text" id="pubTelefono" required placeholder="3001234567" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Correo Electrónico (Para recibir tu QR PIN):</label>
-                <input type="email" id="pubEmail" required placeholder="correo@ejemplo.com" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Fecha de Asistencia:</label>
-                    <input type="date" id="pubFecha" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Zona Preferida:</label>
-                    <select id="pubZona" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-                        <option value="General">General</option>
-                        <option value="VIP">Zona VIP</option>
-                        <option value="Palco">Palco Principal</option>
+                    <label class="block text-xs text-orange-400 font-bold mb-1">Selecciona la Discoteca:</label>
+                    <select id="pubSede" required onchange="actualizarZonasSede()" class="w-full bg-gray-950 border border-gray-800 text-white font-bold rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 text-xs">
+                        <option value="">-- Selecciona una Sede --</option>
+                        <option value="Salvaje">Salvaje Perreo</option>
+                        <option value="Soho">Soho Club</option>
+                        <option value="220 Voltios">220 Voltios</option>
                     </select>
                 </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Tu Nombre:</label>
+                        <input type="text" id="pubNombre" required placeholder="Ej. Carlos Pérez" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Teléfono:</label>
+                        <input type="text" id="pubTelefono" required placeholder="3001234567" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Correo Electrónico (Para recibir QR PIN):</label>
+                    <input type="email" id="pubEmail" required placeholder="correo@ejemplo.com" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                        <input type="date" id="pubFecha" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Zona Preferida:</label>
+                        <select id="pubZona" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                            <option value="General">General</option>
+                            <option value="VIP">Zona VIP</option>
+                            <option value="Palco">Palco Principal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Cantidad de Personas:</label>
+                    <input type="number" id="pubPersonas" min="1" value="2" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-2 text-white focus:outline-none focus:border-orange-500 text-xs">
+                </div>
+
+                <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded-lg transition text-xs shadow-lg mt-2">Completar y Generar Reserva</button>
+            </form>
+
+            <div id="resultadoExito" class="hidden mt-4 bg-gray-950 border border-green-600 p-3 rounded-xl text-center">
+                <h3 class="text-green-400 font-bold text-sm">¡Reserva Exitosa!</h3>
+                <p class="text-[11px] text-gray-300">Tu Código QR PIN único es:</p>
+                <p id="txtQrPin" class="text-xl font-mono text-cyan-400 font-extrabold my-1"></p>
             </div>
-
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Cantidad de Personas en tu Grupo:</label>
-                <input type="number" id="pubPersonas" min="1" value="2" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
-            </div>
-
-            <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-3.5 rounded-lg transition mt-4 shadow-lg text-base">Completar y Generar Reserva</button>
-        </form>
-
-        <div id="resultadoExito" class="hidden mt-6 bg-gray-950 border border-green-600 p-4 rounded-xl text-center">
-            <h3 class="text-green-400 font-bold text-lg">¡Reserva Exitosa!</h3>
-            <p class="text-xs text-gray-300 mt-1">Tu Código QR PIN único es:</p>
-            <p id="txtQrPin" class="text-2xl font-mono text-cyan-400 font-extrabold my-2"></p>
-            <p class="text-xs text-gray-400">Te hemos enviado un correo de confirmación con los detalles.</p>
         </div>
+
     </div>
 
     <script>
-        // Establecer fecha mínima por defecto a hoy
         document.getElementById('pubFecha').value = new Date().toISOString().split('T')[0];
 
         function actualizarZonasSede() {
             const sede = document.getElementById('pubSede').value;
             const selectZona = document.getElementById('pubZona');
-            // Aquí puedes personalizar las zonas dependiendo de la discoteca si lo requieres
             selectZona.innerHTML = `
                 <option value="General">General</option>
                 <option value="VIP">VIP - ${sede}</option>
                 <option value="Palco">Palco - ${sede}</option>
             `;
+        }
+
+        async function consultarReserva(e) {
+            e.preventDefault();
+            const tel = document.getElementById('consultaTelefono').value.trim();
+            const contenedor = document.getElementById('resultadoConsulta');
+            contenedor.innerHTML = `<p class="text-xs text-gray-400 text-center">Buscando reservas...</p>`;
+
+            try {
+                const res = await fetch('/api/reservas');
+                const data = await res.json();
+
+                // Filtrar reservas que coincidan con el teléfono ingresado
+                const encontradas = data.filter(r => (r.telefono || '').toString().trim() === tel);
+
+                if (encontradas.length === 0) {
+                    contenedor.innerHTML = `<div class="bg-gray-950 border border-red-800 p-3 rounded-lg text-center text-xs text-red-400">No se encontraron reservas activas para el número ${tel}.</div>`;
+                    return;
+                }
+
+                contenedor.innerHTML = '';
+                encontradas.forEach(r => {
+                    contenedor.innerHTML += `
+                        <div class="bg-gray-950 border border-gray-800 p-3 rounded-xl text-xs space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-orange-400">[${r.sede || 'Salvaje'}]</span>
+                                <span class="bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded text-[10px] font-semibold">${r.estadoAsistencia || 'Reservado'}</span>
+                            </div>
+                            <p><b>Nombre:</b> ${r.nombreCliente || 'Sin Nombre'}</p>
+                            <p><b>Fecha:</b> ${r.nocheOperativa || r.fecha}</p>
+                            <p><b>Zona / Mesa:</b> ${r.zona || 'General'} - Mesa: <span class="text-cyan-300">${r.mesa || 'Por Asignar'}</span></p>
+                            <p class="font-mono text-cyan-400 font-bold pt-1">QR PIN: ${r.codigoQr || r.pin || 'N/A'}</p>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                contenedor.innerHTML = `<p class="text-xs text-red-500 text-center">Error al conectar con el servidor.</p>`;
+            }
         }
 
         async function enviarReservaPublica(e) {
@@ -114,7 +178,7 @@
                 document.getElementById('txtQrPin').textContent = data.reserva.codigoQr;
                 document.getElementById('resultadoExito').classList.remove('hidden');
             } else {
-                alert('Hubo un error al procesar tu reserva. Inténtalo de nuevo.');
+                alert('Hubo un error al procesar tu reserva.');
             }
         }
     </script>
