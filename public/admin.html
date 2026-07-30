@@ -6,71 +6,219 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-950 text-white font-sans p-6">
-    <div class="max-w-6xl mx-auto">
+
+    <!-- SECCIÓN DE LOGIN (Se oculta al iniciar sesión) -->
+    <div id="loginSection" class="flex items-center justify-center h-[80vh]">
+        <div class="bg-gray-900 p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-800 text-center">
+            <h1 class="text-2xl font-bold text-orange-500 mb-2">Acceso Administrativo</h1>
+            <p class="text-gray-400 text-sm mb-6">Ingresa tus credenciales gerenciales</p>
+            
+            <form onsubmit="realizarLogin(event)" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Usuario:</label>
+                    <input type="text" id="loginUser" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Contraseña:</label>
+                    <input type="password" id="loginPass" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-3 rounded-lg transition mt-2">Ingresar al Sistema</button>
+            </form>
+            <p id="errorLogin" class="text-red-400 text-xs mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL (Oculto hasta iniciar sesión) -->
+    <div id="adminPanel" class="max-w-6xl mx-auto hidden">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-800 pb-4 gap-4">
             <div>
                 <h1 class="text-3xl font-extrabold text-orange-500">Panel de Control Gerencial</h1>
-                <p class="text-gray-400 text-sm mt-1">Auditoría centralizada y control exclusivo de estados.</p>
+                <p class="text-gray-400 text-sm mt-1">Auditoría, reservas y gestión de personal.</p>
             </div>
-            <!-- Filtros de Sede y Fecha -->
-            <div class="flex flex-wrap items-center gap-3">
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Sede:</label>
-                    <select id="adminSede" onchange="cargarAdmin()" class="bg-gray-900 border border-gray-800 text-orange-400 font-bold px-3 py-2 rounded-lg focus:outline-none text-sm">
-                        <option value="TODAS">Todas las Sedes</option>
-                        <option value="Salvaje">Salvaje</option>
-                        <option value="Soho">Soho</option>
-                        <option value="220 Voltios">220 Voltios</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
-                    <input type="date" id="adminFecha" onchange="cargarAdmin()" class="bg-gray-900 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
-                </div>
+            <div class="flex items-center gap-3">
+                <button onclick="mostrarSeccion('reservas')" id="btnTabReservas" class="bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition">Reservas & Auditoría</button>
+                <button onclick="mostrarSeccion('usuarios')" id="btnTabUsuarios" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition">Gestión de Usuarios</button>
+                <button onclick="cerrarSesion()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition ml-4">Salir</button>
             </div>
         </header>
 
-        <!-- Métricas Rápidas -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                <p class="text-gray-400 text-xs">Total Reservas</p>
-                <h3 id="totalReservas" class="text-2xl font-bold text-white mt-1">0</h3>
+        <!-- VISTA 1: RESERVAS Y AUDITORÍA -->
+        <div id="seccionReservas">
+            <!-- Filtros de Sede y Fecha -->
+            <div class="flex flex-wrap items-center justify-between mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800">
+                <div class="flex flex-wrap items-center gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Sede:</label>
+                        <select id="adminSede" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-orange-400 font-bold px-3 py-2 rounded-lg focus:outline-none text-sm">
+                            <option value="TODAS">Todas las Sedes</option>
+                            <option value="Salvaje">Salvaje</option>
+                            <option value="Soho">Soho</option>
+                            <option value="220 Voltios">220 Voltios</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                        <input type="date" id="adminFecha" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
+                    </div>
+                </div>
             </div>
-            <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                <p class="text-gray-400 text-xs">Asistencias</p>
-                <h3 id="totalAsistencias" class="text-2xl font-bold text-green-500 mt-1">0</h3>
+
+            <!-- Métricas -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs">Total Reservas</p>
+                    <h3 id="totalReservas" class="text-2xl font-bold text-white mt-1">0</h3>
+                </div>
+                <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs">Asistencias</p>
+                    <h3 id="totalAsistencias" class="text-2xl font-bold text-green-500 mt-1">0</h3>
+                </div>
+                <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs">Pendientes / No-Show</p>
+                    <h3 id="totalNoShow" class="text-2xl font-bold text-red-500 mt-1">0</h3>
+                </div>
+                <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs">Pruebas del Sistema</p>
+                    <h3 id="totalPruebas" class="text-2xl font-bold text-purple-400 mt-1">0</h3>
+                </div>
             </div>
-            <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                <p class="text-gray-400 text-xs">Pendientes / No-Show</p>
-                <h3 id="totalNoShow" class="text-2xl font-bold text-red-500 mt-1">0</h3>
-            </div>
-            <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                <p class="text-gray-400 text-xs">Pruebas del Sistema</p>
-                <h3 id="totalPruebas" class="text-2xl font-bold text-purple-400 mt-1">0</h3>
+
+            <!-- Tabla de Reservas -->
+            <h2 class="text-xl font-bold mb-4 text-gray-200">Gestión de Reservas</h2>
+            <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-800 text-xs uppercase text-gray-400">
+                            <th class="p-4">ID</th>
+                            <th class="p-4">Sede / Cliente</th>
+                            <th class="p-4">Fecha / Zona</th>
+                            <th class="p-4">Estado Actual</th>
+                            <th class="p-4 text-center">Acciones Administrador</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaAdmin" class="divide-y divide-gray-800 text-sm"></tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Tabla General con Controles de Admin -->
-        <h2 class="text-xl font-bold mb-4 text-gray-200">Gestión Gerencial de Reservas</h2>
-        <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-800 text-xs uppercase text-gray-400">
-                        <th class="p-4">ID</th>
-                        <th class="p-4">Sede / Cliente</th>
-                        <th class="p-4">Fecha / Zona</th>
-                        <th class="p-4">Estado Actual</th>
-                        <th class="p-4 text-center">Acciones de Administrador (Cambiar Estado)</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaAdmin" class="divide-y divide-gray-800 text-sm">
-                    <!-- Dinámico -->
-                </tbody>
-            </table>
+        <!-- VISTA 2: GESTIÓN DE USUARIOS (CREAR, EDITAR, ELIMINAR) -->
+        <div id="seccionUsuarios" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Formulario Crear/Editar Usuario -->
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow h-fit">
+                    <h2 id="tituloFormUsuario" class="text-lg font-bold text-orange-400 mb-4">Crear Nuevo Usuario</h2>
+                    <form onsubmit="guardarUsuario(event)" class="space-y-4">
+                        <input type="hidden" id="usuarioId">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Nombre de Usuario:</label>
+                            <input type="text" id="nuevoUsername" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Contraseña:</label>
+                            <input type="text" id="nuevoPassword" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Rol / Permisos:</label>
+                            <select id="nuevoRol" class="w-full bg-gray-950 border border-gray-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+                                <option value="Staff">Staff (Puerta / Pista)</option>
+                                <option value="Administrador">Administrador (Gerencial)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Sede Asignada:</label>
+                            <select id="nuevaSede" class="w-full bg-gray-950 border border-gray-800 text-orange-400 font-bold rounded-lg px-3 py-2 text-sm focus:outline-none">
+                                <option value="TODAS">Todas (Global Admin)</option>
+                                <option value="Salvaje">Salvaje</option>
+                                <option value="Soho">Soho</option>
+                                <option value="220 Voltios">220 Voltios</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded-lg text-sm transition">Guardar Usuario</button>
+                            <button type="button" onclick="resetFormUsuario()" class="bg-gray-800 hover:bg-gray-700 px-3 py-2.5 rounded-lg text-xs font-bold transition">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla Listado de Usuarios -->
+                <div class="lg:col-span-2 bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
+                    <div class="p-4 bg-gray-850 border-b border-gray-800">
+                        <h2 class="font-bold text-gray-200">Personal y Accesos Registrados</h2>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-800 text-xs uppercase text-gray-400">
+                                <th class="p-4">Usuario</th>
+                                <th class="p-4">Rol</th>
+                                <th class="p-4">Sede</th>
+                                <th class="p-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaUsuarios" class="divide-y divide-gray-800 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // Control de Sesión
+        async function realizarLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUser').value;
+            const password = document.getElementById('loginPass').value;
+
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                localStorage.setItem('vip_auth', 'true');
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                cargarAdmin();
+                cargarUsuarios();
+            } else {
+                const err = document.getElementById('errorLogin');
+                err.textContent = data.mensaje;
+                err.classList.remove('hidden');
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('vip_auth');
+            location.reload();
+        }
+
+        // Verificar si ya estaba logueado en la sesión actual del navegador
+        if (localStorage.getItem('vip_auth') === 'true') {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            cargarAdmin();
+            cargarUsuarios();
+        }
+
+        // Pestañas del Panel
+        function mostrarSeccion(seccion) {
+            if (seccion === 'reservas') {
+                document.getElementById('seccionReservas').classList.remove('hidden');
+                document.getElementById('seccionUsuarios').classList.add('hidden');
+                document.getElementById('btnTabReservas').className = 'bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition';
+                document.getElementById('btnTabUsuarios').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
+                cargarAdmin();
+            } else {
+                document.getElementById('seccionReservas').classList.add('hidden');
+                document.getElementById('seccionUsuarios').classList.remove('hidden');
+                document.getElementById('btnTabUsuarios').className = 'bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition';
+                document.getElementById('btnTabReservas').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
+                cargarUsuarios();
+            }
+        }
+
+        // Cargar Reservas Admin
         async function cargarAdmin() {
             const sedeSel = document.getElementById('adminSede').value;
             const fechaSel = document.getElementById('adminFecha').value;
@@ -117,7 +265,7 @@
                         <td class="p-4 text-center space-x-1">
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-2.5 py-1 rounded text-xs font-bold transition">Presente</button>
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2.5 py-1 rounded text-xs font-bold transition">No-Show</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded text-xs font-bold transition">Marcar Prueba</button>
+                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded text-xs font-bold transition">Prueba</button>
                         </td>
                     </tr>
                 `;
@@ -133,7 +281,73 @@
             cargarAdmin();
         }
 
-        cargarAdmin();
+        // Gestión de Usuarios (CRUD)
+        async function cargarUsuarios() {
+            const res = await fetch('/api/usuarios');
+            const usuarios = await res.json();
+            const tbody = document.getElementById('tablaUsuarios');
+            tbody.innerHTML = '';
+
+            usuarios.forEach(u => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-850">
+                        <td class="p-4 font-bold text-white">${u.username} <span class="text-xs text-gray-400 block">Pass: ${u.password}</span></td>
+                        <td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold ${u.rol === 'Administrador' ? 'bg-orange-900 text-orange-300' : 'bg-blue-900 text-blue-300'}">${u.rol}</span></td>
+                        <td class="p-4 font-semibold text-yellow-400">${u.sede}</td>
+                        <td class="p-4 text-center space-x-2">
+                            <button onclick="editarUsuario('${u.id}', '${u.username}', '${u.password}', '${u.rol}', '${u.sede}')" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-bold transition">Editar</button>
+                            <button onclick="eliminarUsuario('${u.id}')" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs font-bold transition">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function guardarUsuario(e) {
+            e.preventDefault();
+            const id = document.getElementById('usuarioId').value;
+            const username = document.getElementById('nuevoUsername').value;
+            const password = document.getElementById('nuevoPassword').value;
+            const rol = document.getElementById('nuevoRol').value;
+            const sede = document.getElementById('nuevaSede').value;
+
+            const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
+            const method = id ? 'PUT' : 'POST';
+
+            await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, rol, sede })
+            });
+
+            resetFormUsuario();
+            cargarUsuarios();
+        }
+
+        function editarUsuario(id, username, password, rol, sede) {
+            document.getElementById('usuarioId').value = id;
+            document.getElementById('nuevoUsername').value = username;
+            document.getElementById('nuevoPassword').value = password;
+            document.getElementById('nuevoRol').value = rol;
+            document.getElementById('nuevaSede').value = sede;
+            document.getElementById('tituloFormUsuario').textContent = 'Editar Usuario';
+        }
+
+        function resetFormUsuario() {
+            document.getElementById('usuarioId').value = '';
+            document.getElementById('nuevoUsername').value = '';
+            document.getElementById('nuevoPassword').value = '';
+            document.getElementById('nuevoRol').value = 'Staff';
+            document.getElementById('nuevaSede').value = 'Salvaje';
+            document.getElementById('tituloFormUsuario').textContent = 'Crear Nuevo Usuario';
+        }
+
+        async function eliminarUsuario(id) {
+            if (confirm('¿Estás seguro de eliminar este usuario del sistema?')) {
+                await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+                cargarUsuarios();
+            }
+        }
     </script>
 </body>
 </html>
