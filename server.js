@@ -16,6 +16,7 @@ if (!fs.existsSync(dirData)) {
     fs.mkdirSync(dirData, { recursive: true });
 }
 
+// Únicamente el usuario admin base del sistema
 const usuariosBaseIniciales = [
     {
         id: 'USR-ADMIN',
@@ -23,13 +24,6 @@ const usuariosBaseIniciales = [
         password: '123',
         rol: 'Administrador',
         sede: 'TODAS'
-    },
-    {
-        id: 'USR-SALVAJE',
-        username: 'salvaje_cover',
-        password: 'S123*',
-        rol: 'Staff',
-        sede: 'Salvaje'
     }
 ];
 
@@ -178,7 +172,7 @@ app.post('/api/reservas', (req, res) => {
         zona: req.body.zona,
         mesa: req.body.mesa || 'Asignar',
         
-        // Nuevos campos detallados solicitados
+        // Nuevos campos de control de personas y cobros
         cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
         personasLlegadas: Number(req.body.personasLlegadas) || 0,
         cortesias: Number(req.body.cortesias) || 0,
@@ -199,7 +193,7 @@ app.get('/api/reservas', (req, res) => {
     res.json(leerDatosSeguro(archivoReservas, []));
 });
 
-// Endpoint para consultar el detalle completo de una reserva específica
+// Consultar una reserva en específico
 app.get('/api/reservas/:id', (req, res) => {
     const { id } = req.params;
     const reservas = leerDatosSeguro(archivoReservas, []);
@@ -212,7 +206,7 @@ app.get('/api/reservas/:id', (req, res) => {
     res.json({ success: true, reserva });
 });
 
-// Endpoint para actualizar la información detallada de personas y pagos de una reserva
+// Actualizar contadores y detalles de personas/cobros de una reserva
 app.put('/api/reservas/:id/detalle', (req, res) => {
     const { id } = req.params;
     let reservas = leerDatosSeguro(archivoReservas, []);
@@ -229,7 +223,7 @@ app.put('/api/reservas/:id/detalle', (req, res) => {
     reservas[index].precioCover = req.body.precioCover !== undefined ? Number(req.body.precioCover) : reservas[index].precioCover;
 
     guardarDatosSeguro(archivoReservas, reservas);
-    res.json({ success: true, mensaje: 'Detalle de la reserva actualizado con éxito', reserva: reservas[index] });
+    res.json({ success: true, mensaje: 'Detalle actualizado correctamente', reserva: reservas[index] });
 });
 
 app.put('/api/reservas/:id/asistencia', (req, res) => {
