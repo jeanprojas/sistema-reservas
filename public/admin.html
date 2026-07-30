@@ -29,7 +29,7 @@
     </div>
 
     <!-- PANEL PRINCIPAL DE ADMINISTRACIÓN -->
-    <div id="adminPanel" class="max-w-6xl mx-auto hidden">
+    <div id="adminPanel" class="max-w-7xl mx-auto hidden">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-800 pb-4 gap-4">
             <div>
                 <h1 class="text-3xl font-extrabold text-orange-500">Panel de Control Gerencial</h1>
@@ -86,16 +86,18 @@
             </div>
 
             <!-- Tabla Reservas -->
-            <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Vigentes (Ordenadas por Número de Reserva)</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Vigentes y Control de Asistencia</h2>
             <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-800 text-xs uppercase text-gray-400">
-                            <th class="p-4">Nº Reserva (ID)</th>
-                            <th class="p-4">Sede / Cliente</th>
-                            <th class="p-4">Fecha / Zona</th>
-                            <th class="p-4">Estado Actual</th>
-                            <th class="p-4 text-center">Acciones Administrador</th>
+                            <th class="p-3">Nº Reserva</th>
+                            <th class="p-3">Cliente / Sede</th>
+                            <th class="p-3">Fecha / Zona</th>
+                            <th class="p-3 text-center">Plan / Llegadas</th>
+                            <th class="p-3 text-center">Cortesías / Pagos</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaAdmin" class="divide-y divide-gray-800 text-sm"></tbody>
@@ -161,19 +163,51 @@
         </div>
     </div>
 
+    <!-- MODAL EDITAR DETALLE DE PERSONAS Y COBROS -->
+    <div id="modalDetalle" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-md w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-orange-400 mb-4">Control de Asistencia y Cobros</h3>
+            <input type="hidden" id="editReservaId">
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Personas Planeadas Inicialmente:</label>
+                    <input type="number" id="editInicial" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Personas que ya llegaron (Total ingresadas):</label>
+                    <input type="number" id="editLlegadas" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white font-bold text-green-400">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Entraron por Cortesía (Gratis):</label>
+                    <input type="number" id="editCortesias" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Pagaron Cover:</label>
+                    <input type="number" id="editPagaron" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Precio Unitario Cover ($):</label>
+                    <input type="number" id="editPrecio" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="guardarDetalleReserva()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Cambios</button>
+                <button onclick="cerrarModalDetalle()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         async function realizarLogin(e) {
             e.preventDefault();
             const username = document.getElementById('loginUser').value;
             const password = document.getElementById('loginPass').value;
-
             const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
             const data = await res.json();
-
             if (data.success) {
                 if (data.rol !== 'Administrador') {
                     const err = document.getElementById('errorLogin');
@@ -181,7 +215,6 @@
                     err.classList.remove('hidden');
                     return;
                 }
-
                 localStorage.setItem('vip_admin_auth', 'true');
                 localStorage.setItem('vip_admin_user', data.username);
                 iniciarPanelAdmin(data.username);
@@ -229,29 +262,18 @@
         async function cargarAdmin() {
             const sedeSel = document.getElementById('adminSede').value;
             const fechaSel = document.getElementById('adminFecha').value;
-            
-            // Obtener fecha actual en formato YYYY-MM-DD para filtrar desde hoy en adelante por defecto
             const hoy = new Date().toISOString().split('T')[0];
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
             
-            // Filtrar reservas vigentes (desde hoy en adelante o la fecha específica seleccionada)
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeSel === 'TODAS' || sedeReserva === sedeSel);
-                
-                let coincideFecha = false;
-                if (fechaSel) {
-                    coincideFecha = (r.fecha === fechaSel);
-                } else {
-                    coincideFecha = (r.fecha >= hoy); // Desde hoy en adelante por defecto
-                }
-
+                let coincideFecha = fechaSel ? (r.fecha === fechaSel) : (r.fecha >= hoy);
                 return coincideSede && coincideFecha;
             });
 
-            // Ordenar por número de reserva (ID) de forma descendente o ascendente
             filtradas.sort((a, b) => b.id.localeCompare(a.id));
 
             document.getElementById('totalReservas').textContent = filtradas.length;
@@ -263,7 +285,7 @@
             tbody.innerHTML = '';
             
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No se encontraron reservas vigentes.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas vigentes.</td></tr>`;
                 return;
             }
 
@@ -273,24 +295,64 @@
                 if (r.estadoAsistencia === 'No-Show') colorEstado = 'bg-red-900 text-red-300';
                 if (r.estadoAsistencia === 'Prueba') colorEstado = 'bg-purple-900 text-purple-300';
 
+                const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
-                        <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
-                        <td class="p-4 font-medium"><span class="text-yellow-400 font-bold">[${r.sede || 'Salvaje'}]</span> ${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
-                        <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
-                        <td class="p-4">
-                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${colorEstado}">
-                                ${r.estadoAsistencia}
-                            </span>
+                        <td class="p-3 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
+                        <td class="p-3 font-medium"><span class="text-yellow-400 font-bold">[${r.sede || 'Salvaje'}]</span> ${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
+                        <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
+                        <td class="p-3 text-center">
+                            <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
+                            <span class="text-green-400 font-bold">Llegaron: ${r.personasLlegadas || 0}</span>
                         </td>
-                        <td class="p-4 text-center space-x-1">
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-2.5 py-1 rounded text-xs font-bold transition">Presente</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2.5 py-1 rounded text-xs font-bold transition">No-Show</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded text-xs font-bold transition">Prueba</button>
+                        <td class="p-3 text-center text-xs">
+                            <span class="text-yellow-400">Cortesías: ${r.cortesias || 0}</span><br>
+                            <span class="text-blue-400">Pagaron: ${r.pagaronCover || 0} ($${totalRecaudado.toLocaleString()})</span>
+                        </td>
+                        <td class="p-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${colorEstado}">${r.estadoAsistencia}</span>
+                        </td>
+                        <td class="p-3 text-center space-x-1">
+                            <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
+                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
+                            <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
                         </td>
                     </tr>
                 `;
             });
+        }
+
+        function abrirModalDetalle(id, inicial, llegadas, cortesias, pagaron, precio) {
+            document.getElementById('editReservaId').value = id;
+            document.getElementById('editInicial').value = inicial;
+            document.getElementById('editLlegadas').value = llegadas;
+            document.getElementById('editCortesias').value = cortesias;
+            document.getElementById('editPagaron').value = pagaron;
+            document.getElementById('editPrecio').value = precio;
+            document.getElementById('modalDetalle').classList.remove('hidden');
+        }
+
+        function cerrarModalDetalle() {
+            document.getElementById('modalDetalle').classList.add('hidden');
+        }
+
+        async function guardarDetalleReserva() {
+            const id = document.getElementById('editReservaId').value;
+            const cantidadPersonasInicial = document.getElementById('editInicial').value;
+            const personasLlegadas = document.getElementById('editLlegadas').value;
+            const cortesias = document.getElementById('editCortesias').value;
+            const pagaronCover = document.getElementById('editPagaron').value;
+            const precioCover = document.getElementById('editPrecio').value;
+
+            await fetch(`/api/reservas/${id}/detalle`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cantidadPersonasInicial, personasLlegadas, cortesias, pagaronCover, precioCover })
+            });
+
+            cerrarModalDetalle();
+            cargarAdmin();
         }
 
         async function cambiarEstadoAdmin(id, nuevoEstado) {
@@ -307,7 +369,6 @@
             const usuarios = await res.json();
             const tbody = document.getElementById('tablaUsuarios');
             tbody.innerHTML = '';
-
             usuarios.forEach(u => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
@@ -330,7 +391,6 @@
             const password = document.getElementById('nuevoPassword').value;
             const rol = document.getElementById('nuevoRol').value;
             const sede = document.getElementById('nuevaSede').value;
-
             const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
             const method = id ? 'PUT' : 'POST';
 
@@ -339,7 +399,6 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password, rol, sede })
             });
-
             resetFormUsuario();
             cargarUsuarios();
         }
