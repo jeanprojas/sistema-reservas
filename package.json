@@ -1,0 +1,13 @@
+{
+  "name": "sistema-reservas-vipnorte",
+  "version": "1.0.0",
+  "description": "Sistema de reservas y control de pista para Salvaje y Soho",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "resend": "^6.18.1"
+  }
+}
