@@ -14,51 +14,76 @@ const archivoUsuarios = path.join(dirData, 'usuarios.json');
 
 // Asegurar que la carpeta data exista
 if (!fs.existsSync(dirData)) {
-    fs.mkdirSync(dirData, { recursive: true });
+    try {
+        fs.mkdirSync(dirData, { recursive: true });
+    } catch (e) {
+        console.log("No se pudo crear la carpeta data físicamente, usando respaldo en memoria.");
+    }
 }
 
-// Funciones auxiliares de lectura y escritura robustas
-function leerDatos(ruta, inicial = []) {
-    if (!fs.existsSync(ruta)) {
-        fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2));
-        return inicial;
+// Usuarios iniciales por defecto (incluyendo admin y salvaje_cover si lo deseas por defecto)
+const usuariosBaseIniciales = [
+    {
+        id: 'USR-ADMIN',
+        username: 'admin',
+        password: '123',
+        rol: 'Administrador',
+        sede: 'TODAS'
+    },
+    {
+        id: 'USR-SALVAJE',
+        username: 'salvaje_cover',
+        password: 'S123*',
+        rol: 'Staff',
+        sede: 'Salvaje'
     }
+];
+
+// Funciones auxiliares de lectura y escritura robustas con respaldo
+function leerDatos(ruta, inicial = []) {
     try {
+        if (!fs.existsSync(ruta)) {
+            fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2));
+            return inicial;
+        }
         const contenido = fs.readFileSync(ruta, 'utf8');
-        return JSON.parse(contenido);
+        const parsed = JSON.parse(contenido);
+        if (Array.isArray(parsed) && parsed.length === 0 && inicial.length > 0) {
+            return inicial;
+        }
+        return parsed;
     } catch (e) {
         return inicial;
     }
 }
 
 function guardarDatos(ruta, datos) {
-    fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
-}
-
-// Inicializar Administrador por defecto solo si el archivo no existe o está vacío
-function inicializarAdminPorDefecto() {
-    let usuarios = leerDatos(archivoUsuarios, []);
-    const existeAdmin = usuarios.some(u => u.username === 'admin');
-    
-    if (usuarios.length === 0 || !existeAdmin) {
-        if (!existeAdmin) {
-            usuarios.push({
-                id: 'USR-ADMIN',
-                username: 'admin',
-                password: '123',
-                rol: 'Administrador',
-                sede: 'TODAS'
-            });
-        }
-        guardarDatos(archivoUsuarios, usuarios);
+    try {
+        fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
+    } catch (e) {
+        console.error("Error al guardar en disco:", e);
     }
 }
-inicializarAdminPorDefecto();
+
+// Inicializar base de datos de usuarios asegurando que nunca se pierdan los base
+function inicializarUsuariosSistema() {
+    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    
+    // Verificar que el admin y salvaje_cover siempre existan
+    usuariosBaseIniciales.forEach(base => {
+        if (!usuarios.some(u => u.username === base.username)) {
+            usuarios.push(base);
+        }
+    });
+
+    guardarDatos(archivoUsuarios, usuarios);
+}
+inicializarUsuariosSistema();
 
 // ================= LOGIN =================
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const usuarios = leerDatos(archivoUsuarios);
+    const usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     const usuario = usuarios.find(u => u.username === username && u.password === password);
 
     if (!usuario) {
@@ -76,11 +101,11 @@ app.post('/api/login', (req, res) => {
 
 // ================= GESTIÓN DE USUARIOS (CRUD) =================
 app.get('/api/usuarios', (req, res) => {
-    res.json(leerDatos(archivoUsuarios));
+    res.json(leerDatos(archivoUsuarios, usuariosBaseIniciales));
 });
 
 app.post('/api/usuarios', (req, res) => {
-    let usuarios = leerDatos(archivoUsuarios);
+    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     const nuevoUsuario = {
         id: 'USR-' + Date.now().toString().slice(-6),
         username: req.body.username,
@@ -96,7 +121,7 @@ app.post('/api/usuarios', (req, res) => {
 
 app.put('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
-    let usuarios = leerDatos(archivoUsuarios);
+    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     const index = usuarios.findIndex(u => u.id === id);
 
     if (index === -1) {
@@ -114,7 +139,7 @@ app.put('/api/usuarios/:id', (req, res) => {
 
 app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
-    let usuarios = leerDatos(archivoUsuarios);
+    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
     const filtrados = usuarios.filter(u => u.id !== id);
 
     guardarDatos(archivoUsuarios, filtrados);
