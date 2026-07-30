@@ -535,6 +535,32 @@ app.post('/api/validar-qr', async (req, res) => {
     }
 });
 
+// ================= API PARA RECIBIR DATOS DESDE GOOGLE SHEETS =================
+app.post('/api/sincronizar-externo', async (req, res) => {
+    try {
+        const nuevaReserva = new Reserva({
+            id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
+            nombreCliente: req.body.nombreCliente || 'Sin Nombre',
+            telefono: req.body.telefono || '',
+            email: req.body.email || '',
+            fecha: req.body.fecha || new Date().toISOString().split('T')[0],
+            sede: req.body.sede || 'Salvaje',
+            zona: req.body.zona || 'General',
+            mesa: req.body.mesa || 'Asignar',
+            cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+            estadoAsistencia: 'Reservado',
+            nocheOperativa: req.body.fecha || new Date().toISOString().split('T')[0],
+            usuarioCreador: 'Google Sheets' // Para que sepas de dónde vino
+        });
+        
+        await nuevaReserva.save();
+        console.log('✅ Nueva reserva sincronizada desde Google Sheets:', nuevaReserva.nombreCliente);
+        res.json({ success: true, mensaje: 'Reserva sincronizada exitosamente' });
+    } catch (e) {
+        console.error('❌ Error al sincronizar desde Sheets:', e);
+        res.status(500).json({ success: false, mensaje: 'Error al procesar la reserva' });
+    }
+});
 app.listen(PORT, () => {
     console.log(`Sistema VIP Norte operando en puerto ${PORT}`);
 });
