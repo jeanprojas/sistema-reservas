@@ -2,46 +2,120 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Consulta de Reserva - VIP Norte</title>
+    <title>Reservas VIP Norte - Central</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white font-sans flex items-center justify-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-700 text-center">
-        <h1 class="text-2xl font-bold text-orange-500 mb-2">Consulta tu Reserva</h1>
-        <p class="text-gray-400 text-sm mb-6">Ingresa tu número de teléfono registrado</p>
-        
-        <input type="text" id="telefonoBusqueda" placeholder="Ej: 3001234567" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white mb-4 text-center text-lg">
-        <button onclick="buscarReserva()" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-3 rounded-lg transition">Consultar Estado</button>
-        
-        <div id="resultado" class="mt-6 text-left"></div>
+<body class="bg-gray-950 text-white font-sans p-4 flex items-center justify-center min-h-screen">
+
+    <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-orange-500">Sistema de Reservas</h1>
+            <p class="text-gray-400 text-sm mt-1">Selecciona tu destino y asegura tu mesa</p>
+        </div>
+
+        <form onsubmit="enviarReservaPublica(event)" class="space-y-4 text-sm">
+            <!-- Selector de Discoteca / Sede -->
+            <div>
+                <label class="block text-xs text-orange-400 font-bold mb-1">1. Selecciona la Discoteca:</label>
+                <select id="pubSede" required onchange="actualizarZonasSede()" class="w-full bg-gray-950 border border-gray-800 text-white font-bold rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500">
+                    <option value="">-- Selecciona una Sede --</option>
+                    <option value="Salvaje">Salvaje Perreo</option>
+                    <option value="Soho">Soho Club</option>
+                    <option value="220 Voltios">220 Voltios</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Tu Nombre:</label>
+                    <input type="text" id="pubNombre" required placeholder="Ej. Carlos Pérez" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Teléfono / WhatsApp:</label>
+                    <input type="text" id="pubTelefono" required placeholder="3001234567" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Correo Electrónico (Para recibir tu QR PIN):</label>
+                <input type="email" id="pubEmail" required placeholder="correo@ejemplo.com" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Fecha de Asistencia:</label>
+                    <input type="date" id="pubFecha" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Zona Preferida:</label>
+                    <select id="pubZona" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+                        <option value="General">General</option>
+                        <option value="VIP">Zona VIP</option>
+                        <option value="Palco">Palco Principal</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Cantidad de Personas en tu Grupo:</label>
+                <input type="number" id="pubPersonas" min="1" value="2" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-orange-500">
+            </div>
+
+            <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-3.5 rounded-lg transition mt-4 shadow-lg text-base">Completar y Generar Reserva</button>
+        </form>
+
+        <div id="resultadoExito" class="hidden mt-6 bg-gray-950 border border-green-600 p-4 rounded-xl text-center">
+            <h3 class="text-green-400 font-bold text-lg">¡Reserva Exitosa!</h3>
+            <p class="text-xs text-gray-300 mt-1">Tu Código QR PIN único es:</p>
+            <p id="txtQrPin" class="text-2xl font-mono text-cyan-400 font-extrabold my-2"></p>
+            <p class="text-xs text-gray-400">Te hemos enviado un correo de confirmación con los detalles.</p>
+        </div>
     </div>
 
     <script>
-        async function buscarReserva() {
-            const tel = document.getElementById('telefonoBusqueda').value;
-            const res = await fetch('/api/reservas');
-            const data = await res.json();
-            const cliente = data.find(r => r.telefono === tel);
-            const div = document.getElementById('resultado');
+        // Establecer fecha mínima por defecto a hoy
+        document.getElementById('pubFecha').value = new Date().toISOString().split('T')[0];
 
-            if (!cliente) {
-                div.innerHTML = `<p class="text-red-400 text-center text-sm">No encontramos reservas con este número.</p>`;
-                return;
-            }
-
-            // Detecta automáticamente cómo viene guardada la discoteca en el servidor
-            const nombreDiscoteca = cliente.discoteca || cliente.sede || cliente.lugar || 'Salvaje';
-
-            div.innerHTML = `
-                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 text-sm space-y-2">
-                    <p><strong class="text-orange-400">Cliente:</strong> ${cliente.nombreCliente}</p>
-                    <p><strong class="text-orange-400">Discoteca / Sede:</strong> ${nombreDiscoteca}</p>
-                    <p><strong class="text-orange-400">Zona / Mesa:</strong> ${cliente.zona} - Mesa ${cliente.mesa}</p>
-                    <p><strong class="text-orange-400">QR PIN de Acceso:</strong> <span class="font-mono text-cyan-400 text-base font-bold">${cliente.codigoQr || 'N/A'}</span></p>
-                    <p><strong class="text-orange-400">Estado:</strong> ${cliente.estadoAsistencia}</p>
-                    ${cliente.cortesiasQR ? `<p class="pt-2 border-t border-gray-800"><strong class="text-yellow-400">QR Cortesía:</strong> <span class="font-mono text-xs">${cliente.cortesiasQR}</span></p>` : ''}
-                </div>
+        function actualizarZonasSede() {
+            const sede = document.getElementById('pubSede').value;
+            const selectZona = document.getElementById('pubZona');
+            // Aquí puedes personalizar las zonas dependiendo de la discoteca si lo requieres
+            selectZona.innerHTML = `
+                <option value="General">General</option>
+                <option value="VIP">VIP - ${sede}</option>
+                <option value="Palco">Palco - ${sede}</option>
             `;
+        }
+
+        async function enviarReservaPublica(e) {
+            e.preventDefault();
+            const payload = {
+                sede: document.getElementById('pubSede').value,
+                nombreCliente: document.getElementById('pubNombre').value,
+                telefono: document.getElementById('pubTelefono').value,
+                email: document.getElementById('pubEmail').value,
+                fecha: document.getElementById('pubFecha').value,
+                nocheOperativa: document.getElementById('pubFecha').value,
+                zona: document.getElementById('pubZona').value,
+                cantidadPersonasInicial: document.getElementById('pubPersonas').value,
+                mesa: 'Por Asignar',
+                precioCover: 30000,
+                estadoAsistencia: 'Reservado'
+            };
+
+            const res = await fetch('/api/reservas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('txtQrPin').textContent = data.reserva.codigoQr;
+                document.getElementById('resultadoExito').classList.remove('hidden');
+            } else {
+                alert('Hubo un error al procesar tu reserva. Inténtalo de nuevo.');
+            }
         }
     </script>
 </body>
