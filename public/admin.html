@@ -417,7 +417,8 @@
 
             document.getElementById('totalReservas').textContent = filtradas.length;
             document.getElementById('totalAsistencias').textContent = filtradas.filter(r => r.estadoAsistencia === 'Presente').length;
-            document.getElementById('totalNoShow').textContent = filtradas.filter(r => r.estadoAsistencia === 'No-Show' || r.estadoAsistencia === 'Reservado').length;
+            document.getElementById('totalPendientes').textContent = filtradas.filter(r => r.estadoAsistencia === 'Reservado').length;
+            document.getElementById('totalNoShow').textContent = filtradas.filter(r => r.estadoAsistencia === 'No-Show').length;
             document.getElementById('totalPruebas').textContent = filtradas.filter(r => r.estadoAsistencia === 'Prueba').length;
 
             const tbody = document.getElementById('tablaAdmin');
