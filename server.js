@@ -17,10 +17,10 @@ if (!fs.existsSync(dirData)) {
     fs.mkdirSync(dirData, { recursive: true });
 }
 
-// Configuración de Resend usando la variable de entorno RESEND_API_KEY
+// Configuración de Resend usando la variable de entorno RESEND_API_KEY[cite: 6]
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Función auxiliar para enviar correos de reserva utilizando Resend
+// Función auxiliar para enviar correos de reserva utilizando Resend[cite: 6]
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr) {
     try {
         const data = await resend.emails.send({
@@ -269,7 +269,6 @@ app.post('/api/reservas', async (req, res) => {
     reservas.push(nuevaReserva);
     guardarDatosSeguro(archivoReservas, reservas);
 
-    // Envío automático de correo al registrarse si cuenta con email
     if (nuevaReserva.email) {
         await enviarCorreoReserva(
             nuevaReserva.email,
