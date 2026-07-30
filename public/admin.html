@@ -80,7 +80,7 @@
                 </div>
             </div>
 
-            <!-- Métricas Rapidas -->
+            <!-- Métricas Rapidas (Actualizadas con 5 tarjetas separando pendientes y no-show) -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
                     <p class="text-gray-400 text-xs">Total Reservas</p>
@@ -325,6 +325,54 @@
         </div>
     </div>
 
+    <!-- MODAL EDITAR / CORREGIR RESERVA ADMIN -->
+    <div id="modalEditarReservaAdmin" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-lg w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-orange-400 mb-4">Editar Datos de Reserva (Admin)</h3>
+            <form onsubmit="guardarEdicionReservaAdmin(event)" class="space-y-3 text-sm">
+                <input type="hidden" id="adminEditId">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Nombre Cliente:</label>
+                        <input type="text" id="adminEditNombre" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Teléfono:</label>
+                        <input type="text" id="adminEditTelefono" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Sede:</label>
+                        <select id="adminEditSede" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-orange-400 font-bold">
+                            <option value="Salvaje">Salvaje</option>
+                            <option value="Soho">Soho</option>
+                            <option value="220 Voltios">220 Voltios</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                        <input type="date" id="adminEditFecha" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Zona:</label>
+                        <input type="text" id="adminEditZona" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Mesa Nº:</label>
+                        <input type="text" id="adminEditMesa" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Actualizar Reserva</button>
+                    <button type="button" onclick="cerrarModalEditarReservaAdmin()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         async function realizarLogin(e) {
             e.preventDefault();
@@ -455,9 +503,13 @@
                         </td>
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente', '${r.codigoQr}')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-700 hover:bg-purple-800 px-2 py-1 rounded text-xs font-bold transition">Prueba</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
+                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            <button onclick="eliminarReservaAdmin('${r.id}')" class="bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs font-bold transition">Eliminar</button><br>
+                            <div class="mt-1 space-x-1">
+                                <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente', '${r.codigoQr}')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
+                                <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-700 hover:bg-purple-800 px-2 py-1 rounded text-xs font-bold transition">Prueba</button>
+                                <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -487,7 +539,7 @@
                 dineroCover += coverPagadoReserva;
                 totalCortesias += Number(r.cortesias) || 0;
 
-                if (r.estadoAsistencia === 'No-Show' || r.estadoAsistencia === 'Reservado') {
+                if (r.estadoAsistencia === 'No-Show') {
                     noShowCount++;
                 }
 
@@ -578,6 +630,63 @@
                 alert(data.mensaje);
             } else {
                 cargarAdmin();
+            }
+        }
+
+        function abrirEdicionReservaAdmin(id, nombre, telefono, sede, fecha, zona, mesa) {
+            document.getElementById('adminEditId').value = id;
+            document.getElementById('adminEditNombre').value = nombre;
+            document.getElementById('adminEditTelefono').value = telefono;
+            document.getElementById('adminEditSede').value = sede;
+            document.getElementById('adminEditFecha').value = fecha;
+            document.getElementById('adminEditZona').value = zona;
+            document.getElementById('adminEditMesa').value = mesa;
+            document.getElementById('modalEditarReservaAdmin').classList.remove('hidden');
+        }
+
+        function cerrarModalEditarReservaAdmin() {
+            document.getElementById('modalEditarReservaAdmin').classList.add('hidden');
+        }
+
+        async function guardarEdicionReservaAdmin(e) {
+            e.preventDefault();
+            const id = document.getElementById('adminEditId').value;
+            const payload = {
+                nombreCliente: document.getElementById('adminEditNombre').value,
+                telefono: document.getElementById('adminEditTelefono').value,
+                sede: document.getElementById('adminEditSede').value,
+                fecha: document.getElementById('adminEditFecha').value,
+                zona: document.getElementById('adminEditZona').value,
+                mesa: document.getElementById('adminEditMesa').value
+            };
+
+            const res = await fetch(`/api/admin/reservas/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                cerrarModalEditarReservaAdmin();
+                cargarAdmin();
+                alert('Reserva actualizada correctamente.');
+            } else {
+                alert('Error al actualizar la reserva.');
+            }
+        }
+
+        async function eliminarReservaAdmin(id) {
+            if (confirm(`¿Estás completamente seguro de eliminar la reserva #${id}? Esta acción no se puede deshacer.`)) {
+                const res = await fetch(`/api/admin/reservas/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    cargarAdmin();
+                } else {
+                    alert('Error al eliminar la reserva.');
+                }
             }
         }
 
