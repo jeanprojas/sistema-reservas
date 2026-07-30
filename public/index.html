@@ -29,10 +29,13 @@
                 return;
             }
 
+            // Detecta automáticamente cómo viene guardada la discoteca en el servidor
+            const nombreDiscoteca = cliente.discoteca || cliente.sede || cliente.lugar || 'Salvaje';
+
             div.innerHTML = `
                 <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 text-sm space-y-2">
                     <p><strong class="text-orange-400">Cliente:</strong> ${cliente.nombreCliente}</p>
-                    <p><strong class="text-orange-400">Discoteca / Sede:</strong> ${cliente.sede || 'No especificada'}</p>
+                    <p><strong class="text-orange-400">Discoteca / Sede:</strong> ${nombreDiscoteca}</p>
                     <p><strong class="text-orange-400">Zona / Mesa:</strong> ${cliente.zona} - Mesa ${cliente.mesa}</p>
                     <p><strong class="text-orange-400">QR PIN de Acceso:</strong> <span class="font-mono text-cyan-400 text-base font-bold">${cliente.codigoQr || 'N/A'}</span></p>
                     <p><strong class="text-orange-400">Estado:</strong> ${cliente.estadoAsistencia}</p>
