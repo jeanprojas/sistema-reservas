@@ -22,6 +22,57 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(() => console.log('Conectado exitosamente a la Base de Datos en la Nube'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
+// ================= MIGRACIÓN AUTOMÁTICA DE DATOS LOCALES =================
+const fs = require('fs');
+
+async function migrarDatosLocales() {
+    try {
+        const totalReservas = await Reserva.countDocuments();
+        if (totalReservas === 0) {
+            const rutaArchivo = path.join(__dirname, 'data', 'reservas.json');
+            if (fs.existsSync(rutaArchivo)) {
+                const datosRaw = fs.readFileSync(rutaArchivo, 'utf8');
+                const reservasLocales = JSON.parse(datosRaw);
+
+                if (reservasLocales.length > 0) {
+                    for (let r of reservasLocales) {
+                        // Asegurar campos mínimos para MongoDB
+                        await Reserva.updateOne(
+                            { id: r.id },
+                            { $set: {
+                                id: r.id,
+                                codigoQr: r.codigoQr || Math.floor(1000 + Math.random() * 9000).toString(),
+                                nombreCliente: r.nombreCliente || 'Cliente',
+                                telefono: r.telefono || '',
+                                email: r.email || '',
+                                fecha: r.fecha || new Date().toISOString().split('T')[0],
+                                sede: r.sede || 'Salvaje',
+                                zona: r.zona || 'General',
+                                mesa: r.mesa || 'Asignar',
+                                cantidadPersonasInicial: Number(r.cantidadPersonasInicial) || 1,
+                                personasLlegadas: Number(r.personasLlegadas) || 0,
+                                cortesias: Number(r.cortesias) || 0,
+                                pagaronCover: Number(r.pagaronCover) || 0,
+                                precioCover: Number(r.precioCover) || 30000,
+                                cortesiasQR: r.cortesiasQR || null,
+                                estadoAsistencia: r.estadoAsistencia || 'Reservado',
+                                usuarioCreador: r.usuarioCreador || 'Migración',
+                                nocheOperativa: r.fecha || new Date().toISOString().split('T')[0]
+                            }},
+                            { upsert: true }
+                        );
+                    }
+                    console.log(`¡Migración exitosa! Se cargaron ${reservasLocales.length} reservas desde el archivo local a MongoDB Atlas.`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error durante la migración automática de datos:', e);
+    }
+}
+
+// Ejecutar la migración al iniciar
+setTimeout(migrarDatosLocales, 2000);
 
 // ================= ESQUEMAS Y MODELOS DE LA BASE DE DATOS =================
 const reservaSchema = new mongoose.Schema({
