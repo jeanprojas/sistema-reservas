@@ -71,8 +71,10 @@
                         <label class="block text-xs text-gray-400 mb-1">Noche Operativa / Fecha:</label>
                         <input type="date" id="adminFecha" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
                     </div>
-                    <div class="flex items-end">
-                        <button onclick="document.getElementById('adminFecha').value=''; cargarAdmin();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Noche Actual</button>
+                    <div class="flex items-end gap-2">
+                        <button onclick="filtrarAdminRango('hoy')" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Hoy</button>
+                        <button onclick="filtrarAdminRango('semana')" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Semana</button>
+                        <button onclick="filtrarAdminRango('todo')" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px] shadow">Ver Todo</button>
                     </div>
                 </div>
                 <div>
@@ -80,7 +82,7 @@
                 </div>
             </div>
 
-            <!-- Métricas Rapidas (Actualizadas con 5 tarjetas separando pendientes y no-show) -->
+            <!-- Métricas Rapidas -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
                     <p class="text-gray-400 text-xs">Total Reservas</p>
@@ -374,6 +376,14 @@
     </div>
 
     <script>
+        let filtroModoActual = 'hoy'; // Por defecto al iniciar
+
+        function filtrarAdminRango(modo) {
+            filtroModoActual = modo;
+            document.getElementById('adminFecha').value = ''; // Limpiamos el input manual de fecha
+            cargarAdmin();
+        }
+
         async function realizarLogin(e) {
             e.preventDefault();
             const username = document.getElementById('loginUser').value;
@@ -448,17 +458,57 @@
 
         async function cargarAdmin() {
             const sedeSel = document.getElementById('adminSede').value;
-            const fechaSel = document.getElementById('adminFecha').value;
-            const hoy = new Date().toISOString().split('T')[0];
+            const fechaInputVal = document.getElementById('adminFecha').value;
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
             
+            const hoyObj = new Date();
+            const anio = hoyObj.getFullYear();
+            const mes = String(hoyObj.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoyObj.getDate()).padStart(2, '0');
+            const hoyStr = `${anio}-${mes}-${dia}`;
+
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeSel === 'TODAS' || sedeReserva === sedeSel);
-                let coincideFecha = fechaSel ? (r.nocheOperativa === fechaSel || r.fecha === fechaSel) : (r.fecha >= hoy);
-                return coincideSede && coincideFecha;
+                if (!coincideSede) return false;
+
+                const fechaReserva = r.nocheOperativa || r.fecha;
+
+                if (fechaInputVal) {
+                    return fechaReserva === fechaInputVal;
+                }
+
+                if (filtroModoActual === 'todo') {
+                    return true;
+                } 
+                else if (filtroModoActual === 'hoy') {
+                    return fechaReserva === hoyStr;
+                } 
+                else if (filtroModoActual === 'semana') {
+                    let d = new Date(hoyObj);
+                    let dayOfWeek = d.getDay();
+                    let diffToMonday = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                    
+                    let lunesSemana = new Date(d.setDate(diffToMonday));
+                    let domingoSemana = new Date(lunesSemana);
+                    domingoSemana.setDate(lunesSemana.getDate() + 6);
+
+                    const formatYMD = (dateObj) => {
+                        let y = dateObj.getFullYear();
+                        let m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        let dt = String(dateObj.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${dt}`;
+                    };
+
+                    const strLunes = formatYMD(lunesSemana);
+                    const strDomingo = formatYMD(domingoSemana);
+
+                    return fechaReserva >= strLunes && fechaReserva <= strDomingo;
+                }
+
+                return true;
             });
 
             filtradas.sort((a, b) => b.id.localeCompare(a.id));
@@ -473,7 +523,7 @@
             tbody.innerHTML = '';
             
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas para esta noche u opción.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas para este filtro.</td></tr>`;
                 return;
             }
 
