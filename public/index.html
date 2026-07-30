@@ -5,15 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Reservas - VIP Norte</title>
     <style>
-        /* Estilos generales de la barra superior de WhatsApp */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #09090b;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Barra Superior de WhatsApp */
         .whatsapp-top-banner {
             background-color: #25d366;
             color: #ffffff;
             text-align: center;
             padding: 10px 15px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             width: 100%;
-            box-sizing: border-box;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             transition: background-color 0.3s ease;
         }
@@ -55,24 +68,103 @@
             opacity: 0.9;
         }
 
-        /* Diseño adaptado para móviles */
-        @media (max-width: 600px) {
-            .whatsapp-top-banner a {
-                flex-direction: row;
-                text-align: left;
+        /* Contenedor Principal */
+        .main-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            flex: 1;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
             }
-            .whatsapp-title {
-                font-size: 13px;
-            }
-            .whatsapp-subtitle {
-                font-size: 11px;
-            }
+        }
+
+        .card {
+            background-color: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card h2 {
+            color: #fb923c;
+            margin-bottom: 20px;
+            font-size: 22px;
+            border-bottom: 2px solid #27272a;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #a1a1aa;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background-color: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #fb923c;
+        }
+
+        button.btn-primary {
+            background-color: #f97316;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button.btn-primary:hover {
+            background-color: #ea580c;
+        }
+
+        .resultado-consulta {
+            margin-top: 20px;
+            background-color: #27272a;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #71717a;
+            font-size: 13px;
+            border-top: 1px solid #27272a;
         }
     </style>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR DE WHATSAPP SOLICITADA -->
+    <!-- BARRA SUPERIOR WHATSAPP -->
     <div class="whatsapp-top-banner">
         <a href="https://wa.link/vt0a26" target="_blank" rel="noopener noreferrer">
             <svg class="whatsapp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -85,7 +177,111 @@
         </a>
     </div>
 
-    <!-- Resto de tu contenido y formularios del index.html -->
+    <!-- CONTENEDOR DE FORMULARIOS -->
+    <div class="main-container">
+        <!-- COLUMNA IZQUIERDA: CONSULTAR RESERVA -->
+        <div class="card">
+            <h2>Consultar Mi Reserva</h2>
+            <div class="form-group">
+                <label for="telefonoConsulta">Número de Teléfono:</label>
+                <input type="text" id="telefonoConsulta" placeholder="Ingresa tu número">
+            </div>
+            <button class="btn-primary" onclick="consultarReserva()">Buscar Reserva</button>
+            <div id="resultadoConsulta" class="resultado-consulta">
+                <!-- Aquí se cargan los datos de la reserva encontrada -->
+            </div>
+        </div>
 
+        <!-- COLUMNA DERECHA: CREAR NUEVA RESERVA -->
+        <div class="card">
+            <h2>Crear Nueva Reserva</h2>
+            <form id="formReserva" onsubmit="crearReserva(event)">
+                <div class="form-group">
+                    <label for="nombreCliente">Nombre Completo:</label>
+                    <input type="text" id="nombreCliente" required placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono:</label>
+                    <input type="tel" id="telefono" required placeholder="Tu número de contacto">
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo Electrónico:</label>
+                    <input type="email" id="email" placeholder="correo@ejemplo.com">
+                </div>
+                <div class="form-group">
+                    <label for="fecha">Fecha de Visita:</label>
+                    <input type="date" id="fecha" required>
+                </div>
+                <div class="form-group">
+                    <label for="sede">Sede / Discoteca:</label>
+                    <select id="sede" required>
+                        <option value="Salvaje">Salvaje</option>
+                        <option value="Soho">Soho</option>
+                        <option value="220 Voltios">220 Voltios</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="zona">Zona:</label>
+                    <select id="zona" required>
+                        <option value="General">General</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Palco">Palco</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cantidadPersonasInicial">Cantidad de Personas:</label>
+                    <input type="number" id="cantidadPersonasInicial" min="1" value="1" required>
+                </div>
+                <button type="submit" class="btn-primary">Confirmar Reserva</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 VIP Norte - Sistema de Gestión y Reservas</p>
+    </footer>
+
+    <script>
+        async function consultarReserva() {
+            const telefono = document.getElementById('telefonoConsulta').value;
+            if (!telefono) {
+                alert('Por favor ingresa un número de teléfono.');
+                return;
+            }
+            // Lógica de consulta al backend
+            alert('Consultando reservas para: ' + telefono);
+        }
+
+        async function crearReserva(event) {
+            event.preventDefault();
+            const datos = {
+                nombreCliente: document.getElementById('nombreCliente').value,
+                telefono: document.getElementById('telefono').value,
+                email: document.getElementById('email').value,
+                fecha: document.getElementById('fecha').value,
+                sede: document.getElementById('sede').value,
+                zona: document.getElementById('zona').value,
+                cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value
+            };
+
+            try {
+                const respuesta = await fetch('/api/reservas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                const resultado = await respuesta.json();
+                if (resultado.success) {
+                    alert('¡Reserva creada con éxito! Revisa tu correo o datos de acceso.');
+                    document.getElementById('formReserva').reset();
+                } else {
+                    alert('Error: ' + resultado.mensaje);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión al servidor.');
+            }
+        }
+    </script>
 </body>
 </html>
