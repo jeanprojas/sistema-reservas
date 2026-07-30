@@ -316,6 +316,7 @@
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
+                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-700 hover:bg-purple-800 px-2 py-1 rounded text-xs font-bold transition">Prueba</button>
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
                         </td>
                     </tr>
@@ -338,7 +339,7 @@
         }
 
         async function guardarDetalleReserva() {
-            const id = document.getElementById('editReservaId').value;
+            const id = document.getElementById('editReservaId'].value;
             const cantidadPersonasInicial = document.getElementById('editInicial').value;
             const personasLlegadas = document.getElementById('editLlegadas').value;
             const cortesias = document.getElementById('editCortesias').value;
@@ -404,7 +405,7 @@
         }
 
         function editarUsuario(id, username, password, rol, sede) {
-            document.getElementById('usuarioId').value = id;
+            document.getElementById('usuarioId\').value = id;
             document.getElementById('nuevoUsername').value = username;
             document.getElementById('nuevoPassword').value = password;
             document.getElementById('nuevoRol').value = rol;
