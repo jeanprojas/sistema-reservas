@@ -21,7 +21,7 @@ if (!fs.existsSync(dirData)) {
     }
 }
 
-// Usuarios iniciales por defecto (incluyendo admin y salvaje_cover si lo deseas por defecto)
+// Usuarios base iniciales obligatorios del sistema
 const usuariosBaseIniciales = [
     {
         id: 'USR-ADMIN',
@@ -39,7 +39,7 @@ const usuariosBaseIniciales = [
     }
 ];
 
-// Funciones auxiliares de lectura y escritura robustas con respaldo y manejo de errores
+// Funciones auxiliares robustas de lectura y escritura con protección de datos
 function leerDatos(ruta, inicial = []) {
     try {
         if (!fs.existsSync(ruta)) {
@@ -48,11 +48,12 @@ function leerDatos(ruta, inicial = []) {
         }
         const contenido = fs.readFileSync(ruta, 'utf8');
         const parsed = JSON.parse(contenido);
-        if (Array.isArray(parsed) && parsed.length === 0 && inicial.length > 0) {
+        if (!Array.isArray(parsed) || parsed.length === 0) {
             return inicial;
         }
         return parsed;
     } catch (e) {
+        console.error("Error al leer archivo, usando valor inicial:", e);
         return inicial;
     }
 }
@@ -65,18 +66,23 @@ function guardarDatos(ruta, datos) {
     }
 }
 
-// Inicializar base de datos de usuarios asegurando que nunca se pierdan los base
+// Inicializar base de datos de usuarios fusionando los base sin borrar nunca los existentes
 function inicializarUsuariosSistema() {
-    let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
-    
-    // Verificar que el admin y salvaje_cover siempre existan
+    let usuariosActuales = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    let cambiosRealizados = false;
+
+    // Asegurar que los usuarios base obligatorios siempre existan sin sobrescribir los demás
     usuariosBaseIniciales.forEach(base => {
-        if (!usuarios.some(u => u.username === base.username)) {
-            usuarios.push(base);
+        const existe = usuariosActuales.some(u => u.username === base.username);
+        if (!existe) {
+            usuariosActuales.push(base);
+            cambiosRealizados = true;
         }
     });
 
-    guardarDatos(archivoUsuarios, usuarios);
+    if (cambiosRealizados || !fs.existsSync(archivoUsuarios)) {
+        guardarDatos(archivoUsuarios, usuariosActuales);
+    }
 }
 inicializarUsuariosSistema();
 
@@ -106,6 +112,13 @@ app.get('/api/usuarios', (req, res) => {
 
 app.post('/api/usuarios', (req, res) => {
     let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
+    
+    // Validar si el username ya existe para evitar duplicados
+    const existeUsername = usuarios.some(u => u.username === req.body.username);
+    if (existeUsername) {
+        return res.status(400).json({ success: false, mensaje: 'El nombre de usuario ya está en uso' });
+    }
+
     const nuevoUsuario = {
         id: 'USR-' + Date.now().toString().slice(-6),
         username: req.body.username,
@@ -140,8 +153,14 @@ app.put('/api/usuarios/:id', (req, res) => {
 app.delete('/api/usuarios/:id', (req, res) => {
     const { id } = req.params;
     let usuarios = leerDatos(archivoUsuarios, usuariosBaseIniciales);
-    const filtrados = usuarios.filter(u => u.id !== id);
+    
+    // Evitar que se eliminen los usuarios base principales de seguridad
+    const usuarioAEliminar = usuarios.find(u => u.id === id);
+    if (usuarioAEliminar && (usuarioAEliminar.username === 'admin' || usuarioAEliminar.username === 'salvaje_cover')) {
+        return res.status(403).json({ success: false, mensaje: 'No se pueden eliminar los usuarios principales del sistema' });
+    }
 
+    const filtrados = usuarios.filter(u => u.id !== id);
     guardarDatos(archivoUsuarios, filtrados);
     res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
 });
