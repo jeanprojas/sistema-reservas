@@ -68,12 +68,10 @@ function guardarDatosSeguro(ruta, datos) {
 
 // Inicializar archivos garantizando que nunca se pierdan usuarios creados
 function inicializarSistema() {
-    // Inicializar reservas si no existen
     if (!fs.existsSync(archivoReservas)) {
         guardarDatosSeguro(archivoReservas, []);
     }
 
-    // Inicializar usuarios asegurando fusión de base sin borrar personalizados
     let usuariosActuales = leerDatosSeguro(archivoUsuarios, usuariosBaseIniciales);
     let modificado = false;
 
@@ -163,9 +161,9 @@ app.delete('/api/usuarios/:id', (req, res) => {
         return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
     }
 
-    // Bloquear eliminación estricta de usuarios base del sistema
-    if (usuarioAEliminar.username === 'admin' || usuarioAEliminar.username === 'salvaje_cover') {
-        return res.status(403).json({ success: false, mensaje: 'Por seguridad, este usuario principal no se puede eliminar' });
+    // Únicamente protegemos al superadministrador principal ('admin') para no perder acceso total
+    if (usuarioAEliminar.username === 'admin') {
+        return res.status(403).json({ success: false, mensaje: 'Por seguridad, el usuario administrador principal no se puede eliminar' });
     }
 
     const filtrados = usuarios.filter(u => u.id !== id);
