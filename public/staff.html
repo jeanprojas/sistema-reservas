@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- PANEL PRINCIPAL DE STAFF (Oculto hasta iniciar sesión) -->
+    <!-- PANEL PRINCIPAL DE STAFF -->
     <div id="staffPanel" class="max-w-5xl mx-auto hidden">
         <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
             <div>
@@ -38,11 +38,16 @@
             <button onclick="cerrarSesionStaff()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition">Cerrar Sesión</button>
         </header>
 
-        <!-- Filtro de Fecha para Staff -->
-        <div class="mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 flex items-center justify-between">
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha:</label>
-                <input type="date" id="staffFecha" onchange="cargarReservasStaff()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
+        <!-- Filtros de Fecha -->
+        <div class="mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha (Opcional):</label>
+                    <input type="date" id="staffFecha" onchange="cargarReservasStaff()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="document.getElementById('staffFecha').value=''; cargarReservasStaff();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Vigentes desde Hoy</button>
+                </div>
             </div>
             <div class="text-right">
                 <span class="text-xs text-gray-400 block">Sede Restringida:</span>
@@ -51,11 +56,12 @@
         </div>
 
         <!-- Tabla de Reservas de la Sede -->
-        <h2 class="text-lg font-bold mb-4 text-gray-200">Reservas y Accesos de la Sede</h2>
+        <h2 class="text-lg font-bold mb-4 text-gray-200">Reservas Vigentes de la Sede (Ordenadas por Número de Reserva)</h2>
         <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-gray-800 text-xs uppercase text-gray-400">
+                        <th class="p-4">Nº Reserva (ID)</th>
                         <th class="p-4">Cliente</th>
                         <th class="p-4">Fecha / Zona / Mesa</th>
                         <th class="p-4">Estado Asistencia</th>
@@ -83,7 +89,6 @@
             const data = await res.json();
 
             if (data.success) {
-                // Permitir acceso tanto a Staff como a Admins si entran por aquí
                 localStorage.setItem('vip_staff_auth', 'true');
                 localStorage.setItem('vip_staff_user', data.username);
                 localStorage.setItem('vip_staff_sede', data.sede);
@@ -103,8 +108,8 @@
             document.getElementById('infoSedeStaff').textContent = `Usuario: ${username} | Sede Asignada: ${sede}`;
             document.getElementById('badgeSedeStaff').textContent = sede;
 
-            // Establecer fecha de hoy por defecto
-            document.getElementById('staffFecha').value = new Date().toISOString().split('T')[0];
+            // Por defecto arranca sin fecha fija para mostrar todas las vigentes desde hoy
+            document.getElementById('staffFecha').value = '';
             cargarReservasStaff();
         }
 
@@ -115,7 +120,6 @@
             location.reload();
         }
 
-        // Validar si ya hay sesión activa de staff en este navegador
         if (localStorage.getItem('vip_staff_auth') === 'true') {
             iniciarPanelStaff(
                 localStorage.getItem('vip_staff_user') || 'Staff',
@@ -125,22 +129,34 @@
 
         async function cargarReservasStaff() {
             const fechaSel = document.getElementById('staffFecha').value;
+            const hoy = new Date().toISOString().split('T')[0];
+
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            // Filtrar estrictamente por la sede del usuario (a menos que su sede sea 'TODAS')
+            // Filtrar estrictamente por sede asignada y por vigencia (desde hoy en adelante o fecha específica)
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeActualStaff === 'TODAS' || sedeReserva === sedeActualStaff);
-                const coincideFecha = (!fechaSel || r.fecha === fechaSel);
+                
+                let coincideFecha = false;
+                if (fechaSel) {
+                    coincideFecha = (r.fecha === fechaSel);
+                } else {
+                    coincideFecha = (r.fecha >= hoy); // Vigentes desde hoy en adelante
+                }
+
                 return coincideSede && coincideFecha;
             });
+
+            // Ordenar por número de reserva (ID)
+            filtradas.sort((a, b) => b.id.localeCompare(a.id));
 
             const tbody = document.getElementById('tablaStaff');
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">No hay reservas para esta sede en la fecha seleccionada.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay reservas vigentes para esta sede.</td></tr>`;
                 return;
             }
 
@@ -152,6 +168,7 @@
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
+                        <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
                         <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
                         <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-4">
