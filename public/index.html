@@ -252,36 +252,54 @@
             alert('Consultando reservas para: ' + telefono);
         }
 
-        async function crearReserva(event) {
-            event.preventDefault();
-            const datos = {
-                nombreCliente: document.getElementById('nombreCliente').value,
-                telefono: document.getElementById('telefono').value,
-                email: document.getElementById('email').value,
-                fecha: document.getElementById('fecha').value,
-                sede: document.getElementById('sede').value,
-                zona: document.getElementById('zona').value,
-                cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value
-            };
+    async function consultarReserva() {
+    const telefono = document.getElementById('telefonoConsulta').value.trim();
+    const contenedorResultado = document.getElementById('resultadoConsulta');
 
-            try {
-                const respuesta = await fetch('/api/reservas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(datos)
-                });
-                const resultado = await respuesta.json();
-                if (resultado.success) {
-                    alert('¡Reserva creada con éxito! Revisa tu correo o datos de acceso.');
-                    document.getElementById('formReserva').reset();
-                } else {
-                    alert('Error: ' + resultado.mensaje);
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Error de conexión al servidor.');
-            }
+    if (!telefono) {
+        alert('Por favor ingresa un número de teléfono.');
+        return;
+    }
+
+    contenedorResultado.style.display = 'block';
+    contenedorResultado.innerHTML = '<p style="color: #a1a1aa;">Buscando reserva...</p>';
+
+    try {
+        // Consultamos todas las reservas del servidor
+        const respuesta = await fetch('/api/reservas');
+        const reservas = await respuesta.json();
+
+        // Filtramos la reserva que coincida con el teléfono ingresado
+        // (Buscamos que coincida exactamente o contenga el número)
+        const reservaEncontrada = reservas.find(r => r.telefono && r.telefono.includes(telefono));
+
+        if (reservaEncontrada) {
+            contenedorResultado.innerHTML = `
+                <h3 style="color: #fb923c; margin-bottom: 10px; font-size: 16px;">¡Reserva Encontrada!</h3>
+                <p><b>ID:</b> ${reservaEncontrada.id}</p>
+                <p><b>Cliente:</b> ${reservaEncontrada.nombreCliente}</p>
+                <p><b>Sede:</b> ${reservaEncontrada.sede || 'Salvaje'}</p>
+                <p><b>Fecha:</b> ${reservaEncontrada.fecha}</p>
+                <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa}</p>
+                <p><b>Personas:</b> ${reservaEncontrada.cantidadPersonasInicial}</p>
+                <p><b>Estado:</b> <span style="color: #34d399; font-weight: bold;">${reservaEncontrada.estadoAsistencia}</span></p>
+                <div style="margin-top: 12px; background-color: #18181b; padding: 10px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 12px; color: #a1a1aa;">PIN / Código de Acceso:</span>
+                    <h2 style="color: #fb923c; font-family: monospace; letter-spacing: 3px; margin-top: 4px;">${reservaEncontrada.codigoQr || 'N/A'}</h2>
+                </div>
+            `;
+        } else {
+            contenedorResultado.innerHTML = `
+                <p style="color: #f87171; text-align: center;">No se encontró ninguna reserva activa asociada al número <b>${telefono}</b>.</p>
+            `;
         }
+    } catch (e) {
+        console.error(e);
+        contenedorResultado.innerHTML = `
+            <p style="color: #f87171; text-align: center;">Error al conectar con el servidor para buscar la reserva.</p>
+        `;
+    }
+}
     </script>
 </body>
 </html>
