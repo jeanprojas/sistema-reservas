@@ -9,32 +9,107 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const archivoReservas = path.join(__dirname, 'data', 'reservas.json');
+const archivoUsuarios = path.join(__dirname, 'data', 'usuarios.json');
 
-// Función para leer reservas
-function leerReservas() {
-    if (!fs.existsSync(archivoReservas)) {
-        if (!fs.existsSync(path.dirname(archivoReservas))) {
-            fs.mkdirSync(path.dirname(archivoReservas), { recursive: true });
+// Funciones auxiliares para leer y guardar datos
+function leerDatos(ruta, inicial = []) {
+    if (!fs.existsSync(ruta)) {
+        if (!fs.existsSync(path.dirname(ruta))) {
+            fs.mkdirSync(path.dirname(ruta), { recursive: true });
         }
-        fs.writeFileSync(archivoReservas, JSON.stringify([]));
-        return [];
+        fs.writeFileSync(ruta, JSON.stringify(inicial, null, 2));
+        return inicial;
     }
-    const data = fs.readFileSync(archivoReservas, 'utf8');
     try {
-        return JSON.parse(data);
+        return JSON.parse(fs.readFileSync(ruta, 'utf8'));
     } catch (e) {
-        return [];
+        return inicial;
     }
 }
 
-// Función para guardar reservas
-function guardarReservas(reservas) {
-    fs.writeFileSync(archivoReservas, JSON.stringify(reservas, null, 2));
+function guardarDatos(ruta, datos) {
+    fs.writeFileSync(ruta, JSON.stringify(datos, null, 2));
 }
 
-// 1. WEBHOOK / ENDPOINT para recibir datos (Con soporte de Sede)
+// Inicializar un usuario Administrador por defecto si no existe
+function inicializarAdminPorDefecto() {
+    let usuarios = leerDatos(archivoUsuarios, []);
+    if (usuarios.length === 0) {
+        usuarios.push({
+            id: 'USR-ADMIN',
+            username: 'admin',
+            password: '123', // Contraseña inicial por defecto
+            rol: 'Administrador',
+            sede: 'TODAS'
+        });
+        guardarDatos(archivoUsuarios, usuarios);
+    }
+}
+inicializarAdminPorDefecto();
+
+// ================= ROUTES: LOGIN =================
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const usuarios = leerDatos(archivoUsuarios);
+    const usuario = usuarios.find(u => u.username === username && u.password === password);
+
+    if (!usuario) {
+        return res.status(401).json({ success: false, mensaje: 'Usuario o contraseña incorrectos' });
+    }
+
+    res.json({ success: true, rol: usuario.rol, sede: usuario.sede, mensaje: 'Autenticación exitosa' });
+});
+
+// ================= ROUTES: USUARIOS (CRUD) =================
+app.get('/api/usuarios', (req, res) => {
+    res.json(leerDatos(archivoUsuarios));
+});
+
+app.post('/api/usuarios', (req, res) => {
+    let usuarios = leerDatos(archivoUsuarios);
+    const nuevoUsuario = {
+        id: 'USR-' + Date.now().toString().slice(-6),
+        username: req.body.username,
+        password: req.body.password,
+        rol: req.body.rol, // 'Administrador' o 'Staff'
+        sede: req.body.sede || 'Salvaje'
+    };
+
+    usuarios.push(nuevoUsuario);
+    guardarDatos(archivoUsuarios, usuarios);
+    res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito' });
+});
+
+app.put('/api/usuarios/:id', (req, res) => {
+    const { id } = req.params;
+    let usuarios = leerDatos(archivoUsuarios);
+    const index = usuarios.findIndex(u => u.id === id);
+
+    if (index === -1) {
+        return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+    }
+
+    usuarios[index].username = req.body.username || usuarios[index].username;
+    if (req.body.password) usuarios[index].password = req.body.password;
+    usuarios[index].rol = req.body.rol || usuarios[index].rol;
+    usuarios[index].sede = req.body.sede || usuarios[index].sede;
+
+    guardarDatos(archivoUsuarios, usuarios);
+    res.json({ success: true, mensaje: 'Usuario actualizado con éxito' });
+});
+
+app.delete('/api/usuarios/:id', (req, res) => {
+    const { id } = req.params;
+    let usuarios = leerDatos(archivoUsuarios);
+    const filtrados = usuarios.filter(u => u.id !== id);
+
+    guardarDatos(archivoUsuarios, filtrados);
+    res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
+});
+
+// ================= ROUTES: RESERVAS =================
 app.post('/api/reservas', (req, res) => {
-    const reservas = leerReservas();
+    const reservas = leerDatos(archivoReservas, []);
     const nuevaReserva = {
         id: 'RES-' + Date.now().toString().slice(-6),
         nombreCliente: req.body.nombreCliente,
@@ -49,21 +124,18 @@ app.post('/api/reservas', (req, res) => {
     };
 
     reservas.push(nuevaReserva);
-    guardarReservas(reservas);
+    guardarDatos(archivoReservas, reservas);
     res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
 });
 
-// 2. OBTENER TODAS LAS RESERVAS
 app.get('/api/reservas', (req, res) => {
-    const reservas = leerReservas();
-    res.json(reservas);
+    res.json(leerDatos(archivoReservas, []));
 });
 
-// 3. ACTUALIZAR ASISTENCIA (Staff)
 app.put('/api/reservas/:id/asistencia', (req, res) => {
     const { id } = req.params;
     const { estadoAsistencia } = req.body;
-    let reservas = leerReservas();
+    let reservas = leerDatos(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
     if (index === -1) {
@@ -71,15 +143,14 @@ app.put('/api/reservas/:id/asistencia', (req, res) => {
     }
 
     reservas[index].estadoAsistencia = estadoAsistencia;
-    guardarReservas(reservas);
+    guardarDatos(archivoReservas, reservas);
     res.json({ success: true, mensaje: 'Asistencia actualizada', reserva: reservas[index] });
 });
 
-// 4. CAMBIAR ESTADO EXCLUSIVO ADMINISTRADOR (Incluye estado "Prueba")
 app.put('/api/reservas/:id/estado', (req, res) => {
     const { id } = req.params;
     const { nuevoEstado } = req.body;
-    let reservas = leerReservas();
+    let reservas = leerDatos(archivoReservas, []);
     const index = reservas.findIndex(r => r.id === id);
 
     if (index === -1) {
@@ -87,14 +158,13 @@ app.put('/api/reservas/:id/estado', (req, res) => {
     }
 
     reservas[index].estadoAsistencia = nuevoEstado;
-    guardarReservas(reservas);
+    guardarDatos(archivoReservas, reservas);
     res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva: reservas[index] });
 });
 
-// 5. VALIDAR CÓDIGO QR DE CORTESÍA
 app.post('/api/validar-qr', (req, res) => {
     const { codigoQR } = req.body;
-    let reservas = leerReservas();
+    let reservas = leerDatos(archivoReservas, []);
     const reserva = reservas.find(r => r.cortesiasQR === codigoQR);
 
     if (!reserva) {
