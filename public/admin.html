@@ -37,6 +37,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="mostrarSeccion('reservas')" id="btnTabReservas" class="bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition">Reservas & Auditoría</button>
+                <button onclick="mostrarSeccion('dashboard')" id="btnTabDashboard" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition">Dashboard & Métricas</button>
                 <button onclick="mostrarSeccion('usuarios')" id="btnTabUsuarios" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition">Gestión de Usuarios</button>
                 <button onclick="cerrarSesion()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition ml-4">Salir</button>
             </div>
@@ -44,7 +45,7 @@
 
         <!-- VISTA 1: RESERVAS Y AUDITORÍA -->
         <div id="seccionReservas">
-            <div class="flex flex-wrap items-center justify-between mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800">
+            <div class="flex flex-wrap items-center justify-between mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 gap-4">
                 <div class="flex flex-wrap items-center gap-4">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Sede:</label>
@@ -56,27 +57,30 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha (Opcional):</label>
+                        <label class="block text-xs text-gray-400 mb-1">Noche Operativa / Fecha:</label>
                         <input type="date" id="adminFecha" onchange="cargarAdmin()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
                     </div>
                     <div class="flex items-end">
-                        <button onclick="document.getElementById('adminFecha').value=''; cargarAdmin();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Vigentes desde Hoy</button>
+                        <button onclick="document.getElementById('adminFecha').value=''; cargarAdmin();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Noche Actual</button>
                     </div>
+                </div>
+                <div>
+                    <button onclick="abrirModalCrearReserva()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition shadow">+ Nueva Reserva Admin</button>
                 </div>
             </div>
 
-            <!-- Métricas -->
+            <!-- Métricas Rapidas -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                    <p class="text-gray-400 text-xs">Total Vigentes</p>
+                    <p class="text-gray-400 text-xs">Total Reservas</p>
                     <h3 id="totalReservas" class="text-2xl font-bold text-white mt-1">0</h3>
                 </div>
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                    <p class="text-gray-400 text-xs">Asistencias</p>
+                    <p class="text-gray-400 text-xs">Asistencias (Presentes)</p>
                     <h3 id="totalAsistencias" class="text-2xl font-bold text-green-500 mt-1">0</h3>
                 </div>
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
-                    <p class="text-gray-400 text-xs">Pendientes / No-Show</p>
+                    <p class="text-gray-400 text-xs">No-Show / Pendientes</p>
                     <h3 id="totalNoShow" class="text-2xl font-bold text-red-500 mt-1">0</h3>
                 </div>
                 <div class="bg-gray-900 p-5 rounded-xl border border-gray-800 shadow">
@@ -86,12 +90,12 @@
             </div>
 
             <!-- Tabla Reservas -->
-            <h2 class="text-xl font-bold mb-4 text-gray-200">Reservas Vigentes y Control de Asistencia</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-200">Control de Asistencia y Accesos</h2>
             <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-800 text-xs uppercase text-gray-400">
-                            <th class="p-3">Nº Reserva</th>
+                            <th class="p-3">Nº / QR PIN</th>
                             <th class="p-3">Cliente / Sede</th>
                             <th class="p-3">Fecha / Zona</th>
                             <th class="p-3 text-center">Plan / Llegadas</th>
@@ -105,7 +109,53 @@
             </div>
         </div>
 
-        <!-- VISTA 2: GESTIÓN DE USUARIOS -->
+        <!-- VISTA 2: DASHBOARD GERENCIAL AVANZADO -->
+        <div id="seccionDashboard" class="hidden space-y-6">
+            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-orange-400">Dashboard Gerencial en Tiempo Real</h2>
+                    <p class="text-xs text-gray-400 mt-1">Métricas calculadas bajo la franja de operación nocturna (8:00 p.m. - 5:00 a.m.)</p>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Filtrar Histórico por Noche:</label>
+                    <input type="date" id="dashFecha" onchange="cargarDashboard()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg text-sm">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow border-l-4 border-l-green-500">
+                    <p class="text-gray-400 text-xs uppercase font-bold">1. Clientes en el Establecimiento (En Vivo)</p>
+                    <h3 id="dashEnVivo" class="text-4xl font-extrabold text-green-400 mt-2">0</h3>
+                    <p class="text-xs text-gray-500 mt-1">Suma de personas que ya ingresaron</p>
+                </div>
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow border-l-4 border-l-blue-500">
+                    <p class="text-gray-400 text-xs uppercase font-bold">2. Dinero Generado en Cover</p>
+                    <h3 id="dashCoverDinero" class="text-4xl font-extrabold text-blue-400 mt-2">$0</h3>
+                    <p class="text-xs text-gray-500 mt-1">Recaudo total por cobros de cover</p>
+                </div>
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow border-l-4 border-l-yellow-500">
+                    <p class="text-gray-400 text-xs uppercase font-bold">3. Cortesías Entregadas</p>
+                    <h3 id="dashCortesias" class="text-4xl font-extrabold text-yellow-400 mt-2">0</h3>
+                    <p class="text-xs text-gray-500 mt-1">Total de accesos gratuitos registrados</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs uppercase font-bold mb-4">5. Reservas No-Show (Incumplidas)</p>
+                    <h3 id="dashNoShowCount" class="text-3xl font-extrabold text-red-500 mb-2">0</h3>
+                    <p class="text-xs text-gray-400">Clientes que no asistieron en la noche seleccionada.</p>
+                </div>
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
+                    <p class="text-gray-400 text-xs uppercase font-bold mb-4">6. Usuarios / Promotores que más "Venden"</p>
+                    <div id="dashRankingVendedores" class="space-y-3 text-sm">
+                        <!-- Llenado dinámico -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: GESTIÓN DE USUARIOS -->
         <div id="seccionUsuarios" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow h-fit">
@@ -197,6 +247,71 @@
         </div>
     </div>
 
+    <!-- MODAL NUEVA RESERVA ADMIN -->
+    <div id="modalCrearReserva" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-lg w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-green-400 mb-4">Crear Nueva Reserva (Panel Admin)</h3>
+            <form onsubmit="crearReservaAdmin(event)" class="space-y-3 text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Nombre Cliente:</label>
+                        <input type="text" id="adminNewNombre" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Teléfono:</label>
+                        <input type="text" id="adminNewTelefono" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Sede:</label>
+                        <select id="adminNewSede" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-orange-400 font-bold">
+                            <option value="Salvaje">Salvaje</option>
+                            <option value="Soho">Soho</option>
+                            <option value="220 Voltios">220 Voltios</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
+                        <input type="date" id="adminNewFecha" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Zona:</label>
+                        <input type="text" id="adminNewZona" value="VIP" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Mesa Nº:</label>
+                        <input type="text" id="adminNewMesa" value="1" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Personas Plan:</label>
+                        <input type="number" id="adminNewInicial" value="2" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Precio Cover:</label>
+                        <input type="number" id="adminNewPrecio" value="30000" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Estado Inicial:</label>
+                        <select id="adminNewEstado" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-yellow-400">
+                            <option value="Reservado">Reservado</option>
+                            <option value="Presente">Presente</option>
+                            <option value="Prueba">Prueba</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 font-bold py-2.5 rounded text-sm transition">Guardar Reserva</button>
+                    <button type="button" onclick="cerrarModalCrearReserva()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         async function realizarLogin(e) {
             e.preventDefault();
@@ -229,6 +344,7 @@
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('infoSesionAdmin').textContent = `Conectado como Administrador: ${username}`;
+            document.getElementById('adminNewFecha').value = new Date().toISOString().split('T')[0];
             cargarAdmin();
             cargarUsuarios();
         }
@@ -244,17 +360,27 @@
         }
 
         function mostrarSeccion(seccion) {
+            document.getElementById('seccionReservas').classList.add('hidden');
+            document.getElementById('seccionDashboard').classList.add('hidden');
+            document.getElementById('seccionUsuarios').classList.add('hidden');
+            document.getElementById('btnTabReservas').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
+            document.getElementById('btnTabDashboard').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
+            document.getElementById('btnTabUsuarios').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
+
             if (seccion === 'reservas') {
                 document.getElementById('seccionReservas').classList.remove('hidden');
-                document.getElementById('seccionUsuarios').classList.add('hidden');
                 document.getElementById('btnTabReservas').className = 'bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition';
-                document.getElementById('btnTabUsuarios').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
                 cargarAdmin();
+            } else if (seccion === 'dashboard') {
+                document.getElementById('seccionDashboard').classList.remove('hidden');
+                document.getElementById('btnTabDashboard').className = 'bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition';
+                if (!document.getElementById('dashFecha').value) {
+                    document.getElementById('dashFecha').value = new Date().toISOString().split('T')[0];
+                }
+                cargarDashboard();
             } else {
-                document.getElementById('seccionReservas').classList.add('hidden');
                 document.getElementById('seccionUsuarios').classList.remove('hidden');
                 document.getElementById('btnTabUsuarios').className = 'bg-orange-600 px-4 py-2 rounded-lg font-bold text-sm transition';
-                document.getElementById('btnTabReservas').className = 'bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm transition';
                 cargarUsuarios();
             }
         }
@@ -270,7 +396,7 @@
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeSel === 'TODAS' || sedeReserva === sedeSel);
-                let coincideFecha = fechaSel ? (r.fecha === fechaSel) : (r.fecha >= hoy);
+                let coincideFecha = fechaSel ? (r.nocheOperativa === fechaSel || r.fecha === fechaSel) : (r.fecha >= hoy);
                 return coincideSede && coincideFecha;
             });
 
@@ -278,14 +404,14 @@
 
             document.getElementById('totalReservas').textContent = filtradas.length;
             document.getElementById('totalAsistencias').textContent = filtradas.filter(r => r.estadoAsistencia === 'Presente').length;
-            document.getElementById('totalNoShow').textContent = filtradas.filter(r => r.estadoAsistencia === 'No-Show' || r.estadoAsistencia === 'Pendiente').length;
+            document.getElementById('totalNoShow').textContent = filtradas.filter(r => r.estadoAsistencia === 'No-Show' || r.estadoAsistencia === 'Reservado').length;
             document.getElementById('totalPruebas').textContent = filtradas.filter(r => r.estadoAsistencia === 'Prueba').length;
 
             const tbody = document.getElementById('tablaAdmin');
             tbody.innerHTML = '';
             
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas vigentes.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas para esta noche u opción.</td></tr>`;
                 return;
             }
 
@@ -299,7 +425,7 @@
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
-                        <td class="p-3 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
+                        <td class="p-3 font-mono text-xs text-orange-400 font-bold">${r.id}<br><span class="text-xs text-cyan-400 font-bold">QR PIN: ${r.codigoQr}</span></td>
                         <td class="p-3 font-medium"><span class="text-yellow-400 font-bold">[${r.sede || 'Salvaje'}]</span> ${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span></td>
                         <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-3 text-center">
@@ -315,13 +441,83 @@
                         </td>
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
-                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
+                            <button onclick="cambiarEstadoAdmin('${r.id}', 'Presente', '${r.codigoQr}')" class="bg-green-700 hover:bg-green-800 px-2 py-1 rounded text-xs font-bold transition">Presente</button>
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'Prueba')" class="bg-purple-700 hover:bg-purple-800 px-2 py-1 rounded text-xs font-bold transition">Prueba</button>
                             <button onclick="cambiarEstadoAdmin('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
                         </td>
                     </tr>
                 `;
             });
+        }
+
+        async function cargarDashboard() {
+            const fechaSel = document.getElementById('dashFecha').value;
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+
+            const filtradas = data.filter(r => {
+                return (r.nocheOperativa === fechaSel || r.fecha === fechaSel);
+            });
+
+            // 1. Clientes en el establecimiento (suma de personasLlegadas de los presentes)
+            let enVivo = 0;
+            // 2. Dinero generado en cover
+            let dineroCover = 0;
+            // 3. Cortesías entregadas
+            let totalCortesias = 0;
+            // 5. Reservas no show
+            let noShowCount = 0;
+            // 6. Ranking vendedores
+            let ventasPorUsuario = {};
+
+            filtradas.forEach(r => {
+                if (r.estadoAsistencia === 'Presente') {
+                    enVivo += Number(r.personasLlegadas) || 0;
+                }
+                const coverPagadoReserva = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
+                dineroCover += coverPagadoReserva;
+                totalCortesias += Number(r.cortesias) || 0;
+
+                if (r.estadoAsistencia === 'No-Show' || r.estadoAsistencia === 'Reservado') {
+                    noShowCount++;
+                }
+
+                const creador = r.usuarioCreador || 'Web Pública';
+                if (!ventasPorUsuario[creador]) {
+                    ventasPorUsuario[creador] = { reservas: 0, personas: 0, dinero: 0 };
+                }
+                ventasPorUsuario[creador].reservas += 1;
+                ventasPorUsuario[creador].personas += Number(r.cantidadPersonasInicial) || 0;
+                ventasPorUsuario[creador].dinero += coverPagadoReserva;
+            });
+
+            document.getElementById('dashEnVivo').textContent = enVivo;
+            document.getElementById('dashCoverDinero').textContent = '$' + dineroCover.toLocaleString();
+            document.getElementById('dashCortesias').textContent = totalCortesias;
+            document.getElementById('dashNoShowCount').textContent = noShowCount;
+
+            const rankingDiv = document.getElementById('dashRankingVendedores');
+            rankingDiv.innerHTML = '';
+            
+            const ordenados = Object.entries(ventasPorUsuario).sort((a,b) => b[1].dinero - a[1].dinero);
+
+            if (ordenados.length === 0) {
+                rankingDiv.innerHTML = `<p class="text-gray-500 text-xs">Sin registros para esta noche.</p>`;
+            } else {
+                ordenados.forEach(([usuario, stats], index) => {
+                    rankingDiv.innerHTML += `
+                        <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 flex justify-between items-center">
+                            <div>
+                                <span class="font-bold text-orange-400">${index + 1}. ${usuario}</span>
+                                <p class="text-xs text-gray-400">Reservas: ${stats.reservas} | Asistentes: ${stats.personas}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-green-400 font-bold">$${stats.dinero.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
         }
 
         function abrirModalDetalle(id, inicial, llegadas, cortesias, pagaron, precio) {
@@ -356,13 +552,62 @@
             cargarAdmin();
         }
 
-        async function cambiarEstadoAdmin(id, nuevoEstado) {
-            await fetch(`/api/reservas/${id}/estado`, {
+        async function cambiarEstadoAdmin(id, nuevoEstado, qrEsperado = null) {
+            let codigoIngresado = null;
+            if (nuevoEstado === 'Presente') {
+                codigoIngresado = prompt("Ingrese el Código QR / PIN provisto por el cliente:");
+                if (codigoIngresado === null) return; // Cancelado
+            }
+
+            const res = await fetch(`/api/reservas/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nuevoEstado })
+                body: JSON.stringify({ nuevoEstado, codigoIngresado })
             });
-            cargarAdmin();
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.mensaje);
+            } else {
+                cargarAdmin();
+            }
+        }
+
+        function abrirModalCrearReserva() {
+            document.getElementById('modalCrearReserva').classList.remove('hidden');
+        }
+
+        function cerrarModalCrearReserva() {
+            document.getElementById('modalCrearReserva').classList.add('hidden');
+        }
+
+        async function crearReservaAdmin(e) {
+            e.preventDefault();
+            const payload = {
+                nombreCliente: document.getElementById('adminNewNombre').value,
+                telefono: document.getElementById('adminNewTelefono').value,
+                sede: document.getElementById('adminNewSede').value,
+                fecha: document.getElementById('adminNewFecha').value,
+                zona: document.getElementById('adminNewZona').value,
+                mesa: document.getElementById('adminNewMesa').value,
+                cantidadPersonasInicial: document.getElementById('adminNewInicial').value,
+                precioCover: document.getElementById('adminNewPrecio').value,
+                estadoAsistencia: document.getElementById('adminNewEstado').value,
+                usuarioCreador: localStorage.getItem('vip_admin_user') || 'Administrador'
+            };
+
+            const res = await fetch('/api/admin/reservas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                cerrarModalCrearReserva();
+                cargarAdmin();
+                alert('Reserva creada exitosamente con QR PIN: ' + data.reserva.codigoQr);
+            } else {
+                alert('Error al crear reserva');
+            }
         }
 
         async function cargarUsuarios() {
