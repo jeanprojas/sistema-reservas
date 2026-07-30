@@ -49,15 +49,17 @@
             <button onclick="cerrarSesionStaff()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition">Cerrar Sesión</button>
         </header>
 
-        <!-- Filtros de Fecha -->
+        <!-- Filtros de Fecha y Visualización Rápida -->
         <div class="mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha (Opcional):</label>
+                    <label class="block text-xs text-gray-400 mb-1">Filtrar por Fecha:</label>
                     <input type="date" id="staffFecha" onchange="cargarReservasStaff()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg focus:outline-none text-sm">
                 </div>
-                <div class="flex items-end">
-                    <button onclick="document.getElementById('staffFecha').value=''; cargarReservasStaff();" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Vigentes desde Hoy</button>
+                <div class="flex items-end gap-2">
+                    <button onclick="filtrarRapido('hoy')" class="bg-orange-600 hover:bg-orange-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px]">Hoy</button>
+                    <button onclick="filtrarRapido('semana')" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Esta Semana</button>
+                    <button onclick="filtrarRapido('todo')" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs font-bold transition text-gray-300 h-[38px]">Ver Todo</button>
                 </div>
             </div>
             <div class="text-right">
@@ -182,9 +184,34 @@
             );
         }
 
+        // Función para manejar los botones de acceso rápido
+        function filtrarRapido(tipo) {
+            const inputFecha = document.getElementById('staffFecha');
+            const hoy = new Date();
+            
+            if (tipo === 'hoy') {
+                inputFecha.value = hoy.toISOString().split('T')[0];
+            } else if (tipo === 'semana') {
+                inputFecha.value = 'semana'; // Identificador para la semana actual
+            } else if (tipo === 'todo') {
+                inputFecha.value = ''; // Sin filtro de fecha
+            }
+            cargarReservasStaff();
+        }
+
         async function cargarReservasStaff() {
             const fechaSel = document.getElementById('staffFecha').value;
-            const hoy = new Date().toISOString().split('T')[0];
+            const hoyStr = new Date().toISOString().split('T')[0];
+
+            // Calcular inicio y fin de la semana actual (Lunes a Domingo)
+            const d = new Date();
+            const day = d.getDay();
+            const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
+            const inicioSemana = new Date(new Date().setDate(diffToMonday)).toISOString().split('T')[0];
+            
+            const dEnd = new Date();
+            const diffToSunday = dEnd.getDate() - day + (day === 0 ? 0 : 7);
+            const finSemana = new Date(new Date().setDate(diffToSunday)).toISOString().split('T')[0];
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
@@ -194,10 +221,12 @@
                 const coincideSede = (sedeActualStaff === 'TODAS' || sedeReserva === sedeActualStaff);
                 
                 let coincideFecha = false;
-                if (fechaSel) {
+                if (fechaSel === 'semana') {
+                    coincideFecha = (r.fecha >= inicioSemana && r.fecha <= finSemana);
+                } else if (fechaSel) {
                     coincideFecha = (r.fecha === fechaSel);
                 } else {
-                    coincideFecha = (r.fecha >= hoy);
+                    coincideFecha = (r.fecha >= hoyStr);
                 }
 
                 return coincideSede && coincideFecha;
@@ -209,7 +238,7 @@
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No hay reservas vigentes para esta sede.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No hay reservas vigentes para esta sede con los filtros seleccionados.</td></tr>`;
                 return;
             }
 
