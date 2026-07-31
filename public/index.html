@@ -68,19 +68,19 @@
             opacity: 0.9;
         }
 
-        /* Contenedor Principal */
+        /* Contenedor Principal en 2 Columnas Compactas */
         .main-container {
-            max-width: 1200px;
-            margin: 40px auto;
+            max-width: 900px;
+            margin: 30px auto;
             padding: 0 20px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            gap: 25px;
             flex: 1;
             width: 100%;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 800px) {
             .main-container {
                 grid-template-columns: 1fr;
             }
@@ -90,32 +90,35 @@
             background-color: #18181b;
             border: 1px solid #27272a;
             border-radius: 12px;
-            padding: 30px;
+            padding: 24px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .card h2 {
             color: #fb923c;
-            margin-bottom: 20px;
-            font-size: 22px;
+            margin-bottom: 16px;
+            font-size: 20px;
             border-bottom: 2px solid #27272a;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 14px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 13px;
             color: #a1a1aa;
         }
 
         input, select {
             width: 100%;
-            padding: 12px;
+            padding: 10px 12px;
             background-color: #27272a;
             border: 1px solid #3f3f46;
             border-radius: 8px;
@@ -128,15 +131,23 @@
             border-color: #fb923c;
         }
 
+        /* Estilo destacado para la primera línea: Seleccionar Discoteca */
+        .destacado-discoteca {
+            border: 2px solid #fb923c !important;
+            background-color: #1f1b18 !important;
+            color: #ffedd5 !important;
+            font-weight: bold;
+        }
+
         button.btn-primary {
             background-color: #f97316;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 11px 20px;
             width: 100%;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 14px;
             cursor: pointer;
             transition: background-color 0.2s;
         }
@@ -146,11 +157,12 @@
         }
 
         .resultado-consulta {
-            margin-top: 20px;
+            margin-top: 15px;
             background-color: #27272a;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             display: none;
+            font-size: 13px;
         }
 
         footer {
@@ -177,18 +189,23 @@
         </a>
     </div>
 
-    <!-- CONTENEDOR DE FORMULARIOS -->
+    <!-- CONTENEDOR DE FORMULARIOS (2 Columnas Cuadradas y Compactas) -->
     <div class="main-container">
+        
         <!-- COLUMNA IZQUIERDA: CONSULTAR RESERVA -->
         <div class="card">
-            <h2>Consultar Mi Reserva</h2>
-            <div class="form-group">
-                <label for="telefonoConsulta">Número de Teléfono:</label>
-                <input type="text" id="telefonoConsulta" placeholder="Ingresa tu número">
+            <div>
+                <h2>Consultar Mi Reserva</h2>
+                <div class="form-group">
+                    <label for="telefonoConsulta">Número de Teléfono:</label>
+                    <input type="text" id="telefonoConsulta" placeholder="Ingresa tu número">
+                </div>
             </div>
-            <button class="btn-primary" onclick="consultarReserva()">Buscar Reserva</button>
-            <div id="resultadoConsulta" class="resultado-consulta">
-                <!-- Aquí se cargan los datos de la reserva encontrada -->
+            <div>
+                <button class="btn-primary" onclick="consultarReserva()">Buscar Reserva</button>
+                <div id="resultadoConsulta" class="resultado-consulta">
+                    <!-- Aquí se cargan los datos de la reserva encontrada -->
+                </div>
             </div>
         </div>
 
@@ -196,6 +213,17 @@
         <div class="card">
             <h2>Crear Nueva Reserva</h2>
             <form id="formReserva" onsubmit="crearReserva(event)">
+                
+                <!-- 1. SELECCIONAR DISCOTECA (Primera línea, resaltado y en color) -->
+                <div class="form-group">
+                    <label for="sede" style="color: #fb923c; font-weight: bold;">📍 Seleccionar Discoteca:</label>
+                    <select id="sede" class="destacado-discoteca" required>
+                        <option value="Salvaje">Salvaje</option>
+                        <option value="Soho">Soho</option>
+                        <option value="220 Voltios">220 Voltios</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="nombreCliente">Nombre Completo:</label>
                     <input type="text" id="nombreCliente" required placeholder="Tu nombre">
@@ -211,14 +239,6 @@
                 <div class="form-group">
                     <label for="fecha">Fecha de Visita:</label>
                     <input type="date" id="fecha" required>
-                </div>
-                <div class="form-group">
-                    <label for="sede">Sede / Discoteca:</label>
-                    <select id="sede" required>
-                        <option value="Salvaje">Salvaje</option>
-                        <option value="Soho">Soho</option>
-                        <option value="220 Voltios">220 Voltios</option>
-                    </select>
                 </div>
                 <div class="form-group">
                     <label for="zona">Zona:</label>
@@ -243,63 +263,88 @@
 
     <script>
         async function consultarReserva() {
-            const telefono = document.getElementById('telefonoConsulta').value;
+            const telefono = document.getElementById('telefonoConsulta').value.trim();
+            const contenedorResultado = document.getElementById('resultadoConsulta');
+
             if (!telefono) {
                 alert('Por favor ingresa un número de teléfono.');
                 return;
             }
-            // Lógica de consulta al backend
-            alert('Consultando reservas para: ' + telefono);
+
+            contenedorResultado.style.display = 'block';
+            contenedorResultado.innerHTML = '<p style="color: #a1a1aa;">Buscando reserva...</p>';
+
+            try {
+                // Consultamos todas las reservas del servidor
+                const respuesta = await fetch('/api/reservas');
+                const reservas = await respuesta.json();
+
+                // Filtramos la reserva que coincida con el teléfono ingresado
+                const reservaEncontrada = reservas.find(r => r.telefono && r.telefono.includes(telefono));
+
+                if (reservaEncontrada) {
+                    contenedorResultado.innerHTML = `
+                        <h3 style="color: #fb923c; margin-bottom: 8px; font-size: 15px;">¡Reserva Encontrada!</h3>
+                        <p><b>ID:</b> ${reservaEncontrada.id}</p>
+                        <p><b>Cliente:</b> ${reservaEncontrada.nombreCliente}</p>
+                        <p><b>Sede:</b> ${reservaEncontrada.sede || 'Salvaje'}</p>
+                        <p><b>Fecha:</b> ${reservaEncontrada.fecha}</p>
+                        <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa}</p>
+                        <p><b>Personas:</b> ${reservaEncontrada.cantidadPersonasInicial}</p>
+                        <p><b>Estado:</b> <span style="color: #34d399; font-weight: bold;">${reservaEncontrada.estadoAsistencia}</span></p>
+                        <div style="margin-top: 10px; background-color: #18181b; padding: 8px; border-radius: 6px; text-align: center;">
+                            <span style="font-size: 11px; color: #a1a1aa;">PIN / Código de Acceso:</span>
+                            <h2 style="color: #fb923c; font-family: monospace; letter-spacing: 2px; margin-top: 2px; font-size: 16px;">${reservaEncontrada.codigoQr || 'N/A'}</h2>
+                        </div>
+                    `;
+                } else {
+                    contenedorResultado.innerHTML = `
+                        <p style="color: #f87171; text-align: center;">No se encontró ninguna reserva activa asociada al número <b>${telefono}</b>.</p>
+                    `;
+                }
+            } catch (e) {
+                console.error(e);
+                contenedorResultado.innerHTML = `
+                    <p style="color: #f87171; text-align: center;">Error al conectar con el servidor para buscar la reserva.</p>
+                `;
+            }
         }
 
-    async function consultarReserva() {
-    const telefono = document.getElementById('telefonoConsulta').value.trim();
-    const contenedorResultado = document.getElementById('resultadoConsulta');
+        async function crearReserva(event) {
+            event.preventDefault();
+            
+            const payload = {
+                nombreCliente: document.getElementById('nombreCliente').value,
+                telefono: document.getElementById('telefono').value,
+                email: document.getElementById('email').value,
+                fecha: document.getElementById('fecha').value,
+                sede: document.getElementById('sede').value,
+                zona: document.getElementById('zona').value,
+                cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value,
+                precioCover: 30000,
+                estadoAsistencia: 'Reservado',
+                usuarioCreador: 'Web Pública'
+            };
 
-    if (!telefono) {
-        alert('Por favor ingresa un número de teléfono.');
-        return;
-    }
+            try {
+                const res = await fetch('/api/admin/reservas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
 
-    contenedorResultado.style.display = 'block';
-    contenedorResultado.innerHTML = '<p style="color: #a1a1aa;">Buscando reserva...</p>';
-
-    try {
-        // Consultamos todas las reservas del servidor
-        const respuesta = await fetch('/api/reservas');
-        const reservas = await respuesta.json();
-
-        // Filtramos la reserva que coincida con el teléfono ingresado
-        // (Buscamos que coincida exactamente o contenga el número)
-        const reservaEncontrada = reservas.find(r => r.telefono && r.telefono.includes(telefono));
-
-        if (reservaEncontrada) {
-            contenedorResultado.innerHTML = `
-                <h3 style="color: #fb923c; margin-bottom: 10px; font-size: 16px;">¡Reserva Encontrada!</h3>
-                <p><b>ID:</b> ${reservaEncontrada.id}</p>
-                <p><b>Cliente:</b> ${reservaEncontrada.nombreCliente}</p>
-                <p><b>Sede:</b> ${reservaEncontrada.sede || 'Salvaje'}</p>
-                <p><b>Fecha:</b> ${reservaEncontrada.fecha}</p>
-                <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa}</p>
-                <p><b>Personas:</b> ${reservaEncontrada.cantidadPersonasInicial}</p>
-                <p><b>Estado:</b> <span style="color: #34d399; font-weight: bold;">${reservaEncontrada.estadoAsistencia}</span></p>
-                <div style="margin-top: 12px; background-color: #18181b; padding: 10px; border-radius: 6px; text-align: center;">
-                    <span style="font-size: 12px; color: #a1a1aa;">PIN / Código de Acceso:</span>
-                    <h2 style="color: #fb923c; font-family: monospace; letter-spacing: 3px; margin-top: 4px;">${reservaEncontrada.codigoQr || 'N/A'}</h2>
-                </div>
-            `;
-        } else {
-            contenedorResultado.innerHTML = `
-                <p style="color: #f87171; text-align: center;">No se encontró ninguna reserva activa asociada al número <b>${telefono}</b>.</p>
-            `;
+                if (data.success) {
+                    alert('¡Reserva creada con éxito! Se ha registrado correctamente.');
+                    document.getElementById('formReserva').reset();
+                } else {
+                    alert('Hubo un error al registrar tu reserva. Inténtalo de nuevo.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error de conexión con el servidor.');
+            }
         }
-    } catch (e) {
-        console.error(e);
-        contenedorResultado.innerHTML = `
-            <p style="color: #f87171; text-align: center;">Error al conectar con el servidor para buscar la reserva.</p>
-        `;
-    }
-}
     </script>
 </body>
 </html>
