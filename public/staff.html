@@ -133,6 +133,7 @@
 
     <script>
         let sedeActualStaff = '';
+        let filtroStaffModo = 'hoy'; // Modo por defecto inicial
 
         async function realizarLoginStaff(e) {
             e.preventDefault();
@@ -166,7 +167,9 @@
             document.getElementById('infoSedeStaff').textContent = `Usuario: ${username} | Sede Asignada: ${sede}`;
             document.getElementById('badgeSedeStaff').textContent = sede;
 
-            document.getElementById('staffFecha').value = '';
+            // Por defecto arranca filtrando el día de hoy
+            document.getElementById('staffFecha').value = new Date().toISOString().split('T')[0];
+            filtroStaffModo = 'hoy';
             cargarReservasStaff();
         }
 
@@ -186,32 +189,41 @@
 
         // Función para manejar los botones de acceso rápido
         function filtrarRapido(tipo) {
-            const inputFecha = document.getElementById('staffFecha');
-            const hoy = new Date();
-            
+            filtroStaffModo = tipo;
             if (tipo === 'hoy') {
-                inputFecha.value = hoy.toISOString().split('T')[0];
-            } else if (tipo === 'semana') {
-                inputFecha.value = 'semana'; // Identificador para la semana actual
-            } else if (tipo === 'todo') {
-                inputFecha.value = ''; // Sin filtro de fecha
+                document.getElementById('staffFecha').value = new Date().toISOString().split('T')[0];
+            } else {
+                document.getElementById('staffFecha').value = '';
             }
             cargarReservasStaff();
         }
 
         async function cargarReservasStaff() {
             const fechaSel = document.getElementById('staffFecha').value;
-            const hoyStr = new Date().toISOString().split('T')[0];
+            
+            const hoyObj = new Date();
+            const anio = hoyObj.getFullYear();
+            const mes = String(hoyObj.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoyObj.getDate()).padStart(2, '0');
+            const hoyStr = `${anio}-${mes}-${dia}`;
 
             // Calcular inicio y fin de la semana actual (Lunes a Domingo)
-            const d = new Date();
-            const day = d.getDay();
-            const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
-            const inicioSemana = new Date(new Date().setDate(diffToMonday)).toISOString().split('T')[0];
-            
-            const dEnd = new Date();
-            const diffToSunday = dEnd.getDate() - day + (day === 0 ? 0 : 7);
-            const finSemana = new Date(new Date().setDate(diffToSunday)).toISOString().split('T')[0];
+            let d = new Date();
+            let dayOfWeek = d.getDay();
+            let diffToMonday = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            let lunesSemana = new Date(d.setDate(diffToMonday));
+            let domingoSemana = new Date(lunesSemana);
+            domingoSemana.setDate(lunesSemana.getDate() + 6);
+
+            const formatYMD = (dateObj) => {
+                let y = dateObj.getFullYear();
+                let m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                let dt = String(dateObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dt}`;
+            };
+
+            const strLunes = formatYMD(lunesSemana);
+            const strDomingo = formatYMD(domingoSemana);
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
@@ -219,17 +231,29 @@
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 const coincideSede = (sedeActualStaff === 'TODAS' || sedeReserva === sedeActualStaff);
-                
-                let coincideFecha = false;
-                if (fechaSel === 'semana') {
-                    coincideFecha = (r.fecha >= inicioSemana && r.fecha <= finSemana);
-                } else if (fechaSel) {
-                    coincideFecha = (r.fecha === fechaSel);
-                } else {
-                    coincideFecha = (r.fecha >= hoyStr);
+                if (!coincideSede) return false;
+
+                const fechaReserva = r.fecha || r.nocheOperativa;
+                if (!fechaReserva) return false;
+
+                if (fechaSel && filtroStaffModo !== 'semana' && filtroStaffModo !== 'todo') {
+                    return fechaReserva === fechaSel;
                 }
 
-                return coincideSede && coincideFecha;
+                if (filtroStaffModo === 'semana') {
+                    return fechaReserva >= strLunes && fechaReserva <= strDomingo;
+                }
+
+                if (filtroStaffModo === 'todo') {
+                    return true;
+                }
+
+                // Por defecto si hay una fecha seleccionada en el input
+                if (fechaSel) {
+                    return fechaReserva === fechaSel;
+                }
+
+                return fechaReserva === hoyStr;
             });
 
             filtradas.sort((a, b) => b.id.localeCompare(a.id));
