@@ -73,6 +73,7 @@
                     <div class="flex items-end gap-2">
                         <button onclick="filtrarAdminRango('hoy')" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Hoy</button>
                         <button onclick="filtrarAdminRango('semana')" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Semana</button>
+                        <button onclick="filtrarAdminRango('todo')" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-xs font-bold transition text-white h-[38px] shadow">Ver Todo</button>
                         
                         <!-- NUEVOS FILTROS DESPLEGABLES DE AÑO Y MES -->
                         <div class="flex items-center gap-2 h-[38px]">
@@ -529,14 +530,14 @@
                 const coincideSede = (sedeSel === 'TODAS' || sedeReserva === sedeSel);
                 if (!coincideSede) return false;
 
-                const fechaReserva = r.nocheOperativa || r.fecha;
+                const fechaReserva = r.fecha || r.nocheOperativa;
+                if (!fechaReserva) return false;
 
                 if (fechaInputVal) {
                     return fechaReserva === fechaInputVal;
                 }
 
                 if (filtroModoActual === 'periodo') {
-                    if (!fechaReserva) return false;
                     const partesFecha = fechaReserva.split('-');
                     const reservaAnio = partesFecha[0];
                     const reservaMes = partesFecha[1];
@@ -553,7 +554,7 @@
                     return fechaReserva === hoyStr;
                 } 
                 else if (filtroModoActual === 'semana') {
-                    let d = new Date(hoyObj);
+                    let d = new Date();
                     let dayOfWeek = d.getDay();
                     let diffToMonday = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
                     
@@ -660,7 +661,8 @@
             const data = await res.json();
 
             const filtradas = data.filter(r => {
-                return (r.nocheOperativa === fechaSel || r.fecha === fechaSel);
+                const fechaReserva = r.fecha || r.nocheOperativa;
+                return fechaReserva === fechaSel;
             });
 
             let enVivo = 0;
