@@ -68,7 +68,7 @@
             opacity: 0.9;
         }
 
-        /* Contenedor Principal Ajustado para dar más espacio */
+        /* Contenedor Principal Ajustado */
         .main-container {
             max-width: 1150px;
             margin: 30px auto;
@@ -116,7 +116,7 @@
             color: #a1a1aa;
         }
 
-        input, select {
+        input, select, textarea {
             width: 100%;
             padding: 10px 12px;
             background-color: #27272a;
@@ -126,9 +126,14 @@
             font-size: 14px;
         }
 
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #fb923c;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 70px;
         }
 
         /* Estilo destacado para la primera línea: Seleccionar Discoteca */
@@ -230,14 +235,14 @@
             </div>
         </div>
 
-        <!-- COLUMNA DERECHA: CREAR NUEVA RESERVA (Más ancha y estructurada en dos columnas internas) -->
+        <!-- COLUMNA DERECHA: CREAR NUEVA RESERVA -->
         <div class="card">
             <h2>Crear Nueva Reserva</h2>
             <form id="formReserva" onsubmit="crearReserva(event)">
                 
-                <!-- 1. SELECCIONAR DISCOTECA (Línea única y larga superior) -->
+                <!-- 1. SELECCIONAR DISCOTECA (Obligatoria con *) -->
                 <div class="form-group">
-                    <label for="sede" style="color: #fb923c; font-weight: bold;">📍 Seleccionar Discoteca:</label>
+                    <label for="sede" style="color: #fb923c; font-weight: bold;">📍 Seleccionar Discoteca: *</label>
                     <select id="sede" class="destacado-discoteca" required>
                         <option value="Salvaje">Salvaje</option>
                         <option value="Soho">Soho</option>
@@ -251,11 +256,11 @@
                     <!-- COLUMNA IZQUIERDA DEL FORMULARIO -->
                     <div>
                         <div class="form-group">
-                            <label for="nombreCliente">Nombre:</label>
+                            <label for="nombreCliente">Nombre: *</label>
                             <input type="text" id="nombreCliente" required placeholder="Tu nombre">
                         </div>
                         <div class="form-group">
-                            <label for="telefono">Celular:</label>
+                            <label for="telefono">Celular: *</label>
                             <input type="tel" id="telefono" required placeholder="Tu número de contacto">
                         </div>
                         <div class="form-group">
@@ -263,11 +268,11 @@
                             <input type="email" id="email" placeholder="correo@ejemplo.com">
                         </div>
                         <div class="form-group">
-                            <label for="cantidadPersonasInicial">Cantidad de Personas:</label>
+                            <label for="cantidadPersonasInicial">Cantidad de Personas: *</label>
                             <input type="number" id="cantidadPersonasInicial" min="1" value="1" required>
                         </div>
                         <div class="form-group">
-                            <label for="fecha">Fecha de Visita:</label>
+                            <label for="fecha">Fecha de Visita: *</label>
                             <input type="date" id="fecha" required>
                         </div>
                     </div>
@@ -275,8 +280,9 @@
                     <!-- COLUMNA DERECHA DEL FORMULARIO -->
                     <div>
                         <div class="form-group">
-                            <label for="motivo">Motivo:</label>
+                            <label for="motivo">Motivo: *</label>
                             <select id="motivo" required>
+                                <option value="" disabled selected>Selecciona un motivo</option>
                                 <option value="Cumpleaños">Cumpleaños</option>
                                 <option value="Perreo">Perreo</option>
                                 <option value="Evento">Evento</option>
@@ -288,13 +294,17 @@
                             <input type="text" id="instagram" placeholder="@tu_instagram">
                         </div>
                         <div class="form-group">
-                            <label for="zona">Zona:</label>
+                            <label for="zona">Zona: *</label>
                             <select id="zona" required onchange="verificarZona(this)">
                                 <option value="General">General</option>
                                 <option value="VIP">VIP</option>
                                 <option value="Palco">Palco</option>
                             </select>
                             <span id="avisoZona" class="helper-text" style="display: none;">* En VIP y Palco hay consumo mínimo.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="nota">Nota o Comentario:</label>
+                            <textarea id="nota" placeholder="Déjanos cualquier detalle adicional..."></textarea>
                         </div>
                     </div>
 
@@ -345,7 +355,7 @@
                         <p><b>Cliente:</b> ${reservaEncontrada.nombreCliente}</p>
                         <p><b>Sede:</b> ${reservaEncontrada.sede || 'Salvaje'}</p>
                         <p><b>Fecha:</b> ${reservaEncontrada.fecha}</p>
-                        <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa}</p>
+                        <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa || 'Por Asignar'}</p>
                         <p><b>Personas:</b> ${reservaEncontrada.cantidadPersonasInicial}</p>
                         <p><b>Estado:</b> <span style="color: #34d399; font-weight: bold;">${reservaEncontrada.estadoAsistencia}</span></p>
                         <div style="margin-top: 10px; background-color: #18181b; padding: 8px; border-radius: 6px; text-align: center;">
@@ -379,6 +389,7 @@
                 cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value,
                 motivo: document.getElementById('motivo').value,
                 instagram: document.getElementById('instagram').value,
+                nota: document.getElementById('nota').value,
                 precioCover: 30000,
                 estadoAsistencia: 'Reservado',
                 usuarioCreador: 'Web Pública'
