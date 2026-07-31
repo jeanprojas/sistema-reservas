@@ -240,10 +240,11 @@
             <h2>Crear Nueva Reserva</h2>
             <form id="formReserva" onsubmit="crearReserva(event)">
                 
-                <!-- 1. SELECCIONAR DISCOTECA (Obligatoria con *) -->
+                <!-- 1. SELECCIONAR DISCOTECA (Sin opción por defecto y obligatorio) -->
                 <div class="form-group">
                     <label for="sede" style="color: #fb923c; font-weight: bold;">📍 Seleccionar Discoteca: *</label>
                     <select id="sede" class="destacado-discoteca" required>
+                        <option value="" disabled selected>-- Selecciona una discoteca --</option>
                         <option value="Salvaje">Salvaje</option>
                         <option value="Soho">Soho</option>
                         <option value="220 Voltios">220 Voltios</option>
@@ -379,12 +380,18 @@
         async function crearReserva(event) {
             event.preventDefault();
             
+            const sedeValue = document.getElementById('sede').value;
+            if (!sedeValue) {
+                alert('Por favor selecciona una discoteca.');
+                return;
+            }
+
             const payload = {
                 nombreCliente: document.getElementById('nombreCliente').value,
                 telefono: document.getElementById('telefono').value,
                 email: document.getElementById('email').value,
                 fecha: document.getElementById('fecha').value,
-                sede: document.getElementById('sede').value,
+                sede: sedeValue,
                 zona: document.getElementById('zona').value,
                 cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value,
                 motivo: document.getElementById('motivo').value,
