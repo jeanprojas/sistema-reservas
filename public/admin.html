@@ -400,7 +400,12 @@
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Motivo de Reserva:</label>
-                    <input type="text" id="adminNewMotivo" value="Cumpleaños / Rumba" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    <select id="adminNewMotivo" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <option value="Cumpleaños">Cumpleaños</option>
+                        <option value="Perreo">Perreo</option>
+                        <option value="Evento">Evento</option>
+                        <option value="Despedida de solter@">Despedida de solter@</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Estado Inicial:</label>
@@ -464,7 +469,12 @@
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Motivo de Reserva:</label>
-                    <input type="text" id="adminEditMotivo" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    <select id="adminEditMotivo" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <option value="Cumpleaños">Cumpleaños</option>
+                        <option value="Perreo">Perreo</option>
+                        <option value="Evento">Evento</option>
+                        <option value="Despedida de solter@">Despedida de solter@</option>
+                    </select>
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Actualizar Reserva</button>
@@ -650,6 +660,7 @@
                 if (r.estadoAsistencia === 'Prueba') colorEstado = 'bg-purple-900 text-purple-300';
 
                 const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
+                const motivoReserva = r.motivo || r.motivoReserva || 'Cumpleaños';
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
@@ -658,7 +669,7 @@
                             <span class="text-yellow-400 font-bold">[${r.sede || 'Salvaje'}]</span> ${r.nombreCliente}<br>
                             <span class="text-xs text-gray-400">${r.telefono}</span>
                         </td>
-                        <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${r.motivo || 'General'}</span></td>
+                        <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${motivoReserva}</span></td>
                         <td class="p-3 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
                             <span class="text-green-400 font-bold">Llegadas: ${r.personasLlegadas || 0}</span>
@@ -672,7 +683,7 @@
                         </td>
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
-                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${r.motivo || 'General'}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${motivoReserva}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
                             <button onclick="eliminarReservaAdmin('${r.id}')" class="bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs font-bold transition">Eliminar</button>
                         </td>
                     </tr>
@@ -728,13 +739,14 @@
             accionesDiv.classList.remove('hidden');
 
             if (reserva) {
+                const motivoReserva = reserva.motivo || reserva.motivoReserva || 'Cumpleaños';
                 infoDiv.innerHTML = `
                     <p class="text-orange-400 font-bold text-base">Mesa #${mesaNum} - OCUPADA</p>
                     <p><b>Cliente:</b> ${reserva.nombreCliente}</p>
                     <p><b>Teléfono:</b> ${reserva.telefono}</p>
                     <p><b>Personas:</b> ${reserva.cantidadPersonasInicial || 1}</p>
                     <p><b>Zona:</b> ${reserva.zona}</p>
-                    <p><b>Motivo:</b> ${reserva.motivo || 'General'}</p>
+                    <p><b>Motivo:</b> ${motivoReserva}</p>
                     <p><b>Estado:</b> <span class="text-yellow-400">${reserva.estadoAsistencia}</span></p>
                 `;
                 accionesDiv.innerHTML = `
@@ -780,7 +792,6 @@
             if (idEscogido) {
                 const idLimpio = idEscogido.trim();
                 
-                // Validación reforzada en el Frontend: verificar si la mesa ya está ocupada para la misma sede y fecha
                 const reservaSeleccionada = pendientes.find(r => r.id === idLimpio);
                 if (reservaSeleccionada) {
                     const mesaDestino = String(mesaNum);
@@ -873,12 +884,13 @@
                 contenidoHtml += `<tr><td colspan="5" style="text-align: center;">No hay reservas registradas para esta fecha en esta sede.</td></tr>`;
             } else {
                 reservasSede.forEach(r => {
+                    const motivoReserva = r.motivo || r.motivoReserva || 'Cumpleaños';
                     contenidoHtml += `
                         <tr>
                             <td><b>Mesa ${r.mesa}</b> (${r.zona})</td>
                             <td>${r.nombreCliente}</td>
                             <td>${r.cantidadPersonasInicial || 1} personas</td>
-                            <td>${r.motivo || 'General'}</td>
+                            <td>${motivoReserva}</td>
                             <td>${r.estadoAsistencia}</td>
                         </tr>
                     `;
@@ -987,7 +999,7 @@
             document.getElementById('adminEditFecha').value = fecha;
             document.getElementById('adminEditZona').value = zona;
             document.getElementById('adminEditMesa').value = mesa;
-            document.getElementById('adminEditMotivo').value = motivo || 'General';
+            document.getElementById('adminEditMotivo').value = motivo || 'Cumpleaños';
             document.getElementById('modalEditarReservaAdmin').classList.remove('hidden');
         }
 
@@ -1000,7 +1012,6 @@
             const fechaDestino = document.getElementById('adminEditFecha').value;
             const mesaDestino = String(document.getElementById('adminEditMesa').value).trim();
 
-            // Validación reforzada de conflictos al editar la reserva directamente
             const resCheck = await fetch('/api/reservas');
             const dataCheck = await resCheck.json();
             const conflicto = dataCheck.find(r => 
@@ -1015,6 +1026,7 @@
                 return;
             }
 
+            const motivoSeleccionado = document.getElementById('adminEditMotivo').value;
             const payload = {
                 nombreCliente: document.getElementById('adminEditNombre').value,
                 telefono: document.getElementById('adminEditTelefono').value,
@@ -1023,7 +1035,8 @@
                 fecha: fechaDestino,
                 zona: document.getElementById('adminEditZona').value,
                 mesa: mesaDestino,
-                motivo: document.getElementById('adminEditMotivo').value || 'General'
+                motivo: motivoSeleccionado,
+                motivoReserva: motivoSeleccionado
             };
             await fetch(`/api/admin/reservas/${id}`, {
                 method: 'PUT',
@@ -1050,7 +1063,6 @@
             const fechaVal = document.getElementById('adminNewFecha').value;
             const mesaVal = String(document.getElementById('adminNewMesa').value).trim();
 
-            // Validación reforzada al crear una nueva reserva directamente con mesa asignada
             const resCheck = await fetch('/api/reservas');
             const dataCheck = await resCheck.json();
             const conflicto = dataCheck.find(r => 
@@ -1064,6 +1076,7 @@
                 return;
             }
 
+            const motivoSeleccionado = document.getElementById('adminNewMotivo').value;
             const payload = {
                 nombreCliente: document.getElementById('adminNewNombre').value,
                 telefono: document.getElementById('adminNewTelefono').value,
@@ -1074,7 +1087,8 @@
                 mesa: mesaVal,
                 cantidadPersonasInicial: document.getElementById('adminNewInicial').value,
                 precioCover: document.getElementById('adminNewPrecio').value,
-                motivo: document.getElementById('adminNewMotivo').value || 'General',
+                motivo: motivoSeleccionado,
+                motivoReserva: motivoSeleccionado,
                 estadoAsistencia: document.getElementById('adminNewEstado').value,
                 usuarioCreador: localStorage.getItem('vip_admin_user') || 'Administrador'
             };
