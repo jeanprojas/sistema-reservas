@@ -778,7 +778,26 @@
             let idEscogido = prompt(`Selecciona el ID de la reserva para asignar a la Mesa #${mesaNum}:\n\n` + opciones);
             
             if (idEscogido) {
-                await fetch(`/api/admin/reservas/${idEscogido.trim()}`, {
+                const idLimpio = idEscogido.trim();
+                
+                // Validación reforzada en el Frontend: verificar si la mesa ya está ocupada para la misma sede y fecha
+                const reservaSeleccionada = pendientes.find(r => r.id === idLimpio);
+                if (reservaSeleccionada) {
+                    const mesaDestino = String(mesaNum);
+                    const conflicto = data.find(r => 
+                        (r.sede || 'Salvaje') === sede && 
+                        (r.fecha || r.nocheOperativa) === fecha && 
+                        String(r.mesa) === mesaDestino && 
+                        r.id !== idLimpio
+                    );
+
+                    if (conflicto) {
+                        alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                        return;
+                    }
+                }
+
+                await fetch(`/api/admin/reservas/${idLimpio}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mesa: mesaNum })
@@ -977,14 +996,33 @@
         async function guardarEdicionReservaAdmin(e) {
             e.preventDefault();
             const id = document.getElementById('adminEditId').value;
+            const sedeDestino = document.getElementById('adminEditSede').value;
+            const fechaDestino = document.getElementById('adminEditFecha').value;
+            const mesaDestino = String(document.getElementById('adminEditMesa').value).trim();
+
+            // Validación reforzada de conflictos al editar la reserva directamente
+            const resCheck = await fetch('/api/reservas');
+            const dataCheck = await resCheck.json();
+            const conflicto = dataCheck.find(r => 
+                (r.sede || 'Salvaje') === sedeDestino && 
+                (r.fecha || r.nocheOperativa) === fechaDestino && 
+                String(r.mesa) === mesaDestino && 
+                r.id !== id
+            );
+
+            if (conflicto) {
+                alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                return;
+            }
+
             const payload = {
                 nombreCliente: document.getElementById('adminEditNombre').value,
                 telefono: document.getElementById('adminEditTelefono').value,
                 email: document.getElementById('adminEditEmail').value,
-                sede: document.getElementById('adminEditSede').value,
-                fecha: document.getElementById('adminEditFecha').value,
+                sede: sedeDestino,
+                fecha: fechaDestino,
                 zona: document.getElementById('adminEditZona').value,
-                mesa: document.getElementById('adminEditMesa').value,
+                mesa: mesaDestino,
                 motivo: document.getElementById('adminEditMotivo').value || 'General'
             };
             await fetch(`/api/admin/reservas/${id}`, {
@@ -1008,14 +1046,32 @@
 
         async function crearReservaAdmin(e) {
             e.preventDefault();
+            const sedeVal = document.getElementById('adminNewSede').value;
+            const fechaVal = document.getElementById('adminNewFecha').value;
+            const mesaVal = String(document.getElementById('adminNewMesa').value).trim();
+
+            // Validación reforzada al crear una nueva reserva directamente con mesa asignada
+            const resCheck = await fetch('/api/reservas');
+            const dataCheck = await resCheck.json();
+            const conflicto = dataCheck.find(r => 
+                (r.sede || 'Salvaje') === sedeVal && 
+                (r.fecha || r.nocheOperativa) === fechaVal && 
+                String(r.mesa) === mesaVal
+            );
+
+            if (conflicto) {
+                alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaVal} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                return;
+            }
+
             const payload = {
                 nombreCliente: document.getElementById('adminNewNombre').value,
                 telefono: document.getElementById('adminNewTelefono').value,
                 email: document.getElementById('adminNewEmail').value,
-                sede: document.getElementById('adminNewSede').value,
-                fecha: document.getElementById('adminNewFecha').value,
+                sede: sedeVal,
+                fecha: fechaVal,
                 zona: document.getElementById('adminNewZona').value,
-                mesa: document.getElementById('adminNewMesa').value,
+                mesa: mesaVal,
                 cantidadPersonasInicial: document.getElementById('adminNewInicial').value,
                 precioCover: document.getElementById('adminNewPrecio').value,
                 motivo: document.getElementById('adminNewMotivo').value || 'General',
