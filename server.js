@@ -131,6 +131,27 @@ async function inicializarAdmin() {
 }
 inicializarAdmin();
 
+// ================= VALIDACIÓN DE DISPONIBILIDAD DE MESA =================
+async function verificarDisponibilidadMesa(nuevaSede, nuevaFecha, nuevaMesa, idActualExcluir = null) {
+    if (!nuevaMesa || nuevaMesa === 'Sin Asignar' || nuevaMesa === 'Mesa Asignar') {
+        return true; 
+    }
+
+    const sedeBuscada = nuevaSede || 'Salvaje';
+    const reservasExistentes = await Reserva.find({
+        fecha: nuevaFecha,
+        sede: sedeBuscada,
+        mesa: String(nuevaMesa)
+    });
+
+    const colision = reservasExistentes.find(r => {
+        if (idActualExcluir && r.id === idActualExcluir) return false;
+        return true;
+    });
+
+    return !colision;
+}
+
 // Función auxiliar para enviar correos de reserva utilizando Resend
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr, sede) {
     try {
@@ -277,6 +298,18 @@ app.delete('/api/usuarios/:id', async (req, res) => {
 
 app.post('/api/reservas', async (req, res) => {
     try {
+        const sedeReserva = req.body.sede || 'Salvaje';
+        const fechaReserva = req.body.fecha;
+        const mesaReserva = req.body.mesa;
+
+        const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
+        if (!mesaLibre) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
+            });
+        }
+
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
 
         const nuevaReserva = new Reserva({
@@ -285,11 +318,11 @@ app.post('/api/reservas', async (req, res) => {
             nombreCliente: req.body.nombreCliente,
             telefono: req.body.telefono,
             email: req.body.email || '', 
-            fecha: req.body.fecha,
-            sede: req.body.sede || 'Salvaje',
+            fecha: fechaReserva,
+            sede: sedeReserva,
             zona: req.body.zona,
-            mesa: req.body.mesa || 'Asignar',
-            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            mesa: mesaReserva || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: 0,
@@ -299,7 +332,7 @@ app.post('/api/reservas', async (req, res) => {
             cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
             estadoAsistencia: 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Web Pública',
-            nocheOperativa: obtenerNocheOperativa(req.body.fecha)
+            nocheOperativa: obtenerNocheOperativa(fechaReserva)
         });
 
         await nuevaReserva.save();
@@ -325,6 +358,18 @@ app.post('/api/reservas', async (req, res) => {
 
 app.post('/api/admin/reservas', async (req, res) => {
     try {
+        const sedeReserva = req.body.sede || 'Salvaje';
+        const fechaReserva = req.body.fecha;
+        const mesaReserva = req.body.mesa;
+
+        const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
+        if (!mesaLibre) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
+            });
+        }
+
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
 
         const nuevaReserva = new Reserva({
@@ -333,11 +378,11 @@ app.post('/api/admin/reservas', async (req, res) => {
             nombreCliente: req.body.nombreCliente,
             telefono: req.body.telefono,
             email: req.body.email || '', 
-            fecha: req.body.fecha,
-            sede: req.body.sede || 'Salvaje',
+            fecha: fechaReserva,
+            sede: sedeReserva,
             zona: req.body.zona,
-            mesa: req.body.mesa || 'Asignar',
-            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            mesa: mesaReserva || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: Number(req.body.personasLlegadas) || 0,
@@ -346,7 +391,7 @@ app.post('/api/admin/reservas', async (req, res) => {
             precioCover: Number(req.body.precioCover) || 30000,
             estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Administrador',
-            nocheOperativa: obtenerNocheOperativa(req.body.fecha)
+            nocheOperativa: obtenerNocheOperativa(fechaReserva)
         });
 
         await nuevaReserva.save();
@@ -443,6 +488,23 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
 
 app.put('/api/admin/reservas/:id', async (req, res) => {
     try {
+        const reservaActual = await Reserva.findOne({ id: req.params.id });
+        if (!reservaActual) {
+            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+
+        const sedeEvaluar = req.body.sede || reservaActual.sede;
+        const fechaEvaluar = req.body.fecha || reservaActual.fecha;
+        const mesaEvaluar = req.body.mesa || reservaActual.mesa;
+
+        const mesaLibre = await verificarDisponibilidadMesa(sedeEvaluar, fechaEvaluar, mesaEvaluar, req.params.id);
+        if (!mesaLibre) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: `Error de inconsistencia: La Mesa #${mesaEvaluar} ya se encuentra reservada para la sede ${sedeEvaluar} en la fecha ${fechaEvaluar}.` 
+            });
+        }
+
         const updateData = {};
         if (req.body.nombreCliente) updateData.nombreCliente = req.body.nombreCliente;
         if (req.body.telefono) updateData.telefono = req.body.telefono;
@@ -458,9 +520,6 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
         if (req.body.motivoReserva) updateData.motivoReserva = req.body.motivoReserva;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
-        if (!reserva) {
-            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
-        }
 
         res.json({ success: true, mensaje: 'Reserva actualizada correctamente por Administrador', reserva });
     } catch (e) {
@@ -553,20 +612,32 @@ app.post('/api/validar-qr', async (req, res) => {
 
 app.post('/api/sincronizar-externo', async (req, res) => {
     try {
+        const sedeReserva = req.body.sede || 'Salvaje';
+        const fechaReserva = req.body.fecha || new Date().toISOString().split('T')[0];
+        const mesaReserva = req.body.mesa;
+
+        const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
+        if (!mesaLibre) {
+            return res.status(400).json({ 
+                success: false, 
+                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
+            });
+        }
+
         const nuevaReserva = new Reserva({
             id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
             nombreCliente: req.body.nombreCliente || 'Sin Nombre',
             telefono: req.body.telefono || '',
             email: req.body.email || '',
-            fecha: req.body.fecha || new Date().toISOString().split('T')[0],
-            sede: req.body.sede || 'Salvaje',
+            fecha: fechaReserva,
+            sede: sedeReserva,
             zona: req.body.zona || 'General',
-            mesa: req.body.mesa || 'Asignar',
-            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            mesa: mesaReserva || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             estadoAsistencia: 'Reservado',
-            nocheOperativa: req.body.fecha || new Date().toISOString().split('T')[0],
+            nocheOperativa: fechaReserva,
             usuarioCreador: 'Google Sheets'
         });
         
