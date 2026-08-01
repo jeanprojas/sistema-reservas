@@ -303,10 +303,13 @@
 
                 const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
 
+                // Se asegura de capturar cualquier variante del campo motivo proveniente del servidor
+                const motivoReserva = r.motivo || r.motivoReserva || 'General';
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
                         <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
-                        <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${r.motivo || 'General'}</span></td>
+                        <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${motivoReserva}</span></td>
                         <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-4 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
@@ -364,11 +367,12 @@
             accionesDiv.classList.remove('hidden');
 
             if (reserva) {
+                const motivoReserva = reserva.motivo || reserva.motivoReserva || 'General';
                 infoDiv.innerHTML = `
                     <p class="text-orange-400 font-bold">Mesa #${mesaNum} - OCUPADA</p>
                     <p><b>Cliente:</b> ${reserva.nombreCliente}</p>
                     <p><b>Personas:</b> ${reserva.cantidadPersonasInicial || 1}</p>
-                    <p><b>Motivo:</b> ${reserva.motivo || 'General'}</p>
+                    <p><b>Motivo:</b> ${motivoReserva}</p>
                 `;
                 accionesDiv.innerHTML = `<button onclick="liberarMesaStaff('${reserva.id}')" class="w-full bg-red-600 hover:bg-red-700 py-2 rounded text-xs font-bold">Liberar Mesa</button>`;
             } else {
@@ -464,12 +468,13 @@
             `;
 
             reservasSede.forEach(r => {
+                const motivoReserva = r.motivo || r.motivoReserva || 'General';
                 contenidoHtml += `
                     <tr>
                         <td>Mesa ${r.mesa} (${r.zona})</td>
                         <td>${r.nombreCliente}</td>
                         <td>${r.cantidadPersonasInicial || 1}</td>
-                        <td>${r.motivo || 'General'}</td>
+                        <td>${motivoReserva}</td>
                     </tr>
                 `;
             });
