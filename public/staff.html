@@ -436,32 +436,72 @@
             const fecha = document.getElementById('staffMapaFecha').value;
             const res = await fetch('/api/reservas');
             const data = await res.json();
+            
             const reservasSede = data.filter(r => (sedeActualStaff === 'TODAS' || (r.sede || 'Salvaje') === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha);
+
+            let mapaOcupacion = {};
+            reservasSede.forEach(r => { mapaOcupacion[String(r.mesa)] = r; });
 
             let ventanaPdf = window.open('', '_blank');
             let contenidoHtml = `
                 <html>
                 <head>
-                    <title>Reporte de Mesas - ${sedeActualStaff} (${fecha})</title>
+                    <title>VIP NORTE - REPORTE GERENCIAL DE MESAS</title>
                     <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
-                        h1 { color: #d97706; text-align: center; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-                        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-                        th { background: #f3f4f6; }
+                        body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
+                        h1 { color: #d97706; text-align: center; font-size: 20px; margin-bottom: 5px; }
+                        p { text-align: center; font-size: 12px; margin-top: 0; }
+                        h3 { font-size: 14px; border-bottom: 2px solid #d97706; padding-bottom: 5px; margin-top: 25px; }
+                        
+                        /* Estilo del plano de mesas idéntico a admin */
+                        .grid-plano { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
+                        .mesa-box { border: 1px solid #ccc; border-radius: 8px; padding: 10px; text-align: center; font-size: 11px; }
+                        .ocupada { background-color: #fee2e2; border-color: #ef4444; color: #991b1b; }
+                        .libre { background-color: #f0fdf4; border-color: #22c55e; color: #166534; }
+                        .mesa-num { font-size: 14px; font-weight: bold; display: block; margin: 3px 0; }
+
+                        /* Tabla detallada */
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+                        th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
+                        th { background: #f3f4f6; color: #374151; }
                     </style>
                 </head>
                 <body>
-                    <h1>REPORTE DE MESAS - ${sedeActualStaff}</h1>
-                    <p><b>Fecha Operativa:</b> ${fecha}</p>
-                    <h3>Lista Detallada de Reservas</h3>
+                    <h1>VIP NORTE - REPORTE GERENCIAL DE MESAS</h1>
+                    <p><b>Sede:</b> ${sedeActualStaff} | <b>Fecha Operativa:</b> ${fecha}</p>
+
+                    <h3>Distribución de Mesas (Plano Asignado)</h3>
+                    <div class="grid-plano">
+            `;
+
+            for (let i = 1; i <= 20; i++) {
+                let mesaNum = String(i);
+                let reserva = mapaOcupacion[mesaNum];
+                let ocupada = !!reserva;
+                
+                contenidoHtml += `
+                    <div class="mesa-box ${ocupada ? 'ocupada' : 'libre'}">
+                        <span>Mesa #${mesaNum}</span>
+                        <span class="mesa-num">${ocupada ? 'Ocupada' : 'Libre'}</span>
+                        <span style="font-size: 9px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${ocupada ? 'Por: ' + reserva.nombreCliente : 'Disponible'}
+                        </span>
+                    </div>
+                `;
+            }
+
+            contenidoHtml += `
+                    </div>
+
+                    <h3>Lista Detallada de Reservas Asignadas</h3>
                     <table>
                         <thead>
                             <tr>
-                                <th>Ubicación (Mesa)</th>
-                                <th>Nombre</th>
+                                <th>Mesa / Ubicación</th>
+                                <th>Nombre del Cliente</th>
                                 <th>Cantidad de Personas</th>
-                                <th>Motivo Reserva</th>
+                                <th>Motivo de Reserva</th>
+                                <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -471,10 +511,11 @@
                 const motivoReserva = r.motivo || r.motivoReserva || 'General';
                 contenidoHtml += `
                     <tr>
-                        <td>Mesa ${r.mesa} (${r.zona})</td>
+                        <td><b>Mesa ${r.mesa}</b> (${r.zona})</td>
                         <td>${r.nombreCliente}</td>
-                        <td>${r.cantidadPersonasInicial || 1}</td>
+                        <td>${r.cantidadPersonasInicial || 1} personas</td>
                         <td>${motivoReserva}</td>
+                        <td>${r.estadoAsistencia || 'Reservado'}</td>
                     </tr>
                 `;
             });
@@ -523,7 +564,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nuevoEstado: 'Presente', codigoIngresado: document.getElementById('staffEditCodigoQr').value.trim() })
             });
-            const data = await resEstado.json();
+            const data = await res.json();
             if (!data.success) {
                 alert(data.mensaje);
                 return;
