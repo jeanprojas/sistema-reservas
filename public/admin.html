@@ -672,7 +672,7 @@
                         </td>
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
-                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${r.motivo || ''}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${r.motivo || 'General'}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
                             <button onclick="eliminarReservaAdmin('${r.id}')" class="bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs font-bold transition">Eliminar</button>
                         </td>
                     </tr>
@@ -689,10 +689,8 @@
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            // Filtrar reservas para esta sede y fecha
             const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha);
 
-            // Mapear mesas ocupadas (ej. mesas del 1 al 20)
             let mapaOcupacion = {};
             reservasSede.forEach(r => {
                 mapaOcupacion[String(r.mesa)] = r;
@@ -701,7 +699,6 @@
             const grid = document.getElementById('gridPlanoMesas');
             grid.innerHTML = '';
 
-            // Dibujar 20 mesas simuladas por sede
             for (let i = 1; i <= 20; i++) {
                 let mesaNum = String(i);
                 let reservaAsignada = mapaOcupacion[mesaNum];
@@ -711,7 +708,7 @@
                 let indicadorEstado = estaOcupada ? '<span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Ocupada' : '<span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Libre';
 
                 grid.innerHTML += `
-                    <div onclick="seleccionarMesaMapa('${mesaNum}', ${JSON.stringify(reservaAsignada).replace(/"/g, '&quot;')})" class="border ${bgColor} p-4 rounded-xl cursor-pointer transition flex flex-col justify-between items-center text-center shadow">
+                    <div onclick="seleccionarMesaMapa('${mesaNum}', ${JSON.stringify(reservaAsignada || null).replace(/"/g, '&quot;')})" class="border ${bgColor} p-4 rounded-xl cursor-pointer transition flex flex-col justify-between items-center text-center shadow">
                         <span class="text-xs text-gray-400 font-bold">MESA</span>
                         <span class="text-2xl font-black my-1">${mesaNum}</span>
                         <span class="text-[10px] font-semibold">${indicadorEstado}</span>
@@ -737,7 +734,7 @@
                     <p><b>Teléfono:</b> ${reserva.telefono}</p>
                     <p><b>Personas:</b> ${reserva.cantidadPersonasInicial || 1}</p>
                     <p><b>Zona:</b> ${reserva.zona}</p>
-                    <p><b>Motivo:</b> ${reserva.motivo || 'N/A'}</p>
+                    <p><b>Motivo:</b> ${reserva.motivo || 'General'}</p>
                     <p><b>Estado:</b> <span class="text-yellow-400">${reserva.estadoAsistencia}</span></p>
                 `;
                 accionesDiv.innerHTML = `
@@ -790,7 +787,6 @@
             }
         }
 
-        /* FUNCIÓN PARA IMPRIMIR / EXPORTAR PDF ESPECIFICADO */
         async function exportarMapaPDF() {
             const sede = document.getElementById('mapaSede').value;
             const fecha = document.getElementById('mapaFecha').value;
@@ -972,7 +968,7 @@
             document.getElementById('adminEditFecha').value = fecha;
             document.getElementById('adminEditZona').value = zona;
             document.getElementById('adminEditMesa').value = mesa;
-            document.getElementById('adminEditMotivo').value = motivo;
+            document.getElementById('adminEditMotivo').value = motivo || 'General';
             document.getElementById('modalEditarReservaAdmin').classList.remove('hidden');
         }
 
@@ -989,7 +985,7 @@
                 fecha: document.getElementById('adminEditFecha').value,
                 zona: document.getElementById('adminEditZona').value,
                 mesa: document.getElementById('adminEditMesa').value,
-                motivo: document.getElementById('adminEditMotivo').value
+                motivo: document.getElementById('adminEditMotivo').value || 'General'
             };
             await fetch(`/api/admin/reservas/${id}`, {
                 method: 'PUT',
@@ -1022,7 +1018,7 @@
                 mesa: document.getElementById('adminNewMesa').value,
                 cantidadPersonasInicial: document.getElementById('adminNewInicial').value,
                 precioCover: document.getElementById('adminNewPrecio').value,
-                motivo: document.getElementById('adminNewMotivo').value,
+                motivo: document.getElementById('adminNewMotivo').value || 'General',
                 estadoAsistencia: document.getElementById('adminNewEstado').value,
                 usuarioCreador: localStorage.getItem('vip_admin_user') || 'Administrador'
             };
