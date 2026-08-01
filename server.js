@@ -36,6 +36,7 @@ async function migrarDatosLocales() {
 
                 if (reservasLocales.length > 0) {
                     for (let r of reservasLocales) {
+                        const motivoUnificado = r.motivo || r.motivoReserva || r.motivo_reserva || 'General';
                         await Reserva.updateOne(
                             { id: r.id },
                             { $set: {
@@ -49,7 +50,7 @@ async function migrarDatosLocales() {
                                 zona: r.zona || 'General',
                                 mesa: r.mesa || 'Asignar',
                                 mesaAsignada: r.mesaAsignada || r.mesa || 'Sin Asignar',
-                                motivoReserva: r.motivoReserva || 'General',
+                                motivoReserva: motivoUnificado,
                                 cantidadPersonasInicial: Number(r.cantidadPersonasInicial) || 1,
                                 personasLlegadas: Number(r.personasLlegadas) || 0,
                                 cortesias: Number(r.cortesias) || 0,
@@ -311,6 +312,7 @@ app.post('/api/reservas', async (req, res) => {
         }
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
 
         const nuevaReserva = new Reserva({
             id: 'RES-' + Date.now().toString().slice(-6),
@@ -323,7 +325,7 @@ app.post('/api/reservas', async (req, res) => {
             zona: req.body.zona,
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
-            motivoReserva: req.body.motivoReserva || 'General',
+            motivoReserva: motivoSeleccionado,
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: 0,
             cortesias: 0,
@@ -371,6 +373,7 @@ app.post('/api/admin/reservas', async (req, res) => {
         }
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
 
         const nuevaReserva = new Reserva({
             id: 'RES-' + Date.now().toString().slice(-6),
@@ -383,7 +386,7 @@ app.post('/api/admin/reservas', async (req, res) => {
             zona: req.body.zona,
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
-            motivoReserva: req.body.motivoReserva || 'General',
+            motivoReserva: motivoSeleccionado,
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: Number(req.body.personasLlegadas) || 0,
             cortesias: Number(req.body.cortesias) || 0,
@@ -472,7 +475,10 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
         if (req.body.cortesias !== undefined) updateData.cortesias = Number(req.body.cortesias);
         if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
         if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
-        if (req.body.motivoReserva !== undefined) updateData.motivoReserva = req.body.motivoReserva;
+        
+        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
+        if (motivoSeleccionado !== undefined) updateData.motivoReserva = motivoSeleccionado;
+
         if (req.body.mesaAsignada !== undefined) updateData.mesaAsignada = req.body.mesaAsignada;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
@@ -517,7 +523,9 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
         if (req.body.zona) updateData.zona = req.body.zona;
         if (req.body.mesa) updateData.mesa = req.body.mesa;
         if (req.body.mesaAsignada) updateData.mesaAsignada = req.body.mesaAsignada;
-        if (req.body.motivoReserva) updateData.motivoReserva = req.body.motivoReserva;
+
+        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
+        if (motivoSeleccionado) updateData.motivoReserva = motivoSeleccionado;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
 
@@ -624,6 +632,8 @@ app.post('/api/sincronizar-externo', async (req, res) => {
             });
         }
 
+        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
+
         const nuevaReserva = new Reserva({
             id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
             nombreCliente: req.body.nombreCliente || 'Sin Nombre',
@@ -634,7 +644,7 @@ app.post('/api/sincronizar-externo', async (req, res) => {
             zona: req.body.zona || 'General',
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
-            motivoReserva: req.body.motivoReserva || 'General',
+            motivoReserva: motivoSeleccionado,
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             estadoAsistencia: 'Reservado',
             nocheOperativa: fechaReserva,
