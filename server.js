@@ -9,10 +9,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuración de Resend usando la variable de entorno RESEND_API_KEY
+// Configuración de Resend usando la variable de entorno RESEND_API_KEY[cite: 9]
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Conexión a MongoDB (Base de datos en la nube para evitar pérdida de datos por reinicios)
+// Conexión a MongoDB (Base de datos en la nube para evitar pérdida de datos por reinicios)[cite: 9]
 const MONGO_URI = process.env.MONGO_URI;
 
 if (!MONGO_URI) {
@@ -22,6 +22,7 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(() => console.log('Conectado exitosamente a la Base de Datos en la Nube'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
+
 // ================= MIGRACIÓN AUTOMÁTICA DE DATOS LOCALES =================
 const fs = require('fs');
 
@@ -49,6 +50,8 @@ async function migrarDatosLocales() {
                                 sede: r.sede || 'Salvaje',
                                 zona: r.zona || 'General',
                                 mesa: r.mesa || 'Asignar',
+                                mesaAsignada: r.mesaAsignada || r.mesa || 'Sin Asignar',
+                                motivoReserva: r.motivoReserva || 'General',
                                 cantidadPersonasInicial: Number(r.cantidadPersonasInicial) || 1,
                                 personasLlegadas: Number(r.personasLlegadas) || 0,
                                 cortesias: Number(r.cortesias) || 0,
@@ -71,7 +74,7 @@ async function migrarDatosLocales() {
     }
 }
 
-// Ejecutar la migración al iniciar
+// Ejecutar la migración al iniciar[cite: 9]
 setTimeout(migrarDatosLocales, 2000);
 
 // ================= ESQUEMAS Y MODELOS DE LA BASE DE DATOS =================
@@ -85,6 +88,8 @@ const reservaSchema = new mongoose.Schema({
     sede: { type: String, default: 'Salvaje' },
     zona: String,
     mesa: String,
+    mesaAsignada: { type: String, default: 'Sin Asignar' }, // <-- CAMPO NUEVO PARA MAPA DE MESAS
+    motivoReserva: { type: String, default: 'General' },    // <-- CAMPO NUEVO PARA MOTIVO
     cantidadPersonasInicial: Number,
     personasLlegadas: { type: Number, default: 0 },
     cortesias: { type: Number, default: 0 },
@@ -108,7 +113,7 @@ const usuarioSchema = new mongoose.Schema({
 const Reserva = mongoose.model('Reserva', reservaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
-// Inicializar usuario Administrador por defecto si no existe
+// Inicializar usuario Administrador por defecto si no existe[cite: 9]
 async function inicializarAdmin() {
     try {
         const adminExiste = await Usuario.findOne({ username: 'admin' });
@@ -128,7 +133,7 @@ async function inicializarAdmin() {
 }
 inicializarAdmin();
 
-// Función auxiliar para enviar correos de reserva utilizando Resend
+// Función auxiliar para enviar correos de reserva utilizando Resend[cite: 9]
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr, sede) {
     try {
         const data = await resend.emails.send({
@@ -162,7 +167,7 @@ async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha
     }
 }
 
-// Función auxiliar para calcular la "Noche Operativa" (8 PM a 5 AM del día siguiente)
+// Función auxiliar para calcular la "Noche Operativa" (8 PM a 5 AM del día siguiente)[cite: 9]
 function obtenerNocheOperativa(fechaStr, horaStr = "21:00") {
     if (!fechaStr) return new Date().toISOString().split('T')[0];
     const [anio, mes, dia] = fechaStr.split('-').map(Number);
@@ -286,6 +291,8 @@ app.post('/api/reservas', async (req, res) => {
             sede: req.body.sede || 'Salvaje',
             zona: req.body.zona,
             mesa: req.body.mesa || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: 0,
             cortesias: 0,
@@ -332,6 +339,8 @@ app.post('/api/admin/reservas', async (req, res) => {
             sede: req.body.sede || 'Salvaje',
             zona: req.body.zona,
             mesa: req.body.mesa || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: Number(req.body.personasLlegadas) || 0,
             cortesias: Number(req.body.cortesias) || 0,
@@ -421,6 +430,8 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
         if (req.body.cortesias !== undefined) updateData.cortesias = Number(req.body.cortesias);
         if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
         if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
+        if (req.body.motivoReserva !== undefined) updateData.motivoReserva = req.body.motivoReserva;
+        if (req.body.mesaAsignada !== undefined) updateData.mesaAsignada = req.body.mesaAsignada;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
         if (!reserva) {
@@ -447,6 +458,8 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
         }
         if (req.body.zona) updateData.zona = req.body.zona;
         if (req.body.mesa) updateData.mesa = req.body.mesa;
+        if (req.body.mesaAsignada) updateData.mesaAsignada = req.body.mesaAsignada;
+        if (req.body.motivoReserva) updateData.motivoReserva = req.body.motivoReserva;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
         if (!reserva) {
@@ -475,10 +488,7 @@ app.delete('/api/admin/reservas/:id', async (req, res) => {
 // ================= NUEVA RUTA ADMIN: LIMPIAR TODA LA BASE DE DATOS =================
 app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
     try {
-        // Elimina todas las reservas de la base de datos
         const resultadoReservas = await Reserva.deleteMany({});
-        
-        // Opcional: Si también deseas limpiar usuarios adicionales y dejar solo al admin por defecto
         await Usuario.deleteMany({ username: { $ne: 'admin' } });
         await inicializarAdmin();
 
@@ -568,6 +578,8 @@ app.post('/api/sincronizar-externo', async (req, res) => {
             sede: req.body.sede || 'Salvaje',
             zona: req.body.zona || 'General',
             mesa: req.body.mesa || 'Asignar',
+            mesaAsignada: req.body.mesaAsignada || req.body.mesa || 'Sin Asignar',
+            motivoReserva: req.body.motivoReserva || 'General',
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             estadoAsistencia: 'Reservado',
             nocheOperativa: req.body.fecha || new Date().toISOString().split('T')[0],
