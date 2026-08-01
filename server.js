@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
 const { Resend } = require('resend');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,10 +10,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuración de Resend usando la variable de entorno RESEND_API_KEY[cite: 9]
+// Configuración de Resend usando la variable de entorno RESEND_API_KEY
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Conexión a MongoDB (Base de datos en la nube para evitar pérdida de datos por reinicios)[cite: 9]
+// Conexión a MongoDB (Base de datos en la nube para evitar pérdida de datos por reinicios)
 const MONGO_URI = process.env.MONGO_URI;
 
 if (!MONGO_URI) {
@@ -24,8 +25,6 @@ mongoose.connect(MONGO_URI)
     .catch(err => console.error('Error conectando a MongoDB:', err));
 
 // ================= MIGRACIÓN AUTOMÁTICA DE DATOS LOCALES =================
-const fs = require('fs');
-
 async function migrarDatosLocales() {
     try {
         const totalReservas = await Reserva.countDocuments();
@@ -37,7 +36,6 @@ async function migrarDatosLocales() {
 
                 if (reservasLocales.length > 0) {
                     for (let r of reservasLocales) {
-                        // Asegurar campos mínimos para MongoDB
                         await Reserva.updateOne(
                             { id: r.id },
                             { $set: {
@@ -74,7 +72,7 @@ async function migrarDatosLocales() {
     }
 }
 
-// Ejecutar la migración al iniciar[cite: 9]
+// Ejecutar la migración al iniciar
 setTimeout(migrarDatosLocales, 2000);
 
 // ================= ESQUEMAS Y MODELOS DE LA BASE DE DATOS =================
@@ -88,8 +86,8 @@ const reservaSchema = new mongoose.Schema({
     sede: { type: String, default: 'Salvaje' },
     zona: String,
     mesa: String,
-    mesaAsignada: { type: String, default: 'Sin Asignar' }, // <-- CAMPO NUEVO PARA MAPA DE MESAS
-    motivoReserva: { type: String, default: 'General' },    // <-- CAMPO NUEVO PARA MOTIVO
+    mesaAsignada: { type: String, default: 'Sin Asignar' }, 
+    motivoReserva: { type: String, default: 'General' },    
     cantidadPersonasInicial: Number,
     personasLlegadas: { type: Number, default: 0 },
     cortesias: { type: Number, default: 0 },
@@ -113,7 +111,7 @@ const usuarioSchema = new mongoose.Schema({
 const Reserva = mongoose.model('Reserva', reservaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
-// Inicializar usuario Administrador por defecto si no existe[cite: 9]
+// Inicializar usuario Administrador por defecto si no existe
 async function inicializarAdmin() {
     try {
         const adminExiste = await Usuario.findOne({ username: 'admin' });
@@ -133,7 +131,7 @@ async function inicializarAdmin() {
 }
 inicializarAdmin();
 
-// Función auxiliar para enviar correos de reserva utilizando Resend[cite: 9]
+// Función auxiliar para enviar correos de reserva utilizando Resend
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr, sede) {
     try {
         const data = await resend.emails.send({
@@ -167,7 +165,7 @@ async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha
     }
 }
 
-// Función auxiliar para calcular la "Noche Operativa" (8 PM a 5 AM del día siguiente)[cite: 9]
+// Función auxiliar para calcular la "Noche Operativa" (8 PM a 5 AM del día siguiente)
 function obtenerNocheOperativa(fechaStr, horaStr = "21:00") {
     if (!fechaStr) return new Date().toISOString().split('T')[0];
     const [anio, mes, dia] = fechaStr.split('-').map(Number);
@@ -393,7 +391,6 @@ app.get('/api/reservas/:id', async (req, res) => {
     }
 });
 
-// Endpoint para enviar el correo manualmente desde el sistema
 app.post('/api/reservas/:id/enviar-correo', async (req, res) => {
     try {
         const reserva = await Reserva.findOne({ id: req.params.id });
@@ -444,7 +441,6 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
     }
 });
 
-// Ruta ADMIN para Editar Datos Generales de la Reserva
 app.put('/api/admin/reservas/:id', async (req, res) => {
     try {
         const updateData = {};
@@ -472,7 +468,6 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
     }
 });
 
-// Ruta ADMIN para Eliminar Reserva
 app.delete('/api/admin/reservas/:id', async (req, res) => {
     try {
         const reserva = await Reserva.findOneAndDelete({ id: req.params.id });
@@ -485,20 +480,17 @@ app.delete('/api/admin/reservas/:id', async (req, res) => {
     }
 });
 
-// ================= NUEVA RUTA ADMIN: LIMPIAR TODA LA BASE DE DATOS =================
 app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
     try {
         const resultadoReservas = await Reserva.deleteMany({});
         await Usuario.deleteMany({ username: { $ne: 'admin' } });
         await inicializarAdmin();
 
-        console.log(`🧹 Base de datos limpiada. Se eliminaron ${resultadoReservas.deletedCount} reservas.`);
         res.json({ 
             success: true, 
             mensaje: `Base de datos limpiada exitosamente. Se eliminaron ${resultadoReservas.deletedCount} reservas.` 
         });
     } catch (e) {
-        console.error('❌ Error al limpiar la base de datos:', e);
         res.status(500).json({ success: false, mensaje: 'Error al limpiar la base de datos' });
     }
 });
@@ -517,24 +509,17 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
 
         if (nuevoEstado === 'Presente') {
             if (reserva.fecha > hoyStr) {
-                return res.status(400).json({ 
-                    success: false, 
-                    mensaje: 'No es posible cambiar a Presente: la fecha de la reserva es futura.' 
-                });
+                return res.status(400).json({ success: false, mensaje: 'No es posible cambiar a Presente: la fecha de la reserva es futura.' });
             }
             if (!reserva.codigoQr || reserva.codigoQr === 'undefined') {
                 reserva.codigoQr = Math.floor(1000 + Math.random() * 9000).toString();
             }
             if (codigoIngresado && codigoIngresado !== reserva.codigoQr) {
-                return res.status(400).json({ 
-                    success: false, 
-                    mensaje: 'Código QR / PIN incorrecto proporcionado por el cliente.' 
-                });
+                return res.status(400).json({ success: false, mensaje: 'Código QR / PIN incorrecto.' });
             }
         }
 
         reserva.estadoAsistencia = nuevoEstado;
-        
         if (nuevoEstado === 'Presente' && (!reserva.personasLlegadas || reserva.personasLlegadas === 0)) {
             reserva.personasLlegadas = reserva.cantidadPersonasInicial;
         }
@@ -566,7 +551,6 @@ app.post('/api/validar-qr', async (req, res) => {
     }
 });
 
-// ================= API PARA RECIBIR DATOS DESDE GOOGLE SHEETS =================
 app.post('/api/sincronizar-externo', async (req, res) => {
     try {
         const nuevaReserva = new Reserva({
