@@ -400,7 +400,26 @@
             let listado = disponibles.map(r => `ID: ${r.id} | ${r.nombreCliente}`).join('\n');
             let escogido = prompt(`Ingresa el ID de la reserva para la Mesa #${mesaNum}:\n\n` + listado);
             if (escogido) {
-                await fetch(`/api/admin/reservas/${escogido.trim()}`, {
+                const idLimpio = escogido.trim();
+
+                // Validación reforzada en el Frontend del staff para evitar duplicidad de mesas
+                const reservaSeleccionada = disponibles.find(r => r.id === idLimpio);
+                if (reservaSeleccionada) {
+                    const mesaDestino = String(mesaNum);
+                    const conflicto = data.find(r => 
+                        (r.sede || 'Salvaje') === (sedeActualStaff === 'TODAS' ? (reservaSeleccionada.sede || 'Salvaje') : sedeActualStaff) && 
+                        (r.fecha || r.nocheOperativa) === fecha && 
+                        String(r.mesa) === mesaDestino && 
+                        r.id !== idLimpio
+                    );
+
+                    if (conflicto) {
+                        alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                        return;
+                    }
+                }
+
+                await fetch(`/api/admin/reservas/${idLimpio}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mesa: mesaNum })
