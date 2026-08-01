@@ -349,7 +349,7 @@
                 let bg = ocupada ? 'bg-red-950 border-red-600 text-red-300' : 'bg-gray-950 border-gray-800 text-green-400';
 
                 grid.innerHTML += `
-                    <div onclick="seleccionarMesaStaff('${mesaNum}', ${JSON.stringify(reserva).replace(/"/g, '&quot;')})" class="border ${bg} p-4 rounded-xl cursor-pointer transition flex flex-col justify-between items-center text-center shadow">
+                    <div onclick="seleccionarMesaStaff('${mesaNum}', ${JSON.stringify(reserva || null).replace(/"/g, '&quot;')})" class="border ${bg} p-4 rounded-xl cursor-pointer transition flex flex-col justify-between items-center text-center shadow">
                         <span class="text-xs text-gray-400 font-bold">MESA</span>
                         <span class="text-2xl font-black my-1">${mesaNum}</span>
                         <span class="text-[10px]">${ocupada ? 'Ocupada' : 'Libre'}</span>
