@@ -49,6 +49,7 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="mostrarSeccion('reservas')" id="btnTabReservas" class="bg-orange-600 px-3 py-2 rounded-lg font-bold text-xs transition">Reservas & Auditoría</button>
                 <button onclick="mostrarSeccion('mesas')" id="btnTabMesas" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition">Mapa & Asignación de Mesas</button>
+                <button onclick="mostrarSeccion('aforos')" id="btnTabAforos" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition">Gestión de Aforos</button>
                 <button onclick="mostrarSeccion('dashboard')" id="btnTabDashboard" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition">Dashboard</button>
                 <button onclick="mostrarSeccion('usuarios')" id="btnTabUsuarios" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition">Usuarios</button>
                 <button onclick="cerrarSesion()" class="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-lg text-xs font-bold transition ml-2">Salir</button>
@@ -57,6 +58,9 @@
 
         <!-- VISTA 1: RESERVAS Y AUDITORÍA -->
         <div id="seccionReservas">
+            <!-- Alertas de Aforo (Función 2) -->
+            <div id="contenedorAlertasAforo" class="mb-6 space-y-2"></div>
+
             <div class="flex flex-wrap items-center justify-between mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 gap-4">
                 <div class="flex flex-wrap items-center gap-4">
                     <div>
@@ -142,6 +146,7 @@
                             <th class="p-3">Nº / QR PIN</th>
                             <th class="p-3">Cliente / Sede</th>
                             <th class="p-3">Fecha / Zona</th>
+                            <th class="p-3">Promotor</th>
                             <th class="p-3 text-center">Plan / Llegadas</th>
                             <th class="p-3 text-center">Cortesías / Pagos</th>
                             <th class="p-3">Estado</th>
@@ -213,6 +218,81 @@
             </div>
         </div>
 
+        <!-- VISTA NUEVA: GESTIÓN DE AFOROS (Función 1) -->
+        <div id="seccionAforos" class="hidden space-y-6">
+            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-orange-400">Gestión de Aforos por Discoteca y Zonas</h2>
+                    <p class="text-xs text-gray-400 mt-1">Configura el aforo máximo permitido por cada establecimiento y sus zonas específicas.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Salvaje -->
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow space-y-4">
+                    <h3 class="text-lg font-bold text-orange-400 border-b border-gray-800 pb-2">Salvaje</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Aforo Total Discoteca:</label>
+                            <input type="number" id="aforoTotal_Salvaje" value="150" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white font-bold">
+                        </div>
+                        <p class="text-xs font-semibold text-gray-300 pt-2">Aforo por Zonas:</p>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">VIP:</label>
+                            <input type="number" id="aforoZona_Salvaje_VIP" value="50" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">General / Pista:</label>
+                            <input type="number" id="aforoZona_Salvaje_General" value="100" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                    </div>
+                    <button onclick="guardarAforosSede('Salvaje')" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Aforos Salvaje</button>
+                </div>
+
+                <!-- Soho -->
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow space-y-4">
+                    <h3 class="text-lg font-bold text-orange-400 border-b border-gray-800 pb-2">Soho</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Aforo Total Discoteca:</label>
+                            <input type="number" id="aforoTotal_Soho" value="120" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white font-bold">
+                        </div>
+                        <p class="text-xs font-semibold text-gray-300 pt-2">Aforo por Zonas:</p>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">VIP:</label>
+                            <input type="number" id="aforoZona_Soho_VIP" value="40" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">General / Pista:</label>
+                            <input type="number" id="aforoZona_Soho_General" value="80" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                    </div>
+                    <button onclick="guardarAforosSede('Soho')" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Aforos Soho</button>
+                </div>
+
+                <!-- 220 Voltios -->
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow space-y-4">
+                    <h3 class="text-lg font-bold text-orange-400 border-b border-gray-800 pb-2">220 Voltios</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Aforo Total Discoteca:</label>
+                            <input type="number" id="aforoTotal_220Voltios" value="200" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white font-bold">
+                        </div>
+                        <p class="text-xs font-semibold text-gray-300 pt-2">Aforo por Zonas:</p>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">VIP:</label>
+                            <input type="number" id="aforoZona_220Voltios_VIP" value="70" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">General / Pista:</label>
+                            <input type="number" id="aforoZona_220Voltios_General" value="130" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        </div>
+                    </div>
+                    <button onclick="guardarAforosSede('220 Voltios')" class="w-full bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar Aforos 220 Voltios</button>
+                </div>
+            </div>
+        </div>
+
         <!-- VISTA 3: DASHBOARD GERENCIAL -->
         <div id="seccionDashboard" class="hidden space-y-6">
             <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow flex flex-wrap justify-between items-center gap-4">
@@ -220,9 +300,15 @@
                     <h2 class="text-xl font-bold text-orange-400">Dashboard Gerencial en Tiempo Real</h2>
                     <p class="text-xs text-gray-400 mt-1">Métricas calculadas bajo la franja de operación nocturna (8:00 p.m. - 5:00 a.m.)</p>
                 </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Filtrar Histórico por Noche:</label>
-                    <input type="date" id="dashFecha" onchange="cargarDashboard()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg text-sm">
+                <div class="flex items-center gap-3">
+                    <!-- Botón de Cierre (Función 5) -->
+                    <button onclick="abrirModalCierre()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition shadow flex items-center gap-2">
+                        📊 Botón de Cierre Operativo
+                    </button>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Filtrar Histórico por Noche:</label>
+                        <input type="date" id="dashFecha" onchange="cargarDashboard()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg text-sm">
+                    </div>
                 </div>
             </div>
 
@@ -367,36 +453,46 @@
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Sede:</label>
-                        <select id="adminNewSede" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-orange-400 font-bold">
+                        <select id="adminNewSede" onchange="verificarAforoAntesDeReservarAdmin()" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-orange-400 font-bold">
                             <option value="Salvaje">Salvaje</option>
                             <option value="Soho">Soho</option>
                             <option value="220 Voltios">220 Voltios</option>
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Fecha:</label>
-                        <input type="date" id="adminNewFecha" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <input type="date" id="adminNewFecha" onchange="verificarAforoAntesDeReservarAdmin()" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Zona:</label>
-                        <input type="text" id="adminNewZona" value="VIP" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <select id="adminNewZona" onchange="verificarAforoAntesDeReservarAdmin()" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                            <option value="VIP">VIP</option>
+                            <option value="General">General</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Personas Plan:</label>
+                        <input type="number" id="adminNewInicial" value="2" onchange="verificarAforoAntesDeReservarAdmin()" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div id="avisoSugerenciaAdmin" class="hidden p-3 bg-red-950/60 border border-red-700 rounded text-xs text-red-300"></div>
+                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Mesa Nº:</label>
                         <input type="text" id="adminNewMesa" value="1" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Personas Plan:</label>
-                        <input type="number" id="adminNewInicial" value="2" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
-                    </div>
-                    <div>
                         <label class="block text-xs text-gray-400 mb-1">Precio Cover:</label>
                         <input type="number" id="adminNewPrecio" value="30000" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
+                </div>
+                <!-- Función 4: PROMOTOR (Cédula) -->
+                <div>
+                    <label class="block text-xs text-orange-400 mb-1 font-bold">PROMOTOR (Cédula del promotor):</label>
+                    <input type="text" id="adminNewPromotor" placeholder="Dejar vacío o ingresar cédula" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                    <span class="text-[10px] text-gray-400">Si no se ingresa, por defecto se asignará "VIP NORTE".</span>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Motivo de Reserva:</label>
@@ -416,7 +512,7 @@
                     </select>
                 </div>
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 font-bold py-2.5 rounded text-sm transition">Guardar Reserva</button>
+                    <button type="submit" id="btnSubmitAdminReserva" class="flex-1 bg-green-600 hover:bg-green-700 font-bold py-2.5 rounded text-sm transition">Guardar Reserva</button>
                     <button type="button" onclick="cerrarModalCrearReserva()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
                 </div>
             </form>
@@ -467,6 +563,11 @@
                         <input type="text" id="adminEditMesa" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
                 </div>
+                <!-- Función 4: PROMOTOR (Cédula) en Edición -->
+                <div>
+                    <label class="block text-xs text-orange-400 mb-1 font-bold">PROMOTOR (Cédula del promotor):</label>
+                    <input type="text" id="adminEditPromotor" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Motivo de Reserva:</label>
                     <select id="adminEditMotivo" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
@@ -484,9 +585,43 @@
         </div>
     </div>
 
+    <!-- MODAL DE CIERRE OPERATIVO (Función 5) -->
+    <div id="modalCierre" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-2xl max-w-lg w-full shadow-2xl space-y-4">
+            <h3 class="text-xl font-bold text-purple-400 border-b border-gray-800 pb-2">Reporte de Cierre Operativo</h3>
+            <div id="contenidoCierre" class="space-y-3 text-sm text-gray-200">
+                <!-- Generado dinámicamente -->
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="window.print()" class="flex-1 bg-purple-600 hover:bg-purple-700 font-bold py-2.5 rounded text-sm transition">Imprimir Reporte</button>
+                <button onclick="cerrarModalCierre()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cerrar Ventana</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let filtroModoActual = 'hoy';
         let mesaSeleccionadaMapa = null;
+
+        // Configuración de Aforos por Defecto (Función 1)
+        let aforosConfig = {
+            "Salvaje": { total: 150, zonas: { "VIP": 50, "General": 100 } },
+            "Soho": { total: 120, zonas: { "VIP": 40, "General": 80 } },
+            "220 Voltios": { total: 200, zonas: { "VIP": 70, "General": 130 } }
+        };
+
+        function guardarAforosSede(sede) {
+            const total = Number(document.getElementById(`aforoTotal_${sede.replace(/\s+/g, '')}`).value) || 100;
+            const vip = Number(document.getElementById(`aforoZona_${sede.replace(/\s+/g, '')}_VIP`).value) || 30;
+            const general = Number(document.getElementById(`aforoZona_${sede.replace(/\s+/g, '')}_General`).value) || 70;
+
+            aforosConfig[sede] = {
+                total: total,
+                zonas: { "VIP": vip, "General": general }
+            };
+            alert(`Aforos actualizados correctamente para la sede ${sede}.`);
+            cargarAdmin();
+        }
 
         function filtrarAdminRango(modo) {
             filtroModoActual = modo;
@@ -563,10 +698,12 @@
         function mostrarSeccion(seccion) {
             document.getElementById('seccionReservas').classList.add('hidden');
             document.getElementById('seccionMesas').classList.add('hidden');
+            document.getElementById('seccionAforos').classList.add('hidden');
             document.getElementById('seccionDashboard').classList.add('hidden');
             document.getElementById('seccionUsuarios').classList.add('hidden');
             document.getElementById('btnTabReservas').className = 'bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition';
             document.getElementById('btnTabMesas').className = 'bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition';
+            document.getElementById('btnTabAforos').className = 'bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition';
             document.getElementById('btnTabDashboard').className = 'bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition';
             document.getElementById('btnTabUsuarios').className = 'bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg font-bold text-xs transition';
 
@@ -581,6 +718,9 @@
                     document.getElementById('mapaFecha').value = new Date().toISOString().split('T')[0];
                 }
                 cargarMapaMesas();
+            } else if (seccion === 'aforos') {
+                document.getElementById('seccionAforos').classList.remove('hidden');
+                document.getElementById('btnTabAforos').className = 'bg-orange-600 px-3 py-2 rounded-lg font-bold text-xs transition';
             } else if (seccion === 'dashboard') {
                 document.getElementById('seccionDashboard').classList.remove('hidden');
                 document.getElementById('btnTabDashboard').className = 'bg-orange-600 px-3 py-2 rounded-lg font-bold text-xs transition';
@@ -639,6 +779,9 @@
 
             filtradas.sort((a, b) => b.id.localeCompare(a.id));
 
+            // Generar Alertas de Aforo (Función 2)
+            generarAlertasAforoUI(data);
+
             document.getElementById('totalReservas').textContent = filtradas.length;
             document.getElementById('totalAsistencias').textContent = filtradas.filter(r => r.estadoAsistencia === 'Presente').length;
             document.getElementById('totalPendientes').textContent = filtradas.filter(r => r.estadoAsistencia === 'Reservado').length;
@@ -649,7 +792,7 @@
             tbody.innerHTML = '';
             
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">No se encontraron reservas para este filtro.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-400">No se encontraron reservas para este filtro.</td></tr>`;
                 return;
             }
 
@@ -661,6 +804,7 @@
 
                 const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
                 const motivoReserva = r.motivo || r.motivoReserva || 'Cumpleaños';
+                const promotorVal = r.promotor || 'VIP NORTE';
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
@@ -670,6 +814,7 @@
                             <span class="text-xs text-gray-400">${r.telefono}</span>
                         </td>
                         <td class="p-3">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${motivoReserva}</span></td>
+                        <td class="p-3 text-xs font-semibold text-purple-300">${promotorVal}</td>
                         <td class="p-3 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
                             <span class="text-green-400 font-bold">Llegadas: ${r.personasLlegadas || 0}</span>
@@ -683,12 +828,89 @@
                         </td>
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
-                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${motivoReserva}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${motivoReserva}', '${promotorVal}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
                             <button onclick="eliminarReservaAdmin('${r.id}')" class="bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs font-bold transition">Eliminar</button>
                         </td>
                     </tr>
                 `;
             });
+        }
+
+        /* Generar Alertas de Cantidad de Personas (Función 2) */
+        function generarAlertasAforoUI(reservas) {
+            const contenedor = document.getElementById('contenedorAlertasAforo');
+            contenedor.innerHTML = '';
+
+            // Agrupar reservas por Sede y Zona (usando fecha de hoy o fecha actual seleccionada)
+            const fechaRef = document.getElementById('adminFecha').value || new Date().toISOString().split('T')[0];
+            
+            Object.keys(aforosConfig).forEach(sede => {
+                const configSede = aforosConfig[sede];
+                Object.keys(configSede.zonas).forEach(zona => {
+                    const maxZona = configSede.zonas[zona];
+                    // Sumar personas en reservas para esa sede, zona y fecha
+                    const totalPersonasZona = reservas
+                        .filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fechaRef && r.zona === zona && r.estadoAsistencia !== 'No-Show' && r.estadoAsistencia !== 'Prueba')
+                        .reduce((acc, r) => acc + (Number(r.cantidadPersonasInicial) || 1), 0);
+
+                    const porcentaje = (totalPersonasZona / maxZona) * 100;
+                    if (porcentaje >= 80) {
+                        const colorBorde = porcentaje >= 90 ? 'bg-red-950 border-red-600 text-red-300' : 'bg-yellow-950 border-yellow-600 text-yellow-300';
+                        contenedor.innerHTML += `
+                            <div class="p-3 rounded-xl border ${colorBorde} flex justify-between items-center text-xs shadow">
+                                <div>
+                                    <span class="font-bold">⚠️ ALERTA DE AFORO (${sede} - Zona ${zona}):</span> 
+                                    La zona ha alcanzado ${totalPersonasZona} de ${maxZona} personas (${porcentaje.toFixed(1)}% del aforo).
+                                </div>
+                                <span class="font-bold">${porcentaje >= 90 ? '¡CRÍTICO (90%)!' : 'ADVERTENCIA (80%)'}</span>
+                            </div>
+                        `;
+                    }
+                });
+            });
+        }
+
+        /* Verificación de Aforos y Sugerencias (Función 3) */
+        function verificarAforoAntesDeReservarAdmin() {
+            const sede = document.getElementById('adminNewSede').value;
+            const fecha = document.getElementById('adminNewFecha').value;
+            const zona = document.getElementById('adminNewZona').value;
+            const personasNuevas = Number(document.getElementById('adminNewInicial').value) || 1;
+            const avisoDiv = document.getElementById('avisoSugerenciaAdmin');
+            const btnSubmit = document.getElementById('btnSubmitAdminReserva');
+
+            fetch('/api/reservas')
+                .then(res => res.json())
+                .then(data => {
+                    const configSede = aforosConfig[sede] || { total: 150, zonas: { "VIP": 50, "General": 100 } };
+                    const maxZona = configSede.zonas[zona] || 50;
+                    const maxTotal = configSede.total;
+
+                    const personasActualesZona = data
+                        .filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha && r.zona === zona && r.estadoAsistencia !== 'No-Show')
+                        .reduce((acc, r) => acc + (Number(r.cantidadPersonasInicial) || 1), 0);
+
+                    const personasActualesTotal = data
+                        .filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha && r.estadoAsistencia !== 'No-Show')
+                        .reduce((acc, r) => acc + (Number(r.cantidadPersonasInicial) || 1), 0);
+
+                    if (personasActualesZona + personasNuevas > maxZona) {
+                        // Buscar otra zona disponible en la misma sede
+                        let otraZonaSugerida = Object.keys(configSede.zonas).find(z => z !== zona);
+                        avisoDiv.textContent = `❌ La zona ${zona} en ${sede} ya no tiene suficiente aforo para ${personasNuevas} personas. Sugerencia: Intenta reservar en la zona "${otraZonaSugerida || 'General'}" para este día.`;
+                        avisoDiv.classList.remove('hidden');
+                        return;
+                    }
+
+                    if (personasActualesTotal + personasNuevas >= maxTotal * 0.9) {
+                        let otraSedeSugerida = Object.keys(aforosConfig).find(s => s !== sede);
+                        avisoDiv.textContent = `⚠️ La discoteca ${sede} ya se acerca al 90% o completó su aforo total. Sugerencia: Sugerir otra de las discotecas como "${otraSedeSugerida || 'Soho'}".`;
+                        avisoDiv.classList.remove('hidden');
+                        return;
+                    }
+
+                    avisoDiv.classList.add('hidden');
+                });
         }
 
         /* MAPA INTERACTIVO DE MESAS */
@@ -740,12 +962,14 @@
 
             if (reserva) {
                 const motivoReserva = reserva.motivo || reserva.motivoReserva || 'Cumpleaños';
+                const promotorVal = reserva.promotor || 'VIP NORTE';
                 infoDiv.innerHTML = `
                     <p class="text-orange-400 font-bold text-base">Mesa #${mesaNum} - OCUPADA</p>
                     <p><b>Cliente:</b> ${reserva.nombreCliente}</p>
                     <p><b>Teléfono:</b> ${reserva.telefono}</p>
                     <p><b>Personas:</b> ${reserva.cantidadPersonasInicial || 1}</p>
                     <p><b>Zona:</b> ${reserva.zona}</p>
+                    <p><b>Promotor:</b> ${promotorVal}</p>
                     <p><b>Motivo:</b> ${motivoReserva}</p>
                     <p><b>Estado:</b> <span class="text-yellow-400">${reserva.estadoAsistencia}</span></p>
                 `;
@@ -872,6 +1096,7 @@
                             <tr>
                                 <th>Mesa / Ubicación</th>
                                 <th>Nombre del Cliente</th>
+                                <th>Promotor</th>
                                 <th>Cantidad de Personas</th>
                                 <th>Motivo de Reserva</th>
                                 <th>Estado</th>
@@ -881,14 +1106,16 @@
             `;
 
             if (reservasSede.length === 0) {
-                contenidoHtml += `<tr><td colspan="5" style="text-align: center;">No hay reservas registradas para esta fecha en esta sede.</td></tr>`;
+                contenidoHtml += `<tr><td colspan="6" style="text-align: center;">No hay reservas registradas para esta fecha en esta sede.</td></tr>`;
             } else {
                 reservasSede.forEach(r => {
                     const motivoReserva = r.motivo || r.motivoReserva || 'Cumpleaños';
+                    const promotorVal = r.promotor || 'VIP NORTE';
                     contenidoHtml += `
                         <tr>
                             <td><b>Mesa ${r.mesa}</b> (${r.zona})</td>
                             <td>${r.nombreCliente}</td>
+                            <td>${promotorVal}</td>
                             <td>${r.cantidadPersonasInicial || 1} personas</td>
                             <td>${motivoReserva}</td>
                             <td>${r.estadoAsistencia}</td>
@@ -961,6 +1188,63 @@
             }
         }
 
+        /* Botón de Cierre Operativo (Función 5) */
+        async function abrirModalCierre() {
+            const fechaSel = document.getElementById('dashFecha').value || new Date().toISOString().split('T')[0];
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+            const filtradas = data.filter(r => (r.fecha || r.nocheOperativa) === fechaSel);
+
+            let totalCoverPagaron = 0;
+            let totalCortesiasEntraron = 0;
+            let totalIngresaronEstablecimiento = 0;
+            let totalReservasHabian = filtradas.length;
+            let totalLlegaronReservas = 0;
+            let promotoresDiscriminado = {};
+
+            filtradas.forEach(r => {
+                const pagaron = Number(r.pagaronCover) || 0;
+                const cortesias = Number(r.cortesias) || 0;
+                const llegadas = Number(r.personasLlegadas) || 0;
+                const promotor = r.promotor || 'VIP NORTE';
+
+                totalCoverPagaron += pagaron;
+                totalCortesiasEntraron += cortesias;
+                totalIngresaronEstablecimiento += llegadas;
+                if (r.estadoAsistencia === 'Presente') {
+                    totalLlegaronReservas++;
+                }
+
+                if (!promotoresDiscriminado[promotor]) promotoresDiscriminado[promotor] = 0;
+                promotoresDiscriminado[promotor] += llegadas;
+            });
+
+            let htmlPromotores = '';
+            Object.keys(promotoresDiscriminado).forEach(p => {
+                htmlPromotor += `<li class="ml-4">• <b>${p}:</b> ${promotoresDiscriminado[p]} personas ingresadas</li>`;
+            });
+
+            const contenidoDiv = document.getElementById('contenidoCierre');
+            contenidoDiv.innerHTML = `
+                <p><b>Fecha Operativa:</b> ${fechaSel}</p>
+                <p>• <b>Personas que pagaron cover:</b> ${totalCoverPagaron}</p>
+                <p>• <b>Personas que entraron por cortesías:</b> ${totalCortesiasEntraron}</p>
+                <p>• <b>Personas en total que ingresaron al establecimiento:</b> ${totalIngresaronEstablecimiento}</p>
+                <p>• <b>Personas de promotores ingresadas (discriminado por promotor):</b></p>
+                <ul class="list-disc pl-5 space-y-1 text-xs text-gray-300">
+                    ${Object.entries(promotoresDiscriminado).map(([prom, cant]) => `<li><b>${prom}:</b> ${cant} personas</li>`).join('')}
+                </ul>
+                <p>• <b>Cuántas personas en reserva habían:</b> ${filtradas.reduce((acc, r) => acc + (Number(r.cantidadPersonasInicial) || 0), 0)} personas planificadas (${totalReservasHabian} reservas)</p>
+                <p>• <b>Cuántas llegaron:</b> ${totalLlegaronReservas} reservas efectivamente presentes</p>
+            `;
+
+            document.getElementById('modalCierre').classList.remove('hidden');
+        }
+
+        function cerrarModalCierre() {
+            document.getElementById('modalCierre').classList.add('hidden');
+        }
+
         function abrirModalDetalle(id, inicial, llegadas, cortesias, pagaron, precio) {
             document.getElementById('editReservaId').value = id;
             document.getElementById('editInicial').value = inicial;
@@ -990,7 +1274,7 @@
             cargarAdmin();
         }
 
-        function abrirEdicionReservaAdmin(id, nombre, telefono, email, sede, fecha, zona, mesa, motivo) {
+        function abrirEdicionReservaAdmin(id, nombre, telefono, email, sede, fecha, zona, mesa, motivo, promotor) {
             document.getElementById('adminEditId').value = id;
             document.getElementById('adminEditNombre').value = nombre;
             document.getElementById('adminEditTelefono').value = telefono;
@@ -1000,6 +1284,7 @@
             document.getElementById('adminEditZona').value = zona;
             document.getElementById('adminEditMesa').value = mesa;
             document.getElementById('adminEditMotivo').value = motivo || 'Cumpleaños';
+            document.getElementById('adminEditPromotor').value = promotor || 'VIP NORTE';
             document.getElementById('modalEditarReservaAdmin').classList.remove('hidden');
         }
 
@@ -1027,6 +1312,7 @@
             }
 
             const motivoSeleccionado = document.getElementById('adminEditMotivo').value;
+            const promotorInput = document.getElementById('adminEditPromotor').value.trim();
             const payload = {
                 nombreCliente: document.getElementById('adminEditNombre').value,
                 telefono: document.getElementById('adminEditTelefono').value,
@@ -1036,7 +1322,8 @@
                 zona: document.getElementById('adminEditZona').value,
                 mesa: mesaDestino,
                 motivo: motivoSeleccionado,
-                motivoReserva: motivoSeleccionado
+                motivoReserva: motivoSeleccionado,
+                promotor: promotorInput === '' ? 'VIP NORTE' : promotorInput
             };
             await fetch(`/api/admin/reservas/${id}`, {
                 method: 'PUT',
@@ -1077,6 +1364,7 @@
             }
 
             const motivoSeleccionado = document.getElementById('adminNewMotivo').value;
+            const promotorInput = document.getElementById('adminNewPromotor').value.trim();
             const payload = {
                 nombreCliente: document.getElementById('adminNewNombre').value,
                 telefono: document.getElementById('adminNewTelefono').value,
@@ -1089,6 +1377,7 @@
                 precioCover: document.getElementById('adminNewPrecio').value,
                 motivo: motivoSeleccionado,
                 motivoReserva: motivoSeleccionado,
+                promotor: promotorInput === '' ? 'VIP NORTE' : promotorInput,
                 estadoAsistencia: document.getElementById('adminNewEstado').value,
                 usuarioCreador: localStorage.getItem('vip_admin_user') || 'Administrador'
             };
