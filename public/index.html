@@ -304,6 +304,10 @@
                             <span id="avisoZona" class="helper-text" style="display: none;">* En VIP y Palco hay consumo mínimo.</span>
                         </div>
                         <div class="form-group">
+                            <label for="promotor">PROMOTOR (# de Cédula):</label>
+                            <input type="text" id="promotor" placeholder="Cédula del promotor (opcional)">
+                        </div>
+                        <div class="form-group">
                             <label for="nota">Nota o Comentario:</label>
                             <textarea id="nota" placeholder="Déjanos cualquier detalle adicional..."></textarea>
                         </div>
@@ -358,6 +362,7 @@
                         <p><b>Fecha:</b> ${reservaEncontrada.fecha}</p>
                         <p><b>Ubicación:</b> ${reservaEncontrada.zona} - Mesa: ${reservaEncontrada.mesa || 'Por Asignar'}</p>
                         <p><b>Personas:</b> ${reservaEncontrada.cantidadPersonasInicial}</p>
+                        <p><b>Promotor:</b> ${reservaEncontrada.promotor || 'VIP NORTE'}</p>
                         <p><b>Estado:</b> <span style="color: #34d399; font-weight: bold;">${reservaEncontrada.estadoAsistencia}</span></p>
                         <div style="margin-top: 10px; background-color: #18181b; padding: 8px; border-radius: 6px; text-align: center;">
                             <span style="font-size: 11px; color: #a1a1aa;">PIN / Código de Acceso:</span>
@@ -386,16 +391,77 @@
                 return;
             }
 
+            const fechaSeleccionada = document.getElementById('fecha').value;
+            const zonaSeleccionada = document.getElementById('zona').value;
+            const personasNuevas = parseInt(document.getElementById('cantidadPersonasInicial').value) || 1;
+
+            try {
+                // Consultar reservas existentes para validar aforos y capacidades
+                const respuesta = await fetch('/api/reservas');
+                const reservas = await respuesta.json();
+
+                // Filtrar reservas activas para la misma fecha y misma sede
+                const reservasMismoDiaSede = reservas.filter(r => r.fecha === fechaSeleccionada && (r.sede || 'Salvaje') === sedeValue && r.estadoAsistencia !== 'Cancelado');
+
+                // Supuestos de aforo máximo por discoteca y zona (ajustables según la lógica del negocio)
+                const CAPACIDAD_MAXIMA_ZONA = 50; // Ejemplo de aforo máximo por zona individual
+                const CAPACIDAD_MAXIMA_DISCOTECA = 150; // Ejemplo de aforo total de la discoteca
+
+                // Calcular aforo actual de la zona específica
+                const personasEnZona = reservasMismoDiaSede
+                    .filter(r => r.zona === zonaSeleccionada)
+                    .reduce((acc, r) => acc + (parseInt(r.cantidadPersonasInicial) || 0), 0);
+
+                // Validar si la zona ya está llena o supera su aforo
+                if (personasEnZona + personasNuevas > CAPACIDAD_MAXIMA_ZONA) {
+                    // Buscar otra zona disponible en la misma discoteca
+                    const zonasDisponibles = ['General', 'VIP', 'Palco'].filter(z => z !== zonaSeleccionada);
+                    let zonaSugerida = zonasDisponibles[0];
+                    
+                    for (let z of zonasDisponibles) {
+                        const personasEnOtraZona = reservasMismoDiaSede
+                            .filter(r => r.zona === z)
+                            .reduce((acc, r) => acc + (parseInt(r.cantidadPersonasInicial) || 0), 0);
+                        if (personasEnOtraZona + personasNuevas <= CAPACIDAD_MAXIMA_ZONA) {
+                            zonaSugerida = z;
+                            break;
+                        }
+                    }
+
+                    alert(`Lo sentimos, la zona "${zonaSeleccionada}" en ${sedeValue} ya tiene el aforo completo o se excede para el ${fechaSeleccionada}. Te sugerimos reservar en la zona "${zonaSugerida}" para ese día.`);
+                    return;
+                }
+
+                // Calcular aforo total de la discoteca
+                const personasTotalDiscoteca = reservasMismoDiaSede
+                    .reduce((acc, r) => acc + (parseInt(r.cantidadPersonasInicial) || 0), 0);
+
+                // Validar si la discoteca está llena (100%) o cerca del 90%
+                if (personasTotalDiscoteca + personasNuevas >= CAPACIDAD_MAXIMA_DISCOTECA * 0.9) {
+                    const discotecasAlternativas = ['Salvaje', 'Soho', '220 Voltios'].filter(d => d !== sedeValue);
+                    alert(`La discoteca ${sedeValue} se encuentra al 90% o más de su aforo para la fecha ${fechaSeleccionada}. Te sugerimos realizar tu reserva en otra de nuestras discotecas: ${discotecasAlternativas.join(' o ')}.`);
+                    return;
+                }
+
+            } catch (error) {
+                console.error("Error al validar aforo:", error);
+                // Si falla la consulta de aforo por red, permitimos continuar o manejamos el error con cautela
+            }
+
+            const inputPromotor = document.getElementById('promotor').value.trim();
+            const promotorFinal = inputPromotor === '' ? 'VIP NORTE' : inputPromotor;
+
             const payload = {
                 nombreCliente: document.getElementById('nombreCliente').value,
                 telefono: document.getElementById('telefono').value,
                 email: document.getElementById('email').value,
-                fecha: document.getElementById('fecha').value,
+                fecha: fechaSeleccionada,
                 sede: sedeValue,
-                zona: document.getElementById('zona').value,
-                cantidadPersonasInicial: document.getElementById('cantidadPersonasInicial').value,
+                zona: zonaSeleccionada,
+                cantidadPersonasInicial: personasNuevas,
                 motivo: document.getElementById('motivo').value,
                 instagram: document.getElementById('instagram').value,
+                promotor: promotorFinal,
                 nota: document.getElementById('nota').value,
                 precioCover: 30000,
                 estadoAsistencia: 'Reservado',
