@@ -267,7 +267,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ================= GESTIÓN DE CONFIGURACIÓN DEL INDEX =================
-app.get('/api/configuracion-index', async (req, res) => {
+app.get(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
     try {
         let config = await ConfiguracionIndex.findOne({ clave: 'global' });
         if (!config) {
@@ -279,7 +279,33 @@ app.get('/api/configuracion-index', async (req, res) => {
     }
 });
 
-app.put('/api/configuracion-index', async (req, res) => {
+app.put(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
+    try {
+        const updateData = {
+            whatsappLink: req.body.whatsappLink,
+            whatsappNumero: req.body.whatsappNumero,
+            whatsappTexto: req.body.whatsappTexto,
+            whatsappSubititulo: req.body.whatsappSubititulo,
+            tituloConsulta: req.body.tituloConsulta,
+            tituloCreacion: req.body.tituloCreacion,
+            camposConfig: req.body.camposConfig || {},
+            actualizadoEn: Date.now()
+        };
+
+        const configActualizada = await ConfiguracionIndex.findOneAndUpdate(
+            { clave: 'global' }, 
+            updateData, 
+            { new: true, upsert: true }
+        );
+
+        res.json({ success: true, mensaje: 'Configuración actualizada con éxito', config: configActualizada });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al actualizar la configuración' });
+    }
+});
+
+// Alias POST por si el frontend manda POST en lugar de PUT
+app.post(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
     try {
         const updateData = {
             whatsappLink: req.body.whatsappLink,
