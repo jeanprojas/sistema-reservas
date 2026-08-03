@@ -98,6 +98,7 @@ const reservaSchema = new mongoose.Schema({
     estadoAsistencia: { type: String, default: 'Reservado' },
     usuarioCreador: String,
     nocheOperativa: String,
+    promotor: { type: String, default: 'VIP NORTE' }, // <-- AGREGA ESTA LÍNEA
     creadoEn: { type: Date, default: Date.now }
 });
 
