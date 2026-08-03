@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Reservas - VIP Norte</title>
+    <title id="tituloPagina">Sistema de Reservas - VIP Norte</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +20,7 @@
             flex-direction: column;
         }
 
-        /* Barra Superior de WhatsApp */
+        /* Barra Superior de WhatsApp Dinámica */
         .whatsapp-top-banner {
             background-color: #25d366;
             color: #ffffff;
@@ -68,7 +68,7 @@
             opacity: 0.9;
         }
 
-        /* Contenedor Principal Ajustado */
+        /* Contenedor Principal */
         .main-container {
             max-width: 1150px;
             margin: 30px auto;
@@ -136,7 +136,6 @@
             min-height: 70px;
         }
 
-        /* Estilo destacado para la primera línea: Seleccionar Discoteca */
         .destacado-discoteca {
             border: 2px solid #fb923c !important;
             background-color: #1f1b18 !important;
@@ -144,7 +143,6 @@
             font-weight: bold;
         }
 
-        /* Estructura de dos columnas internas para el formulario de crear reserva */
         .form-grid-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -200,17 +198,17 @@
         }
     </style>
 </head>
-<body>
+<body onload="cargarConfiguracionPagina()">
 
-    <!-- BARRA SUPERIOR WHATSAPP -->
+    <!-- BARRA SUPERIOR WHATSAPP DINÁMICA -->
     <div class="whatsapp-top-banner">
-        <a href="https://wa.link/vt0a26" target="_blank" rel="noopener noreferrer">
+        <a id="whatsappLink" href="https://wa.link/vt0a26" target="_blank" rel="noopener noreferrer">
             <svg class="whatsapp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
             </svg>
             <div class="whatsapp-banner-text">
-                <span class="whatsapp-title">Comunícate al número de WhatsApp: 3166995293</span>
-                <span class="whatsapp-subtitle">Para una atención más inmediata.</span>
+                <span id="whatsappTitleText" class="whatsapp-title">Comunícate al número de WhatsApp: 3166995293</span>
+                <span id="whatsappSubtitleText" class="whatsapp-subtitle">Para una atención más inmediata.</span>
             </div>
         </a>
     </div>
@@ -229,9 +227,7 @@
             </div>
             <div>
                 <button class="btn-primary" onclick="consultarReserva()">Buscar Reserva</button>
-                <div id="resultadoConsulta" class="resultado-consulta">
-                    <!-- Aquí se cargan los datos de la reserva encontrada -->
-                </div>
+                <div id="resultadoConsulta" class="resultado-consulta"></div>
             </div>
         </div>
 
@@ -240,7 +236,6 @@
             <h2>Crear Nueva Reserva</h2>
             <form id="formReserva" onsubmit="crearReserva(event)">
                 
-                <!-- 1. SELECCIONAR DISCOTECA (Sin opción por defecto y obligatorio) -->
                 <div class="form-group">
                     <label for="sede" style="color: #fb923c; font-weight: bold;">📍 Seleccionar Discoteca: *</label>
                     <select id="sede" class="destacado-discoteca" required>
@@ -251,37 +246,33 @@
                     </select>
                 </div>
 
-                <!-- CONTENEDOR EN DOS COLUMNAS -->
                 <div class="form-grid-columns">
-                    
-                    <!-- COLUMNA IZQUIERDA DEL FORMULARIO -->
                     <div>
                         <div class="form-group">
-                            <label for="nombreCliente">Nombre: *</label>
+                            <label for="nombreCliente" id="labelNombre">Nombre: *</label>
                             <input type="text" id="nombreCliente" required placeholder="Tu nombre">
                         </div>
                         <div class="form-group">
-                            <label for="telefono">Celular/WPP: *</label>
+                            <label for="telefono" id="labelTelefono">Celular/WPP: *</label>
                             <input type="tel" id="telefono" required placeholder="Tu número de WhatsApp">
                         </div>
                         <div class="form-group">
-                            <label for="email">Correo Electrónico:</label>
+                            <label for="email" id="labelEmail">Correo Electrónico:</label>
                             <input type="email" id="email" placeholder="correo@ejemplo.com">
                         </div>
                         <div class="form-group">
-                            <label for="cantidadPersonasInicial">Cantidad de Personas: *</label>
+                            <label for="cantidadPersonasInicial" id="labelPersonas">Cantidad de Personas: *</label>
                             <input type="number" id="cantidadPersonasInicial" min="1" value="1" required>
                         </div>
                         <div class="form-group">
-                            <label for="fecha">Fecha de Visita: *</label>
+                            <label for="fecha" id="labelFecha">Fecha de Visita: *</label>
                             <input type="date" id="fecha" required>
                         </div>
                     </div>
 
-                    <!-- COLUMNA DERECHA DEL FORMULARIO -->
                     <div>
                         <div class="form-group">
-                            <label for="motivo">Motivo: *</label>
+                            <label for="motivo" id="labelMotivo">Motivo: *</label>
                             <select id="motivo" required>
                                 <option value="" disabled selected>Selecciona un motivo</option>
                                 <option value="Cumpleaños">Cumpleaños</option>
@@ -291,11 +282,11 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="instagram">Perfil Instagram:</label>
+                            <label for="instagram" id="labelInstagram">Perfil Instagram:</label>
                             <input type="text" id="instagram" placeholder="@tu_instagram">
                         </div>
                         <div class="form-group">
-                            <label for="zona">Zona: *</label>
+                            <label for="zona" id="labelZona">Zona: *</label>
                             <select id="zona" required onchange="verificarZona(this)">
                                 <option value="General">General</option>
                                 <option value="VIP">VIP</option>
@@ -304,18 +295,16 @@
                             <span id="avisoZona" class="helper-text" style="display: none;">* En VIP y Palco hay consumo mínimo.</span>
                         </div>
                         <div class="form-group">
-                            <label for="promotor">PROMOTOR (# de Cédula):</label>
+                            <label for="promotor" id="labelPromotor">PROMOTOR (# de Cédula):</label>
                             <input type="text" id="promotor" placeholder="Cédula del promotor (opcional)">
                         </div>
                         <div class="form-group">
-                            <label for="nota">Nota o Comentario:</label>
+                            <label for="nota" id="labelNota">Nota o Comentario:</label>
                             <textarea id="nota" placeholder="Déjanos cualquier detalle adicional..."></textarea>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- BOTÓN DE CONFIRMACIÓN A LO ANCHO -->
                 <button type="submit" class="btn-primary">Confirmar Reserva</button>
             </form>
         </div>
@@ -326,7 +315,57 @@
     </footer>
 
     <script>
-        // Mostrar aviso de consumo mínimo si selecciona VIP o Palco
+        // Cargar configuración dinámica desde el servidor al iniciar la página
+        async function cargarConfiguracionPagina() {
+            try {
+                const response = await fetch('/api/configuracion');
+                if (response.ok) {
+                    const config = await response.json();
+                    
+                    // Ajustar barra superior de WhatsApp dinámicamente si existe configuración
+                    if (config.whatsappLink) {
+                        document.getElementById('whatsappLink').href = config.whatsappLink;
+                    }
+                    if (config.whatsappTitle) {
+                        document.getElementById('whatsappTitleText').innerText = config.whatsappTitle;
+                    }
+                    if (config.whatsappSubtitle) {
+                        document.getElementById('whatsappSubtitleText').innerText = config.whatsappSubtitle;
+                    }
+
+                    // Ajustar reglas de campos obligatorios u opcionales según defina el admin
+                    if (config.camposFormulario) {
+                        aplicarReglasCampos(config.camposFormulario);
+                    }
+                }
+            } catch (error) {
+                console.error("No se pudo cargar la configuración personalizada, usando valores por defecto:", error);
+            }
+        }
+
+        // Ajustar dinámicamente si los campos son obligatorios u opcionales
+        function aplicarReglasCampos(reglas) {
+            // Ejemplo de reglas: { email: { requerido: true }, instagram: { requerido: false }, ... }
+            for [campo, configCampo] of Object.entries(reglas) {
+                const elementoInput = document.getElementById(campo);
+                const elementoLabel = document.getElementById('label' + campo.charAt(0).toUpperCase() + campo.slice(1));
+                
+                if (elementoInput) {
+                    if (configCampo.requerido) {
+                        elementoInput.setAttribute('required', 'required');
+                        if (elementoLabel && !elementoLabel.innerText.includes('*')) {
+                            elementoLabel.innerText += ' *';
+                        }
+                    } else {
+                        elementoInput.removeAttribute('required');
+                        if (elementoLabel) {
+                            elementoLabel.innerText = elementoLabel.innerText.replace(' *', '');
+                        }
+                    }
+                }
+            }
+        }
+
         function verificarZona(selectObj) {
             const aviso = document.getElementById('avisoZona');
             if (selectObj.value === 'VIP' || selectObj.value === 'Palco') {
@@ -396,25 +435,18 @@
             const personasNuevas = parseInt(document.getElementById('cantidadPersonasInicial').value) || 1;
 
             try {
-                // Consultar reservas existentes para validar aforos y capacidades
                 const respuesta = await fetch('/api/reservas');
                 const reservas = await respuesta.json();
-
-                // Filtrar reservas activas para la misma fecha y misma sede
                 const reservasMismoDiaSede = reservas.filter(r => r.fecha === fechaSeleccionada && (r.sede || 'Salvaje') === sedeValue && r.estadoAsistencia !== 'Cancelado');
 
-                // Supuestos de aforo máximo por discoteca y zona (ajustables según la lógica del negocio)
-                const CAPACIDAD_MAXIMA_ZONA = 50; // Ejemplo de aforo máximo por zona individual
-                const CAPACIDAD_MAXIMA_DISCOTECA = 150; // Ejemplo de aforo total de la discoteca
+                const CAPACIDAD_MAXIMA_ZONA = 50;
+                const CAPACIDAD_MAXIMA_DISCOTECA = 150;
 
-                // Calcular aforo actual de la zona específica
                 const personasEnZona = reservasMismoDiaSede
                     .filter(r => r.zona === zonaSeleccionada)
                     .reduce((acc, r) => acc + (parseInt(r.cantidadPersonasInicial) || 0), 0);
 
-                // Validar si la zona ya está llena o supera su aforo
                 if (personasEnZona + personasNuevas > CAPACIDAD_MAXIMA_ZONA) {
-                    // Buscar otra zona disponible en la misma discoteca
                     const zonasDisponibles = ['General', 'VIP', 'Palco'].filter(z => z !== zonaSeleccionada);
                     let zonaSugerida = zonasDisponibles[0];
                     
@@ -432,20 +464,16 @@
                     return;
                 }
 
-                // Calcular aforo total de la discoteca
                 const personasTotalDiscoteca = reservasMismoDiaSede
                     .reduce((acc, r) => acc + (parseInt(r.cantidadPersonasInicial) || 0), 0);
 
-                // Validar si la discoteca está llena (100%) o cerca del 90%
                 if (personasTotalDiscoteca + personasNuevas >= CAPACIDAD_MAXIMA_DISCOTECA * 0.9) {
                     const discotecasAlternativas = ['Salvaje', 'Soho', '220 Voltios'].filter(d => d !== sedeValue);
                     alert(`La discoteca ${sedeValue} se encuentra al 90% o más de su aforo para la fecha ${fechaSeleccionada}. Te sugerimos realizar tu reserva en otra de nuestras discotecas: ${discotecasAlternativas.join(' o ')}.`);
                     return;
                 }
-
             } catch (error) {
                 console.error("Error al validar aforo:", error);
-                // Si falla la consulta de aforo por red, permitimos continuar o manejamos el error con cautela
             }
 
             const inputPromotor = document.getElementById('promotor').value.trim();
