@@ -314,28 +314,29 @@
         <p>&copy; 2026 VIP Norte - Sistema de Gestión y Reservas</p>
     </footer>
 
-    <script>
+   <script>
         // Cargar configuración dinámica desde el servidor al iniciar la página
         async function cargarConfiguracionPagina() {
             try {
-                const response = await fetch('/api/configuracion');
+                const response = await fetch('/api/configuracion-index');
                 if (response.ok) {
-                    const config = await response.json();
+                    const data = await response.json();
+                    const config = data.config || data;
                     
                     // Ajustar barra superior de WhatsApp dinámicamente si existe configuración
                     if (config.whatsappLink) {
                         document.getElementById('whatsappLink').href = config.whatsappLink;
                     }
-                    if (config.whatsappTitle) {
-                        document.getElementById('whatsappTitleText').innerText = config.whatsappTitle;
+                    if (config.whatsappNumero) {
+                        document.getElementById('whatsappTitleText').innerText = `Comunícate al número de WhatsApp: ${config.whatsappNumero}`;
                     }
-                    if (config.whatsappSubtitle) {
-                        document.getElementById('whatsappSubtitleText').innerText = config.whatsappSubtitle;
+                    if (config.whatsappSubititulo) {
+                        document.getElementById('whatsappSubtitleText').innerText = config.whatsappSubititulo;
                     }
 
                     // Ajustar reglas de campos obligatorios u opcionales según defina el admin
-                    if (config.camposFormulario) {
-                        aplicarReglasCampos(config.camposFormulario);
+                    if (config.camposConfig) {
+                        aplicarReglasCampos(config.camposConfig);
                     }
                 }
             } catch (error) {
@@ -345,8 +346,7 @@
 
         // Ajustar dinámicamente si los campos son obligatorios u opcionales
         function aplicarReglasCampos(reglas) {
-            // Ejemplo de reglas: { email: { requerido: true }, instagram: { requerido: false }, ... }
-            for [campo, configCampo] of Object.entries(reglas) {
+            for (let [campo, configCampo] of Object.entries(reglas)) {
                 const elementoInput = document.getElementById(campo);
                 const elementoLabel = document.getElementById('label' + campo.charAt(0).toUpperCase() + campo.slice(1));
                 
