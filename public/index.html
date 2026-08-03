@@ -323,13 +323,15 @@
                     const data = await response.json();
                     const config = data.config || data;
                     
-                    // Ajustar barra superior de WhatsApp dinámicamente si existe configuración
+                    // Ajustar enlace de WhatsApp
                     if (config.whatsappLink) {
                         document.getElementById('whatsappLink').href = config.whatsappLink;
                     }
+                    // Ajustar número / título principal (mapeado correctamente a whatsappNumero)
                     if (config.whatsappNumero) {
                         document.getElementById('whatsappTitleText').innerText = `Comunícate al número de WhatsApp: ${config.whatsappNumero}`;
                     }
+                    // Ajustar subtítulo (mapeado correctamente a whatsappSubititulo)
                     if (config.whatsappSubititulo) {
                         document.getElementById('whatsappSubtitleText').innerText = config.whatsappSubititulo;
                     }
