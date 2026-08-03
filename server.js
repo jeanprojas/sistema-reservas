@@ -109,8 +109,27 @@ const usuarioSchema = new mongoose.Schema({
     sede: String
 });
 
+// Nuevo Esquema para Configuración Dinámica del Index
+const configuracionSchema = new mongoose.Schema({
+    clave: { type: String, unique: true, required: true, default: 'global' },
+    whatsappLink: { type: String, default: 'https://wa.link/vt0a26' },
+    whatsappNumero: { type: String, default: '3166995293' },
+    whatsappTexto: { type: String, default: 'Comunícate al número de WhatsApp: 3166995293' },
+    whatsappSubititulo: { type: String, default: 'Para una atención más inmediata.' },
+    tituloConsulta: { type: String, default: 'Consultar Mi Reserva' },
+    tituloCreacion: { type: String, default: 'Crear Nueva Reserva' },
+    camposConfig: {
+        emailRequerido: { type: Boolean, default: false },
+        instagramRequerido: { type: Boolean, default: false },
+        notaRequerida: { type: Boolean, default: false },
+        promotorRequerido: { type: Boolean, default: false }
+    },
+    actualizadoEn: { type: Date, default: Date.now }
+});
+
 const Reserva = mongoose.model('Reserva', reservaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
+const ConfiguracionIndex = mongoose.model('ConfiguracionIndex', configuracionSchema);
 
 // Inicializar usuario Administrador por defecto si no existe
 async function inicializarAdmin() {
@@ -126,8 +145,29 @@ async function inicializarAdmin() {
             });
             console.log('Usuario administrador inicial creado en la base de datos.');
         }
+
+        // Inicializar configuración por defecto del Index si no existe
+        const configExiste = await ConfiguracionIndex.findOne({ clave: 'global' });
+        if (!configExiste) {
+            await ConfiguracionIndex.create({
+                clave: 'global',
+                whatsappLink: 'https://wa.link/vt0a26',
+                whatsappNumero: '3166995293',
+                whatsappTexto: 'Comunícate al número de WhatsApp: 3166995293',
+                whatsappSubititulo: 'Para una atención más inmediata.',
+                tituloConsulta: 'Consultar Mi Reserva',
+                tituloCreacion: 'Crear Nueva Reserva',
+                camposConfig: {
+                    emailRequerido: false,
+                    instagramRequerido: false,
+                    notaRequerida: false,
+                    promotorRequerido: false
+                }
+            });
+            console.log('Configuración global del Index inicializada en la base de datos.');
+        }
     } catch (e) {
-        console.error('Error al inicializar admin:', e);
+        console.error('Error al inicializar admin o configuraciones:', e);
     }
 }
 inicializarAdmin();
@@ -220,6 +260,44 @@ app.post('/api/login', async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error en el servidor' });
+    }
+});
+
+// ================= GESTIÓN DE CONFIGURACIÓN DEL INDEX =================
+app.get('/api/configuracion-index', async (req, res) => {
+    try {
+        let config = await ConfiguracionIndex.findOne({ clave: 'global' });
+        if (!config) {
+            config = await ConfiguracionIndex.create({ clave: 'global' });
+        }
+        res.json({ success: true, config });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al obtener la configuración' });
+    }
+});
+
+app.put('/api/configuracion-index', async (req, res) => {
+    try {
+        const updateData = {
+            whatsappLink: req.body.whatsappLink,
+            whatsappNumero: req.body.whatsappNumero,
+            whatsappTexto: req.body.whatsappTexto,
+            whatsappSubititulo: req.body.whatsappSubititulo,
+            tituloConsulta: req.body.tituloConsulta,
+            tituloCreacion: req.body.tituloCreacion,
+            camposConfig: req.body.camposConfig || {},
+            actualizadoEn: Date.now()
+        };
+
+        const configActualizada = await ConfiguracionIndex.findOneAndUpdate(
+            { clave: 'global' }, 
+            updateData, 
+            { new: true, upsert: true }
+        );
+
+        res.json({ success: true, mensaje: 'Configuración actualizada con éxito', config: configActualizada });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al actualizar la configuración' });
     }
 });
 
