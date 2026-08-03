@@ -37,6 +37,7 @@ async function migrarDatosLocales() {
                 if (reservasLocales.length > 0) {
                     for (let r of reservasLocales) {
                         const motivoUnificado = r.motivo || r.motivoReserva || r.motivo_reserva || 'General';
+                        const promotorMigrado = r.promotor ? r.promotor.trim() : 'VIP NORTE';
                         await Reserva.updateOne(
                             { id: r.id },
                             { $set: {
@@ -59,7 +60,8 @@ async function migrarDatosLocales() {
                                 cortesiasQR: r.cortesiasQR || null,
                                 estadoAsistencia: r.estadoAsistencia || 'Reservado',
                                 usuarioCreador: r.usuarioCreador || 'Migración',
-                                nocheOperativa: r.fecha || new Date().toISOString().split('T')[0]
+                                nocheOperativa: r.fecha || new Date().toISOString().split('T')[0],
+                                promotor: promotorMigrado
                             }},
                             { upsert: true }
                         );
@@ -98,7 +100,7 @@ const reservaSchema = new mongoose.Schema({
     estadoAsistencia: { type: String, default: 'Reservado' },
     usuarioCreador: String,
     nocheOperativa: String,
-    promotor: { type: String, default: 'VIP NORTE' }, // <-- AGREGA ESTA LÍNEA
+    promotor: { type: String, default: 'VIP NORTE' }, //[cite: 8] Actualizado Esquema de Reservas
     creadoEn: { type: Date, default: Date.now }
 });
 
@@ -392,6 +394,7 @@ app.post('/api/reservas', async (req, res) => {
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
+        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE'; //[cite: 8] Capturar Promotor en Creación Pública
 
         const nuevaReserva = new Reserva({
             id: 'RES-' + Date.now().toString().slice(-6),
@@ -413,7 +416,8 @@ app.post('/api/reservas', async (req, res) => {
             cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
             estadoAsistencia: 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Web Pública',
-            nocheOperativa: obtenerNocheOperativa(fechaReserva)
+            nocheOperativa: obtenerNocheOperativa(fechaReserva),
+            promotor: promotorSeleccionado //[cite: 8] Guardar Promotor
         });
 
         await nuevaReserva.save();
@@ -453,6 +457,7 @@ app.post('/api/admin/reservas', async (req, res) => {
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
+        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE'; //[cite: 8] Capturar Promotor en Creación Admin
 
         const nuevaReserva = new Reserva({
             id: 'RES-' + Date.now().toString().slice(-6),
@@ -473,7 +478,8 @@ app.post('/api/admin/reservas', async (req, res) => {
             precioCover: Number(req.body.precioCover) || 30000,
             estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Administrador',
-            nocheOperativa: obtenerNocheOperativa(fechaReserva)
+            nocheOperativa: obtenerNocheOperativa(fechaReserva),
+            promotor: promotorSeleccionado //[cite: 8] Guardar Promotor
         });
 
         await nuevaReserva.save();
@@ -554,6 +560,7 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
         if (req.body.cortesias !== undefined) updateData.cortesias = Number(req.body.cortesias);
         if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
         if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
+        if (req.body.promotor !== undefined) updateData.promotor = req.body.promotor.trim() || 'VIP NORTE'; //[cite: 8] Actualizar Promotor en Detalle
         
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
         if (motivoSeleccionado !== undefined) updateData.motivoReserva = motivoSeleccionado;
@@ -602,6 +609,7 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
         if (req.body.zona) updateData.zona = req.body.zona;
         if (req.body.mesa) updateData.mesa = req.body.mesa;
         if (req.body.mesaAsignada) updateData.mesaAsignada = req.body.mesaAsignada;
+        if (req.body.promotor !== undefined) updateData.promotor = req.body.promotor.trim() || 'VIP NORTE'; //[cite: 8] Actualizar Promotor en Edición Admin
 
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
         if (motivoSeleccionado) updateData.motivoReserva = motivoSeleccionado;
@@ -712,6 +720,7 @@ app.post('/api/sincronizar-externo', async (req, res) => {
         }
 
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
+        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE'; //[cite: 8] Capturar Promotor en Sincronización Externa
 
         const nuevaReserva = new Reserva({
             id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
@@ -727,7 +736,8 @@ app.post('/api/sincronizar-externo', async (req, res) => {
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             estadoAsistencia: 'Reservado',
             nocheOperativa: fechaReserva,
-            usuarioCreador: 'Google Sheets'
+            usuarioCreador: 'Google Sheets',
+            promotor: promotorSeleccionado //[cite: 8] Guardar Promotor
         });
         
         await nuevaReserva.save();
