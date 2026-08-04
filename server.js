@@ -177,7 +177,7 @@ inicializarAdmin();
 
 // ================= VALIDACIÓN DE DISPONIBILIDAD DE MESA =================
 async function verificarDisponibilidadMesa(nuevaSede, nuevaFecha, nuevaMesa, idActualExcluir = null) {
-    if (!nuevaMesa || nuevaMesa === 'Sin Asignar' || nuevaMesa === 'Mesa Asignar') {
+    if (!nuevaMesa || nuevaMesa === 'Sin Asignar' || nuevaMesa === 'Mesa Asignar' || nuevaMesa === 'Asignar') {
         return true; 
     }
 
@@ -267,19 +267,19 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ================= GESTIÓN DE CONFIGURACIÓN DEL INDEX =================
-app.get(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
+app.get(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
         let config = await ConfiguracionIndex.findOne({ clave: 'global' });
         if (!config) {
             config = await ConfiguracionIndex.create({ clave: 'global' });
         }
-        res.json({ success: true, config });
+        res.json({ success: true, config, ...config._doc });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener la configuración' });
     }
 });
 
-app.put(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
+app.put(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
         const updateData = {
             whatsappLink: req.body.whatsappLink,
@@ -304,7 +304,7 @@ app.put(['/api/configuracion-index', '/api/admin/configuracion'], async (req, re
     }
 });
 
-app.post(['/api/configuracion-index', '/api/admin/configuracion'], async (req, res) => {
+app.post(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
         const updateData = {
             whatsappLink: req.body.whatsappLink,
@@ -323,16 +323,16 @@ app.post(['/api/configuracion-index', '/api/admin/configuracion'], async (req, r
             { new: true, upsert: true }
         );
 
-        res.json({ success: true, mensaje: 'Configuración actualizada con éxito', config: configActualizada });
+        res.json({ success: true, mensaje: 'Configuración guardada exitosamente', config: configActualizada });
     } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al actualizar la configuración' });
+        res.status(500).json({ success: false, mensaje: 'Error al guardar la configuración' });
     }
 });
 
-// ================= GESTIÓN DE USUARIOS (CRUD) =================
+// ================= GESTIÓN DE USUARIOS =================
 app.get('/api/usuarios', async (req, res) => {
     try {
-        const usuarios = await Usuario.find({});
+        const usuarios = await Usuario.find({}, { password: 0 });
         res.json(usuarios);
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener usuarios' });
@@ -341,21 +341,23 @@ app.get('/api/usuarios', async (req, res) => {
 
 app.post('/api/usuarios', async (req, res) => {
     try {
-        const existeUsername = await Usuario.findOne({ username: req.body.username });
-        if (existeUsername) {
-            return res.status(400).json({ success: false, mensaje: 'El nombre de usuario ya está en uso' });
+        const { username, password, rol, sede } = req.body;
+        
+        const usuarioExiste = await Usuario.findOne({ username });
+        if (usuarioExiste) {
+            return res.status(400).json({ success: false, mensaje: 'El nombre de usuario ya existe' });
         }
 
         const nuevoUsuario = new Usuario({
             id: 'USR-' + Date.now().toString().slice(-6),
-            username: req.body.username,
-            password: req.body.password,
-            rol: req.body.rol, 
-            sede: req.body.sede || 'Salvaje'
+            username,
+            password,
+            rol: rol || 'Staff',
+            sede: sede || 'TODAS'
         });
 
         await nuevoUsuario.save();
-        res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito' });
+        res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito', usuario: nuevoUsuario });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al crear usuario' });
     }
@@ -385,7 +387,7 @@ app.delete('/api/usuarios/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const usuarioAEliminar = await Usuario.findOne({ id });
-        
+
         if (!usuarioAEliminar) {
             return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
         }
@@ -403,6 +405,79 @@ app.delete('/api/usuarios/:id', async (req, res) => {
 
 // ================= RESERVAS =================
 
+// Obtener reservas con filtros
+app.get('/api/reservas', async (req, res) => {
+    try {
+        const { fecha, sede } = req.query;
+        let filtro = {};
+
+        if (fecha) filtro.fecha = fecha;
+        if (sede && sede !== 'TODAS') filtro.sede = sede;
+
+        const reservas = await Reserva.find(filtro).sort({ creadoEn: -1 });
+        res.json(reservas);
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al obtener reservas' });
+    }
+});
+
+// Obtener reservas para administración
+app.get('/api/admin/reservas', async (req, res) => {
+    try {
+        const { fecha, sede } = req.query;
+        let filtro = {};
+
+        if (fecha) filtro.fecha = fecha;
+        if (sede && sede !== 'TODAS') filtro.sede = sede;
+
+        const reservas = await Reserva.find(filtro).sort({ creadoEn: -1 });
+        res.json(reservas);
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al obtener reservas para admin' });
+    }
+});
+
+// Buscar reserva por teléfono o código QR/ID (Público)
+app.get('/api/reservas/buscar', async (req, res) => {
+    try {
+        const { query, sede } = req.query;
+        if (!query) {
+            return res.status(400).json({ success: false, mensaje: 'Debe ingresar un criterio de búsqueda' });
+        }
+
+        let filtro = {
+            $or: [
+                { telefono: { $regex: query, $options: 'i' } },
+                { id: { $regex: query, $options: 'i' } },
+                { codigoQr: query }
+            ]
+        };
+
+        if (sede && sede !== 'TODAS') {
+            filtro.sede = sede;
+        }
+
+        const reservas = await Reserva.find(filtro);
+        res.json(reservas);
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al buscar reservas' });
+    }
+});
+
+// Obtener reserva por ID específico
+app.get('/api/reservas/:id', async (req, res) => {
+    try {
+        const reserva = await Reserva.findOne({ id: req.params.id });
+        if (!reserva) {
+            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+        res.json(reserva);
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al consultar la reserva' });
+    }
+});
+
+// Crear nueva reserva pública
 app.post('/api/reservas', async (req, res) => {
     try {
         const sedeReserva = req.body.sede || 'Salvaje';
@@ -411,25 +486,26 @@ app.post('/api/reservas', async (req, res) => {
 
         const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
         if (!mesaLibre) {
-            return res.status(400).json({ 
-                success: false, 
-                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
+            return res.status(400).json({
+                success: false,
+                mensaje: `La Mesa #${mesaReserva} ya se encuentra ocupada para la sede ${sedeReserva} en la fecha ${fechaReserva}.`
             });
         }
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const idGenerado = 'RES-' + Date.now().toString().slice(-6);
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
         const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
 
         const nuevaReserva = new Reserva({
-            id: 'RES-' + Date.now().toString().slice(-6),
+            id: idGenerado,
             codigoQr: codigoQrPin,
             nombreCliente: req.body.nombreCliente,
             telefono: req.body.telefono,
-            email: req.body.email || '', 
+            email: req.body.email || '',
             fecha: fechaReserva,
             sede: sedeReserva,
-            zona: req.body.zona,
+            zona: req.body.zona || 'General',
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: motivoSeleccionado,
@@ -438,10 +514,9 @@ app.post('/api/reservas', async (req, res) => {
             cortesias: 0,
             pagaronCover: 0,
             precioCover: Number(req.body.precioCover) || 30000,
-            cortesiasQR: req.body.cumpleanos ? `QR-CORTESIA-${Math.random().toString(36).substring(7).toUpperCase()}` : null,
             estadoAsistencia: 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Web Pública',
-            nocheOperativa: obtenerNocheOperativa(fechaReserva),
+            nocheOperativa: fechaReserva,
             promotor: promotorSeleccionado
         });
 
@@ -466,6 +541,7 @@ app.post('/api/reservas', async (req, res) => {
     }
 });
 
+// Crear reserva desde panel Admin / Staff
 app.post('/api/admin/reservas', async (req, res) => {
     try {
         const sedeReserva = req.body.sede || 'Salvaje';
@@ -474,9 +550,9 @@ app.post('/api/admin/reservas', async (req, res) => {
 
         const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
         if (!mesaLibre) {
-            return res.status(400).json({ 
-                success: false, 
-                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
+            return res.status(400).json({
+                success: false,
+                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.`
             });
         }
 
@@ -485,14 +561,14 @@ app.post('/api/admin/reservas', async (req, res) => {
         const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
 
         const nuevaReserva = new Reserva({
-            id: 'RES-' + Date.now().toString().slice(-6),
+            id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
             codigoQr: codigoQrPin,
             nombreCliente: req.body.nombreCliente,
             telefono: req.body.telefono,
-            email: req.body.email || '', 
+            email: req.body.email || '',
             fecha: fechaReserva,
             sede: sedeReserva,
-            zona: req.body.zona,
+            zona: req.body.zona || 'General',
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: motivoSeleccionado,
@@ -503,7 +579,7 @@ app.post('/api/admin/reservas', async (req, res) => {
             precioCover: Number(req.body.precioCover) || 30000,
             estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
             usuarioCreador: req.body.usuarioCreador || 'Administrador',
-            nocheOperativa: obtenerNocheOperativa(fechaReserva),
+            nocheOperativa: fechaReserva,
             promotor: promotorSeleccionado
         });
 
@@ -522,42 +598,58 @@ app.post('/api/admin/reservas', async (req, res) => {
             );
         }
 
-        res.status(201).json({ success: true, mensaje: 'Reserva creada por Admin', reserva: nuevaReserva });
+        res.status(201).json({ success: true, mensaje: 'Reserva administrativa creada con éxito', reserva: nuevaReserva });
     } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al crear reserva por admin' });
+        res.status(500).json({ success: false, mensaje: 'Error al registrar la reserva administrativa' });
     }
 });
 
-app.get('/api/reservas', async (req, res) => {
+// Sincronización desde Google Sheets / Webhook
+app.post('/api/sincronizar-sheets', async (req, res) => {
     try {
-        const reservas = await Reserva.find({});
-        res.json(reservas);
+        const fechaReserva = req.body.fecha || new Date().toISOString().split('T')[0];
+        const sedeReserva = req.body.sede || 'NORTE';
+        const mesaReserva = req.body.mesa || 'Asignar';
+        const motivoSeleccionado = req.body.motivo_reserva || req.body.motivoReserva || 'General';
+        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
+
+        const nuevaReserva = new Reserva({
+            id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
+            codigoQr: Math.floor(1000 + Math.random() * 9000).toString(),
+            nombreCliente: req.body.nombreCliente || 'Sin Nombre',
+            telefono: req.body.telefono || '',
+            email: req.body.email || '',
+            fecha: fechaReserva,
+            sede: sedeReserva,
+            zona: req.body.zona || 'General',
+            mesa: mesaReserva,
+            mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
+            motivoReserva: motivoSeleccionado,
+            cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+            estadoAsistencia: 'Reservado',
+            nocheOperativa: fechaReserva,
+            usuarioCreador: 'Google Sheets',
+            promotor: promotorSeleccionado
+        });
+
+        await nuevaReserva.save();
+        console.log('✅ Nueva reserva sincronizada desde Google Sheets:', nuevaReserva.nombreCliente);
+        res.json({ success: true, mensaje: 'Reserva sincronizada exitosamente' });
     } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al obtener reservas' });
+        console.error('❌ Error al sincronizar desde Sheets:', e);
+        res.status(500).json({ success: false, mensaje: 'Error al sincronizar desde Sheets' });
     }
 });
 
-app.get('/api/reservas/:id', async (req, res) => {
+// Reenviar correo de confirmación
+app.post('/api/reservas/:id/reenviar-correo', async (req, res) => {
     try {
         const reserva = await Reserva.findOne({ id: req.params.id });
         if (!reserva) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
         }
-        res.json({ success: true, reserva });
-    } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al buscar reserva' });
-    }
-});
-
-app.post('/api/reservas/:id/enviar-correo', async (req, res) => {
-    try {
-        const reserva = await Reserva.findOne({ id: req.params.id });
-        if (!reserva) {
-            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
-        }
-
         if (!reserva.email) {
-            return res.status(400).json({ success: false, mensaje: 'El cliente no tiene un correo registrado en esta reserva' });
+            return res.status(400).json({ success: false, mensaje: 'La reserva no tiene un correo registrado' });
         }
 
         const resultado = await enviarCorreoReserva(
@@ -577,6 +669,7 @@ app.post('/api/reservas/:id/enviar-correo', async (req, res) => {
     }
 });
 
+// Actualizar detalle parcial de reserva (Staff)
 app.put('/api/reservas/:id/detalle', async (req, res) => {
     try {
         const updateData = {};
@@ -586,67 +679,79 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
         if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
         if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
         if (req.body.promotor !== undefined) updateData.promotor = req.body.promotor.trim() || 'VIP NORTE';
-        
+
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
         if (motivoSeleccionado !== undefined) updateData.motivoReserva = motivoSeleccionado;
-
         if (req.body.mesaAsignada !== undefined) updateData.mesaAsignada = req.body.mesaAsignada;
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
         if (!reserva) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
         }
-
         res.json({ success: true, mensaje: 'Detalle actualizado correctamente', reserva });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al actualizar detalle' });
     }
 });
 
+// Actualizar reserva completa (Admin)
 app.put('/api/admin/reservas/:id', async (req, res) => {
     try {
-        const reservaActual = await Reserva.findOne({ id: req.params.id });
-        if (!reservaActual) {
+        const { sede, fecha, mesa } = req.body;
+        if (mesa) {
+            const mesaLibre = await verificarDisponibilidadMesa(sede, fecha, mesa, req.params.id);
+            if (!mesaLibre) {
+                return res.status(400).json({
+                    success: false,
+                    mensaje: `No se puede asignar: La Mesa #${mesa} ya se encuentra reservada para esa sede y fecha.`
+                });
+            }
+        }
+
+        const reservaActualizada = await Reserva.findOneAndUpdate(
+            { id: req.params.id },
+            req.body,
+            { new: true }
+        );
+
+        if (!reservaActualizada) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
         }
 
-        const sedeEvaluar = req.body.sede || reservaActual.sede;
-        const fechaEvaluar = req.body.fecha || reservaActual.fecha;
-        const mesaEvaluar = req.body.mesa || reservaActual.mesa;
-
-        const mesaLibre = await verificarDisponibilidadMesa(sedeEvaluar, fechaEvaluar, mesaEvaluar, req.params.id);
-        if (!mesaLibre) {
-            return res.status(400).json({ 
-                success: false, 
-                mensaje: `Error de inconsistencia: La Mesa #${mesaEvaluar} ya se encuentra reservada para la sede ${sedeEvaluar} en la fecha ${fechaEvaluar}.` 
-            });
-        }
-
-        const updateData = {};
-        if (req.body.nombreCliente) updateData.nombreCliente = req.body.nombreCliente;
-        if (req.body.telefono) updateData.telefono = req.body.telefono;
-        if (req.body.email !== undefined) updateData.email = req.body.email;
-        if (req.body.sede) updateData.sede = req.body.sede;
-        if (req.body.fecha) {
-            updateData.fecha = req.body.fecha;
-            updateData.nocheOperativa = obtenerNocheOperativa(req.body.fecha);
-        }
-        if (req.body.zona) updateData.zona = req.body.zona;
-        if (req.body.mesa) updateData.mesa = req.body.mesa;
-        if (req.body.mesaAsignada) updateData.mesaAsignada = req.body.mesaAsignada;
-        if (req.body.promotor !== undefined) updateData.promotor = req.body.promotor.trim() || 'VIP NORTE';
-
-        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
-        if (motivoSeleccionado) updateData.motivoReserva = motivoSeleccionado;
-
-        const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
-
-        res.json({ success: true, mensaje: 'Reserva actualizada correctamente por Administrador', reserva });
+        res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva: reservaActualizada });
     } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al actualizar reserva' });
+        res.status(500).json({ success: false, mensaje: 'Error al actualizar la reserva' });
     }
 });
 
+// Actualizar estado de asistencia o confirmación de la reserva (Staff/Puerta)
+app.put('/api/reservas/:id/estado', async (req, res) => {
+    try {
+        const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
+        const codigoIngresado = req.body.codigoIngresado;
+
+        const reserva = await Reserva.findOne({ id: req.params.id });
+        if (!reserva) {
+            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+
+        if (codigoIngresado && reserva.codigoQr && codigoIngresado !== reserva.codigoQr) {
+            return res.status(400).json({ success: false, mensaje: 'El código PIN/QR no coincide' });
+        }
+
+        reserva.estadoAsistencia = nuevoEstado || reserva.estadoAsistencia;
+        if (req.body.personasLlegadas !== undefined) {
+            reserva.personasLlegadas = Number(req.body.personasLlegadas);
+        }
+
+        await reserva.save();
+        res.json({ success: true, mensaje: 'Estado de reserva actualizado con éxito', reserva });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al actualizar estado de la reserva' });
+    }
+});
+
+// Eliminar reserva por ID
 app.delete('/api/admin/reservas/:id', async (req, res) => {
     try {
         const reserva = await Reserva.findOneAndDelete({ id: req.params.id });
@@ -659,121 +764,27 @@ app.delete('/api/admin/reservas/:id', async (req, res) => {
     }
 });
 
+// Limpiar base de datos (Admin)
 app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
     try {
         const resultadoReservas = await Reserva.deleteMany({});
         await Usuario.deleteMany({ username: { $ne: 'admin' } });
         await inicializarAdmin();
-
-        res.json({ 
-            success: true, 
-            mensaje: `Base de datos limpiada exitosamente. Se eliminaron ${resultadoReservas.deletedCount} reservas.` 
+        res.json({
+            success: true,
+            mensaje: `Base de datos limpiada exitosamente. Se eliminaron ${resultadoReservas.deletedCount} reservas.`
         });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al limpiar la base de datos' });
     }
 });
 
-app.put('/api/reservas/:id/estado', async (req, res) => {
-    try {
-        const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
-        const codigoIngresado = req.body.codigoIngresado;
-
-        const reserva = await Reserva.findOne({ id: req.params.id });
-        if (!reserva) {
-            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
-        }
-
-        const hoyStr = new Date().toISOString().split('T')[0];
-
-        if (nuevoEstado === 'Presente') {
-            if (reserva.fecha > hoyStr) {
-                return res.status(400).json({ success: false, mensaje: 'No es posible cambiar a Presente: la fecha de la reserva es futura.' });
-            }
-            if (!reserva.codigoQr || reserva.codigoQr === 'undefined') {
-                reserva.codigoQr = Math.floor(1000 + Math.random() * 9000).toString();
-            }
-            if (codigoIngresado && codigoIngresado !== reserva.codigoQr) {
-                return res.status(400).json({ success: false, mensaje: 'Código QR / PIN incorrecto.' });
-            }
-        }
-
-        reserva.estadoAsistencia = nuevoEstado;
-        if (nuevoEstado === 'Presente' && (!reserva.personasLlegadas || reserva.personasLlegadas === 0)) {
-            reserva.personasLlegadas = reserva.cantidadPersonasInicial;
-        }
-
-        await reserva.save();
-        res.json({ success: true, mensaje: `Estado actualizado a ${nuevoEstado}`, reserva });
-    } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al actualizar estado' });
-    }
+// ================= RUTAS DE FRONTEND (CATCH ALL) =================
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.post('/api/validar-qr', async (req, res) => {
-    try {
-        const { codigoQR } = req.body;
-        const reserva = await Reserva.findOne({ cortesiasQR: codigoQR });
-
-        if (!reserva) {
-            return res.status(404).json({ valido: false, mensaje: 'Código QR de cortesía inválido o inexistente.' });
-        }
-
-        res.json({ 
-            valido: true, 
-            mensaje: `Cortesía válida para ${reserva.nombreCliente}`, 
-            sede: reserva.sede || 'Salvaje',
-            zona: reserva.zona 
-        });
-    } catch (e) {
-        res.status(500).json({ success: false, mensaje: 'Error al validar QR' });
-    }
-});
-
-app.post('/api/sincronizar-externo', async (req, res) => {
-    try {
-        const sedeReserva = req.body.sede || 'Salvaje';
-        const fechaReserva = req.body.fecha || new Date().toISOString().split('T')[0];
-        const mesaReserva = req.body.mesa;
-
-        const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
-        if (!mesaLibre) {
-            return res.status(400).json({ 
-                success: false, 
-                mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.` 
-            });
-        }
-
-        const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
-        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
-
-        const nuevaReserva = new Reserva({
-            id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
-            nombreCliente: req.body.nombreCliente || 'Sin Nombre',
-            telefono: req.body.telefono || '',
-            email: req.body.email || '',
-            fecha: fechaReserva,
-            sede: sedeReserva,
-            zona: req.body.zona || 'General',
-            mesa: mesaReserva || 'Asignar',
-            mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
-            motivoReserva: motivoSeleccionado,
-            cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
-            estadoAsistencia: 'Reservado',
-            nocheOperativa: fechaReserva,
-            usuarioCreador: 'Google Sheets',
-            promotor: promotorSeleccionado
-        });
-        
-        await nuevaReserva.save();
-        console.log('✅ Nueva reserva sincronizada desde Google Sheets:', nuevaReserva.nombreCliente);
-        res.json({ success: true, mensaje: 'Reserva sincronizada exitosamente' });
-    } catch (e) {
-        console.error('❌ Error al sincronizar desde Sheets:', e);
-        res.status(500).json({ success: false, mensaje: 'Error al procesar la reserva' });
-    }
-});
-
+// ================= INICIALIZACIÓN DEL SERVIDOR =================
 app.listen(PORT, () => {
-    console.log(`Sistema VIP Norte operando en puerto ${PORT}`);
+    console.log(`Servidor iniciado correctamente y escuchando en el puerto ${PORT}`);
 });
