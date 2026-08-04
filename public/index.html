@@ -277,7 +277,7 @@
     <div class="main-container">
 
         <div class="header-section">
-            <h1 id="headerTitulo"> RESERVAS VIP NORTE</h1>
+            <h1 id="headerTitulo">RESERVAS VIP NORTE</h1>
             <p>Reserva tu mesa en línea y asegura tu lugar en la mejor fiesta</p>
         </div>
 
@@ -291,9 +291,13 @@
                 <div class="form-grid">
                     
                     <div class="form-group">
-                        <label for="sede">Sede Discoteca</label>
-                        <select id="sede" class="form-control" onchange="actualizarInfoZona()">
+                        <label for="sede">Sede Discoteca *</label>
+                        <select id="sede" class="form-control" required>
+                            <option value="" disabled selected>Seleccionar discoteca</option>
                             <option value="VIP NORTE">VIP NORTE</option>
+                            <option value="Soho">Soho</option>
+                            <option value="Salvaje">Salvaje</option>
+                            <option value="220 Voltios">220 Voltios</option>
                         </select>
                     </div>
 
@@ -386,7 +390,7 @@
             </div>
 
             <div id="resultadoConsulta" class="resultado-box">
-                </div>
+            </div>
         </div>
 
     </div>
