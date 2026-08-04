@@ -738,6 +738,7 @@
             document.getElementById('mapaFecha').value = new Date().toISOString().split('T')[0];
             cargarAdmin();
             cargarUsuarios();
+            cargarConfiguracion(); // <-- Agregado para que traiga los datos al iniciar
         }
 
         function cerrarSesion() {
@@ -1522,6 +1523,57 @@
             if (confirm('¿Eliminar usuario?')) {
                 await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
                 cargarUsuarios();
+            }
+        }
+        async function cargarConfiguracion() {
+            try {
+                const res = await fetch('/api/configuracion');
+                const config = await res.json();
+                if (config) {
+                    if (document.getElementById('configWhatsapp')) document.getElementById('configWhatsapp').value = config.whatsapp || '';
+                    if (document.getElementById('configPrecioCover')) document.getElementById('configPrecioCover').value = config.precioCover || 30000;
+                    if (document.getElementById('configBannerTexto')) document.getElementById('configBannerTexto').value = config.bannerTexto || '';
+                    if (document.getElementById('configMensajeWhatsapp')) document.getElementById('configMensajeWhatsapp').value = config.mensajeWhatsapp || '';
+                    if (document.getElementById('configSedes')) document.getElementById('configSedes').value = Array.isArray(config.sedes) ? config.sedes.join(', ') : (config.sedes || '');
+                    if (document.getElementById('configZonas')) document.getElementById('configZonas').value = Array.isArray(config.zonas) ? config.zonas.join(', ') : (config.zonas || '');
+                    if (document.getElementById('configMotivos')) document.getElementById('configMotivos').value = Array.isArray(config.motivos) ? config.motivos.join(', ') : (config.motivos || '');
+                    if (document.getElementById('configPromotores')) document.getElementById('configPromotores').value = Array.isArray(config.promotores) ? config.promotores.join(', ') : (config.promotores || '');
+                    if (document.getElementById('configPoliticas')) document.getElementById('configPoliticas').value = config.politicas || '';
+                }
+            } catch (e) {
+                console.error('Error al cargar configuración en admin:', e);
+            }
+        }
+
+        async function guardarConfiguracion(e) {
+            e.preventDefault();
+            const bodyData = {
+                whatsapp: document.getElementById('configWhatsapp').value.trim(),
+                precioCover: Number(document.getElementById('configPrecioCover').value) || 30000,
+                bannerTexto: document.getElementById('configBannerTexto').value.trim(),
+                mensajeWhatsapp: document.getElementById('configMensajeWhatsapp').value.trim(),
+                sedes: document.getElementById('configSedes').value.split(',').map(s => s.trim()).filter(Boolean),
+                zonas: document.getElementById('configZonas').value.split(',').map(z => z.trim()).filter(Boolean),
+                motivos: document.getElementById('configMotivos').value.split(',').map(m => m.trim()).filter(Boolean),
+                promotores: document.getElementById('configPromotores').value.split(',').map(p => p.trim()).filter(Boolean),
+                politicas: document.getElementById('configPoliticas').value.trim()
+            };
+
+            try {
+                const res = await fetch('/api/configuracion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('¡Configuración guardada exitosamente!');
+                } else {
+                    alert('Error al guardar configuración.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error de conexión al guardar configuración.');
             }
         }
     </script>
