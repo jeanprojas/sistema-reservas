@@ -115,9 +115,9 @@ const usuarioSchema = new mongoose.Schema({
 // Esquema para Configuración Dinámica del Index
 const configuracionSchema = new mongoose.Schema({
     clave: { type: String, unique: true, required: true, default: 'global' },
-    whatsappLink: { type: String, default: 'https://wa.link/vt0a26' },
-    whatsappNumero: { type: String, default: '3166995293' },
-    whatsappTexto: { type: String, default: 'Comunícate al número de WhatsApp: 3166995293' },
+    whatsappLink: { type: String, default: 'https://wa.me/573014815281' },
+    whatsappNumero: { type: String, default: '3014815281' },
+    whatsappTexto: { type: String, default: 'Comunícate al número de WhatsApp: 3014815281' },
     whatsappSubititulo: { type: String, default: 'Para una atención más inmediata.' },
     tituloConsulta: { type: String, default: 'Consultar Mi Reserva' },
     tituloCreacion: { type: String, default: 'Crear Nueva Reserva' },
@@ -154,9 +154,9 @@ async function inicializarAdmin() {
         if (!configExiste) {
             await ConfiguracionIndex.create({
                 clave: 'global',
-                whatsappLink: 'https://wa.link/vt0a26',
-                whatsappNumero: '3166995293',
-                whatsappTexto: 'Comunícate al número de WhatsApp: 3166995293',
+                whatsappLink: 'https://wa.me/573014815281',
+                whatsappNumero: '3014815281',
+                whatsappTexto: 'Comunícate al número de WhatsApp: 3014815281',
                 whatsappSubititulo: 'Para una atención más inmediata.',
                 tituloConsulta: 'Consultar Mi Reserva',
                 tituloCreacion: 'Crear Nueva Reserva',
