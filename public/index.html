@@ -292,7 +292,7 @@
                     
                     <div class="form-group">
                         <label for="sede">Sede Discoteca *</label>
-                        <select id="sede" class="form-control" required>
+                        <select id="sede" class="form-control" onchange="actualizarInfoZona()" required>
                             <option value="" disabled selected>Seleccionar discoteca</option>
                             <option value="Soho">Soho</option>
                             <option value="Salvaje">Salvaje</option>
@@ -479,14 +479,28 @@
 
         // Mostrar u ocultar aviso de consumo mínimo en VIP/Palco
         function actualizarInfoZona() {
+            const sede = document.getElementById('sede').value;
             const zona = document.getElementById('zona').value;
             const avisoZona = document.getElementById('avisoZona');
+            const inputPersonas = document.getElementById('cantidadPersonasInicial');
 
-            if (zona === 'VIP' || zona === 'Palco') {
+            if (sede === 'Salvaje' && (zona === 'VIP' || zona === 'Palco')) {
+                avisoZona.style.display = 'block';
+                avisoZona.innerText = `⚠️ Para la sede Salvaje en zona ${zona}, la cantidad de personas debe ser entre 8 y 10 (Mínimo 8, Máximo 10).`;
+                inputPersonas.min = '8';
+                inputPersonas.max = '10';
+                if (Number(inputPersonas.value) < 8) {
+                    inputPersonas.value = '8';
+                }
+            } else if (zona === 'VIP' || zona === 'Palco') {
                 avisoZona.style.display = 'block';
                 avisoZona.innerText = `⚠️ En la zona ${zona} aplica consumo mínimo de bebidas/botellas.`;
+                inputPersonas.min = '1';
+                inputPersonas.max = '50';
             } else {
                 avisoZona.style.display = 'none';
+                inputPersonas.min = '1';
+                inputPersonas.max = '50';
             }
         }
 
@@ -500,6 +514,14 @@
             const personasNuevas = Number(document.getElementById('cantidadPersonasInicial').value) || 1;
             const promotorInput = document.getElementById('promotor').value.trim();
             const promotorFinal = promotorInput !== '' ? promotorInput : 'VIP NORTE';
+
+            // Validar restricción de Salvaje + VIP/Palco
+            if (sedeValue === 'Salvaje' && (zonaSeleccionada === 'VIP' || zonaSeleccionada === 'Palco')) {
+                if (personasNuevas < 8 || personasNuevas > 10) {
+                    alert('⚠️ Para la sede Salvaje en zonas VIP o Palco, la cantidad de personas debe estar estrictamente entre 8 y 10.');
+                    return;
+                }
+            }
 
             const payload = {
                 nombreCliente: document.getElementById('nombreCliente').value.trim(),
