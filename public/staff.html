@@ -55,15 +55,13 @@
             </div>
         </header>
 
-        <!-- ALERTA DE AFOROS (Función 2) -->
-        <div id="alertaAforosContainer" class="mb-6 hidden">
-            <!-- Se llena dinámicamente si hay zonas al 80-90% o más -->
-        </div>
+        <!-- ALERTA DE AFOROS -->
+        <div id="alertaAforosContainer" class="mb-6 hidden"></div>
 
         <!-- VISTA 1: CONTROL DE PUERTA & RESERVAS -->
         <div id="vistaStaffReservas">
             
-            <!-- NUEVO MÓDULO DE CONSULTA RÁPIDA EN PUERTA (Mediano a Grande, amigable) -->
+            <!-- MÓDULO DE CONSULTA RÁPIDA EN PUERTA -->
             <div class="mb-8 bg-gradient-to-br from-gray-900 to-gray-950 p-6 rounded-2xl border-2 border-orange-500/40 shadow-2xl">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
                     <div>
@@ -75,7 +73,6 @@
                     <span id="badgeSedeStaff" class="bg-orange-950 text-orange-300 px-3 py-1 rounded-full text-xs font-bold border border-orange-800"></span>
                 </div>
 
-                <!-- Barra de Búsqueda -->
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <input type="text" id="inputBusquedaPuerta" maxlength="10" placeholder="Ej. 3001234567 o ID de reserva..." 
@@ -144,11 +141,11 @@
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-400 mb-1">Precio Cover ($) [Fijo]:</label>
-                                <input type="number" id="resConsultaPrecio" readonly class="w-full bg-gray-950/50 border border-gray-800 rounded px-3 py-2 text-gray-400 text-sm cursor-not-allowed" title="El staff no puede modificar el precio del cover">
+                                <input type="number" id="resConsultaPrecio" readonly class="w-full bg-gray-950/50 border border-gray-800 rounded px-3 py-2 text-gray-400 text-sm cursor-not-allowed">
                             </div>
                         </div>
 
-                        <!-- SECCIÓN PIN / CÓDIGO QR -->
+                        <!-- SECCIÓN PIN -->
                         <div class="max-w-md mx-auto pt-2 border-t border-gray-800">
                             <label class="block text-xs text-orange-400 mb-1 font-bold text-center">PIN de Ingreso Proporcionado por el Cliente:</label>
                             <input type="text" id="resConsultaPin" placeholder="Ej. 4821" maxlength="6" class="w-full bg-gray-950 border-2 border-orange-800 rounded-lg px-4 py-2.5 text-orange-300 font-mono tracking-widest text-center text-lg focus:outline-none focus:border-orange-500">
@@ -157,7 +154,7 @@
                         <p id="errorValidacionPuerta" class="text-red-400 text-xs text-center font-medium hidden"></p>
 
                         <div class="flex gap-3 pt-2">
-                            <button onclick="guardarAsistenciaPuertaDirecta()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg">
+                            <button id="btnGuardarValidacion" onclick="guardarAsistenciaPuertaDirecta()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg">
                                 ✅ Validar PIN y Registrar Asistencia
                             </button>
                             <button onclick="cerrarModuloConsulta()" class="bg-gray-800 hover:bg-gray-700 px-6 py-3 rounded-xl text-sm font-bold transition">
@@ -246,9 +243,7 @@
                 <h2 class="text-xl font-bold text-orange-400">Visualización de Aforos por Discoteca y Zonas</h2>
                 <p class="text-xs text-gray-400 mt-1">Como miembro del Staff, puedes consultar los aforos máximos configurados (la edición está reservada exclusivamente para administradores).</p>
             </div>
-            <div id="contenedorListaAforosStaff" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Se llena dinámicamente -->
-            </div>
+            <div id="contenedorListaAforosStaff" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
     </div>
 
@@ -259,6 +254,7 @@
             <p id="modalClienteInfo" class="text-xs text-gray-400 mb-4"></p>
             
             <input type="hidden" id="staffReservaId">
+            <input type="hidden" id="staffReservaFechaReal">
             <div class="space-y-3 text-sm">
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Personas Planeadas Inicialmente:</label>
@@ -278,7 +274,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Precio Unitario Cover ($) [Fijo]:</label>
-                    <input type="number" id="staffEditPrecio" readonly class="w-full bg-gray-950/50 border border-gray-800 rounded px-3 py-2 text-gray-400 cursor-not-allowed" title="El staff no puede modificar el precio del cover">
+                    <input type="number" id="staffEditPrecio" readonly class="w-full bg-gray-950/50 border border-gray-800 rounded px-3 py-2 text-gray-400 cursor-not-allowed">
                 </div>
                 <div>
                     <label class="block text-xs text-orange-400 mb-1 font-bold">PIN de Ingreso:</label>
@@ -289,7 +285,7 @@
             <p id="errorModalStaff" class="text-red-400 text-xs mt-3 hidden"></p>
 
             <div class="flex gap-3 mt-6">
-                <button onclick="guardarDetalleStaff()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar y Marcar Presente</button>
+                <button id="btnModalGuardarTabla" onclick="guardarDetalleStaff()" class="flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition">Guardar y Marcar Presente</button>
                 <button onclick="cerrarModalStaff()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
             </div>
         </div>
@@ -336,9 +332,7 @@
                 <input type="date" id="fechaCierreInput" onchange="calcularDatosCierre()" class="bg-gray-950 border border-gray-800 text-white font-medium px-3 py-2 rounded-lg text-sm w-full">
             </div>
 
-            <div id="resultadoCierreContainer" class="space-y-3 text-sm bg-gray-950 p-4 rounded-xl border border-gray-800">
-                <!-- Se llena dinámicamente -->
-            </div>
+            <div id="resultadoCierreContainer" class="space-y-3 text-sm bg-gray-950 p-4 rounded-xl border border-gray-800"></div>
 
             <div class="flex gap-3 mt-6">
                 <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition flex-1">Imprimir Reporte</button>
@@ -350,6 +344,17 @@
     <script>
         let sedeActualStaff = '';
         let filtroStaffModo = 'hoy';
+
+        // Función auxiliar para obtener la noche operativa actual (considerando cierre a las 6:00 a.m. del día siguiente)
+        function obtenerNocheOperativaActual() {
+            const ahora = new Date();
+            // Si son antes de las 6:00 a.m., pertenece a la noche operativa del día anterior
+            if (ahora.getHours() < 6) {
+                let ayer = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+                return `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, '0')}-${String(ayer.getDate()).padStart(2, '0')}`;
+            }
+            return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+        }
 
         async function realizarLoginStaff(e) {
             e.preventDefault();
@@ -533,7 +538,7 @@
         }
 
         /* ====================================================
-           NUEVAS FUNCIONES PARA EL MÓDULO DE CONSULTA EN PUERTA
+           MÓDULO DE CONSULTA EN PUERTA CON BLOQUEO DE FECHA
            ================================================    */
         async function consultarReservaPuerta() {
             const queryInput = document.getElementById('inputBusquedaPuerta').value.trim();
@@ -550,7 +555,6 @@
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            // Buscar por ID exacto o por Teléfono (coincidencia parcial o completa)
             const reservaEncontrada = data.find(r => {
                 const sedeRes = r.sede || 'Salvaje';
                 if (sedeActualStaff !== 'TODAS' && sedeRes !== sedeActualStaff) return false;
@@ -566,26 +570,9 @@
                 return;
             }
 
-            // REGLA 1: Validación de Fecha para registro de PIN valido (permite consulta general, pero restringe registro al mismo día operativo hasta las 4 AM del día siguiente)
             const fechaReserva = reservaEncontrada.fecha || reservaEncontrada.nocheOperativa;
-            
-            // Calcular fecha operativa actual considerando discotecas abiertas hasta las 4 AM
-            const ahora = new Date();
-            let anio = ahora.getFullYear();
-            let mes = String(ahora.getMonth() + 1).padStart(2, '0');
-            let dia = String(ahora.getDate()).padStart(2, '0');
-            let hoyStr = `${anio}-${mes}-${dia}`;
+            const nocheOperativaActual = obtenerNocheOperativaActual();
 
-            // Si son antes de las 6 AM, la noche operativa pertenece al día anterior
-            if (ahora.getHours() < 6) {
-                let ayer = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
-                let aAyer = ayer.getFullYear();
-                let mAyer = String(ayer.getMonth() + 1).padStart(2, '0');
-                let dAyer = String(ayer.getDate()).padStart(2, '0');
-                hoyStr = `${aAyer}-${mAyer}-${dAyer}`;
-            }
-
-            // Llenar datos en el contenedor de validación
             document.getElementById('resConsultaRealId').value = reservaEncontrada.id;
             document.getElementById('resConsultaId').textContent = reservaEncontrada.id;
             document.getElementById('resConsultaCliente').textContent = reservaEncontrada.nombreCliente + ` (${reservaEncontrada.telefono || 'Sin tel'})`;
@@ -607,20 +594,24 @@
             document.getElementById('resConsultaPrecio').value = reservaEncontrada.precioCover || 30000;
             document.getElementById('resConsultaPin').value = '';
 
-            // Calcular distribución inicial de cortesías/pagantes
             calcularDistribucionAsistentes();
 
-            // Advertir si intenta registrar un PIN para una fecha distinta a la actual operativa
             const errValidacion = document.getElementById('errorValidacionPuerta');
-            if (fechaReserva !== hoyStr) {
-                errValidacion.textContent = `⚠️ ATENCIÓN: Esta reserva corresponde a la fecha ${fechaReserva} (Hoy operativo es ${hoyStr}). El sistema permite consultar la reserva, pero el registro de asistencia requiere que sea del mismo día.`;
+            const btnGuardar = document.getElementById('btnGuardarValidacion');
+
+            // REGLA DE BLOQUEO ESTRICTO: Si la fecha de la reserva no corresponde a la noche operativa actual, se bloquea el registro.
+            if (fechaReserva !== nocheOperativaActual) {
+                errValidacion.textContent = `🚫 BLOQUEO DE PUERTA: Esta reserva es para el día ${fechaReserva}. La noche operativa actual es ${nocheOperativaActual}. No se permite registrar asistencia fuera de la fecha correspondiente.`;
                 errValidacion.classList.remove('hidden');
+                btnGuardar.disabled = true;
+                btnGuardar.className = 'flex-1 bg-gray-700 text-gray-400 font-bold py-3 rounded-xl cursor-not-allowed text-sm shadow-lg';
             } else {
                 errValidacion.classList.add('hidden');
+                btnGuardar.disabled = false;
+                btnGuardar.className = 'flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg';
             }
 
             document.getElementById('resultadoConsultaContainer').classList.remove('hidden');
-            // Hacer scroll suave hacia el resultado
             document.getElementById('resultadoConsultaContainer').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -628,7 +619,6 @@
             const planInicial = Number(document.getElementById('resConsultaInicial').value) || 1;
             const llegadas = Number(document.getElementById('resConsultaLlegadas').value) || 0;
             
-            // REGLA 3: No permitir ingresos gratis después de las 10:30 pm (o según hora actual)
             const horaActual = new Date();
             const minutosActuales = horaActual.getHours() * 60 + horaActual.getMinutes();
             const limiteMinutosGratis = 22 * 60 + 30; // 10:30 PM
@@ -636,15 +626,12 @@
             let cortesiaCalculadas = 0;
             let paganCalculadas = llegadas;
 
-            // REGLA 4: Cortesías gratis solo creadas con código FREDYFREE (manejado por administrador). 
-            // Si son reservas normales, las cortesías estándar se tasan hasta el plan inicial O 0 si pasa de las 10:30 PM.
             const esCodigoFredy = document.getElementById('resConsultaPromotorMotivo').textContent.includes('FREDYFREE');
 
             if (minutosActuales > limiteMinutosGratis && !esCodigoFredy) {
                 cortesiaCalculadas = 0;
                 paganCalculadas = llegadas;
             } else {
-                // Hasta las 10:30 pm, las personas planeadas entran gratis por reserva, el exceso paga cover
                 cortesiaCalculadas = Math.min(llegadas, planInicial);
                 paganCalculadas = Math.max(0, llegadas - planInicial);
             }
@@ -683,7 +670,6 @@
                 return;
             }
 
-            // Actualizar detalle de personas
             await fetch(`/api/reservas/${id}/detalle`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -696,7 +682,6 @@
                 })
             });
 
-            // Enviar PIN al backend para validar y marcar presente
             const resEstado = await fetch(`/api/reservas/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -720,9 +705,6 @@
             document.getElementById('inputBusquedaPuerta').value = '';
         }
 
-        /* ====================================================
-           FUNCIÓN 7: PERSONAS SIN RESERVA (COVER)
-           ================================================    */
         function abrirModalSinReserva() {
             document.getElementById('sinReservaCliente').value = 'Cliente sin reserva';
             document.getElementById('sinReservaCantidad').value = '1';
@@ -746,14 +728,13 @@
                 return;
             }
 
-            const hoyStr = new Date().toISOString().split('T')[0];
+            const nocheOperativaActual = obtenerNocheOperativaActual();
 
-            // Crear una reserva rápida tipo "Sin Reserva" en el backend o API
             const nuevaReservaSinReserva = {
                 nombreCliente: nombre + ' (Sin Reserva)',
                 telefono: '3000000000',
                 email: 'sinreserva@vipnorte.com',
-                fecha: hoyStr,
+                fecha: nocheOperativaActual,
                 sede: sedeActualStaff,
                 zona: 'General',
                 mesa: 'Sin Asignar',
@@ -834,13 +815,14 @@
                 const totalRecaudado = (Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0);
                 const motivoReserva = r.motivo || r.motivoReserva || 'General';
                 const promotorDisplay = r.promotor || 'VIP NORTE';
+                const fechaReservaItem = r.fecha || r.nocheOperativa;
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-850">
                         <td class="p-4 font-mono text-xs text-orange-400 font-bold">${r.id}</td>
                         <td class="p-4 font-medium">${r.nombreCliente}<br><span class="text-xs text-gray-400">${r.telefono}</span><br><span class="text-xs text-orange-300 italic">Motivo: ${motivoReserva}</span></td>
                         <td class="p-4 text-xs font-mono text-purple-300 font-bold">${promotorDisplay}</td>
-                        <td class="p-4">${r.fecha}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
+                        <td class="p-4">${fechaReservaItem}<br><span class="text-xs text-gray-400">${r.zona} - Mesa ${r.mesa}</span></td>
                         <td class="p-4 text-center">
                             <span class="text-gray-300">Plan: <b>${r.cantidadPersonasInicial || 1}</b></span><br>
                             <span class="text-green-400 font-bold">Llegadas: ${r.personasLlegadas || 0}</span>
@@ -851,7 +833,7 @@
                         </td>
                         <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-semibold ${colorEstado}">${r.estadoAsistencia}</span></td>
                         <td class="p-4 text-center space-x-1">
-                            <button onclick="abrirModalStaff('${r.id}', '${r.nombreCliente}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 30000})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Registrar</button>
+                            <button onclick="abrirModalStaff('${r.id}', '${r.nombreCliente}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 30000}, '${fechaReservaItem}')" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Registrar</button>
                             <button onclick="cambiarAsistenciaStaff('${r.id}', 'No-Show')" class="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs font-bold transition">No-Show</button>
                         </td>
                     </tr>
@@ -1051,15 +1033,33 @@
             ventanaPdf.document.close();
         }
 
-        function abrirModalStaff(id, cliente, inicial, llegadas, cortesias, pagaron, precio) {
+        // VALIDACIÓN DE FECHA EN MODAL DE TABLA TRADICIONAL
+        function abrirModalStaff(id, cliente, inicial, llegadas, cortesias, pagaron, precio, fechaReserva) {
             document.getElementById('staffReservaId').value = id;
-            document.getElementById('modalClienteInfo').textContent = `Cliente: ${cliente} (ID #${id})`;
+            document.getElementById('staffReservaFechaReal').value = fechaReserva;
+            document.getElementById('modalClienteInfo').textContent = `Cliente: ${cliente} (ID #${id}) - Fecha Reserva: ${fechaReserva}`;
             document.getElementById('staffEditInicial').value = inicial;
             document.getElementById('staffEditLlegadas').value = llegadas;
             document.getElementById('staffEditCortesias').value = cortesias;
             document.getElementById('staffEditPagaron').value = pagaron;
             document.getElementById('staffEditPrecio').value = precio;
             document.getElementById('staffEditCodigoQr').value = '';
+
+            const nocheOperativaActual = obtenerNocheOperativaActual();
+            const errorModal = document.getElementById('errorModalStaff');
+            const btnGuardarModal = document.getElementById('btnModalGuardarTabla');
+
+            if (fechaReserva !== nocheOperativaActual) {
+                errorModal.textContent = `🚫 BLOQUEO: Esta reserva es del ${fechaReserva}. Hoy operativo es ${nocheOperativaActual}. No se puede registrar asistencia.`;
+                errorModal.classList.remove('hidden');
+                btnGuardarModal.disabled = true;
+                btnGuardarModal.className = 'flex-1 bg-gray-700 text-gray-400 font-bold py-2.5 rounded text-sm cursor-not-allowed';
+            } else {
+                errorModal.classList.add('hidden');
+                btnGuardarModal.disabled = false;
+                btnGuardarModal.className = 'flex-1 bg-orange-600 hover:bg-orange-700 font-bold py-2.5 rounded text-sm transition';
+            }
+
             document.getElementById('modalStaffDetalle').classList.remove('hidden');
         }
 
@@ -1067,6 +1067,14 @@
 
         async function guardarDetalleStaff() {
             const id = document.getElementById('staffReservaId').value;
+            const fechaReserva = document.getElementById('staffReservaFechaReal').value;
+            const nocheOperativaActual = obtenerNocheOperativaActual();
+
+            if (fechaReserva !== nocheOperativaActual) {
+                alert('🚫 Operación bloqueada: No puedes registrar asistencia para una fecha diferente a la noche operativa actual.');
+                return;
+            }
+
             await fetch(`/api/reservas/${id}/detalle`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
