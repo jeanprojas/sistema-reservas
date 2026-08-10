@@ -572,16 +572,31 @@
                     if (coincidencia.estadoAsistencia === 'Cancelado') badgeClass = 'badge-cancelado';
 
                     resultadoContainer.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <h3 style="color: #00FFEF; font-size: 1.1rem;">Reserva #${coincidencia.id || 'N/A'}</h3>
-                            <span class="badge-status ${badgeClass}">${coincidencia.estadoAsistencia || 'Reservado'}</span>
-                        </div>
-                        <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.nombreCliente}</p>
-                        <p style="margin-bottom: 6px;"><b>Fecha:</b> ${coincidencia.fecha}</p>
-                        <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede || 'VIP NORTE'} - ${coincidencia.zona}</p>
-                        <p style="margin-bottom: 6px;"><b>Personas:</b> ${coincidencia.cantidadPersonasInicial}</p>
-                        <p style="margin-bottom: 6px;"><b>Mesa Asignada:</b> <span style="color: #38bdf8; font-weight: bold;">${coincidencia.mesaAsignada || coincidencia.mesa || 'Asignación en proceso'}</span></p>
-                        <p style="margin-bottom: 6px;"><b>Código PIN de Acceso:</b> <span style="color: #fb923c; font-family: monospace; letter-spacing: 2px; font-weight: bold;font-size: 24px;">${coincidencia.codigoQr}</span></p>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; background-color: #121212; padding: 20px; border-radius: 8px; border: 1px solid #333;">
+    
+    <!-- COLUMNA IZQUIERDA: Datos de la reserva -->
+    <div>
+        <h3 style="color: #00f2fe; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.idReserva}</h3>
+        <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.cliente}</p>
+        <p style="margin-bottom: 6px;"><b>Fecha:</b> ${coincidencia.fecha}</p>
+        <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede}</p>
+        <p style="margin-bottom: 6px;"><b>Personas:</b> ${coincidencia.personas}</p>
+        <p style="margin-bottom: 0;"><b>Mesa Asignada:</b> <span style="color: #00f2fe;">${coincidencia.mesa || 'Sin Asignar'}</span></p>
+    </div>
+
+    <!-- COLUMNA DERECHA: Estado y Código PIN debajo -->
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
+        <!-- Botón / Badge de Estado -->
+        <span style="background-color: #00a8cc; color: white; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">RESERVADO</span>
+        
+        <!-- Código PIN debajo del estado -->
+        <div style="text-align: right;">
+            <span style="font-size: 12px; color: #aaa; display: block; margin-bottom: 2px;">Código PIN:</span>
+            <span style="color: #fb923c; font-family: monospace; letter-spacing: 2px; font-weight: bold; font-size: 28px;">${coincidencia.codigoQr}</span>
+        </div>
+    </div>
+
+</div>
                     `;
                 } else {
                     resultadoContainer.innerHTML = `
