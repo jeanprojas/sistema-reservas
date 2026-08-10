@@ -432,12 +432,13 @@
                 if (res.ok) {
                     const data = await res.json();
                     
-                    // Actualizar teléfono y link de WhatsApp
+                    /* --- ELIMINADO O COMENTADO PARA QUE NO SOBRESCRIBA EL TELÉFONO ---
                     if (data.whatsappNumero) {
                         const telLimpio = data.whatsappNumero.toString().replace(/\D/g, '');
                         document.getElementById('textoTelefonoWhatsapp').innerText = data.whatsappNumero;
                         document.getElementById('linkWhatsapp').href = `https://wa.me/57${telLimpio}`;
                     }
+                    ------------------------------------------------------------------ */
 
                     // Actualizar precio de cover dinámico
                     if (data.precioCover !== undefined && data.precioCover !== null) {
