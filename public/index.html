@@ -572,31 +572,69 @@
                     if (coincidencia.estadoAsistencia === 'Cancelado') badgeClass = 'badge-cancelado';
 
                     resultadoContainer.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <!-- COLUMNA IZQUIERDA: Datos de la reserva -->
-        <div>
-            <h3 style="color: #00FFEF; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.id || 'N/A'}</h3>
-            <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.nombreCliente}</p>
-            <p style="margin-bottom: 6px;"><b>Fecha:</b> ${coincidencia.fecha}</p>
-            <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede}</p>
-            <p style="margin-bottom: 6px;"><b>Personas:</b> ${coincidencia.cantidadPersonasInicial}</p>
-            <p style="margin-bottom: 0;"><b>Mesa Asignada:</b> <span style="color: #38bdf8; font-weight: bold;">${coincidencia.mesaAsignada || coincidencia.mesa || 'Sin Asignar'}</span></p>
-        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                            <!-- COLUMNA IZQUIERDA: Datos de la reserva -->
+                            <div style="flex: 1; min-width: 250px;">
+                                <h3 style="color: #00FFEF; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.id || 'N/A'}</h3>
+                                <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.nombreCliente}</p>
+                                <p style="margin-bottom: 6px;"><b>Fecha:</b> ${coincidencia.fecha}</p>
+                                <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede} - ${coincidencia.zona}</p>
+                                <p style="margin-bottom: 6px;"><b>Personas:</b> ${coincidencia.cantidadPersonasInicial}</p>
+                                <p style="margin-bottom: 0;"><b>Mesa Asignada:</b> <span style="color: #38bdf8; font-weight: bold;">${coincidencia.mesaAsignada || coincidencia.mesa || 'Sin Asignar'}</span></p>
+                            </div>
 
-        <!-- COLUMNA DERECHA: Estado y Código PIN debajo -->
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
-            <!-- Botón / Badge de Estado -->
-            <span class="badge-status ${badgeClass}">${coincidencia.estadoAsistencia || 'Reservado'}</span>
-            
-            <!-- Código PIN debajo del estado -->
-            <div style="text-align: right;">
-                <span style="font-size: 11px; color: #aaa; display: block; margin-bottom: 2px;">Código PIN:</span>
-                <span style="color: #fb923c; font-family: monospace; letter-spacing: 2px; font-weight: bold; font-size: 32px;">${coincidencia.codigoQr}</span>
-            </div>
-        </div>
-    </div>
-`;
-                       
+                            <!-- COLUMNA DERECHA: Estado y Código PIN -->
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px; min-width: 180px;">
+                                <span class="badge-status ${badgeClass}">${coincidencia.estadoAsistencia || 'Reservado'}</span>
+                                
+                                <div style="text-align: right;">
+                                    <span style="font-size: 11px; color: #aaa; display: block; margin-bottom: 2px;">Código PIN:</span>
+                                    <span style="color: #fb923c; font-family: monospace; letter-spacing: 2px; font-weight: bold; font-size: 32px;">${coincidencia.codigoQr}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN DE MODIFICACIÓN / CANCELACIÓN -->
+                        <div style="margin-top: 25px; border-top: 1px solid #27272a; padding-top: 15px;">
+                            <button type="button" onclick="toggleFormModificar()" id="btnToggleModificar" style="background: transparent; border: 1px solid #00FFEF; color: #00FFEF; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">
+                                ⚙️ Modificar o Cancelar Reserva
+                            </button>
+
+                            <div id="formModificarContainer" style="display: none; margin-top: 15px; background-color: #121215; padding: 15px; border-radius: 8px; border: 1px solid #3f3f46;">
+                                <h4 style="color: #ea580c; font-size: 0.95rem; margin-bottom: 12px; text-transform: uppercase;">Actualizar Datos de tu Reserva</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                    <div class="form-group">
+                                        <label style="font-size: 0.75rem;">Nueva Fecha</label>
+                                        <input type="date" id="modFecha" class="form-control" value="${coincidencia.fecha}" style="padding: 8px; font-size: 0.85rem;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 0.75rem;">Nueva Sede</label>
+                                        <select id="modSede" class="form-control" style="padding: 8px; font-size: 0.85rem;">
+                                            <option value="Soho" ${coincidencia.sede === 'Soho' ? 'selected' : ''}>Soho</option>
+                                            <option value="Salvaje" ${coincidencia.sede === 'Salvaje' ? 'selected' : ''}>Salvaje</option>
+                                            <option value="220 Voltios" ${coincidencia.sede === '220 Voltios' ? 'selected' : ''}>220 Voltios</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 0.75rem;">Nº Personas</label>
+                                        <input type="number" id="modPersonas" class="form-control" min="1" max="50" value="${coincidencia.cantidadPersonasInicial}" style="padding: 8px; font-size: 0.85rem;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 0.75rem;">Zona</label>
+                                        <select id="modZona" class="form-control" style="padding: 8px; font-size: 0.85rem;">
+                                            <option value="General" ${coincidencia.zona === 'General' ? 'selected' : ''}>Zona General</option>
+                                            <option value="VIP" ${coincidencia.zona === 'VIP' ? 'selected' : ''}>Zona VIP</option>
+                                            <option value="Palco" ${coincidencia.zona === 'Palco' ? 'selected' : ''}>Zona Palco</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" onclick="enviarModificacionReserva('${coincidencia.id}')" style="flex: 1; background-color: #0284c7; color: #fff; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem;">Guardar Cambios</button>
+                                    <button type="button" onclick="cancelarReservaCliente('${coincidencia.id}')" style="background-color: #dc2626; color: #fff; border: none; padding: 10px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem;">Cancelar Reserva</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 } else {
                     resultadoContainer.innerHTML = `
                         <p style="color: #ef4444; text-align: center;">❌ No se encontró ninguna reserva activa con los datos ingresados.</p>
@@ -607,6 +645,67 @@
                 resultadoContainer.innerHTML = `
                     <p style="color: #ef4444; text-align: center;">⚠️ Error al consultar el servidor. Inténtalo más tarde.</p>
                 `;
+            }
+        }
+
+        // Alternar visualización del formulario de modificación
+        function toggleFormModificar() {
+            const contenedor = document.getElementById('formModificarContainer');
+            if (contenedor.style.display === 'none' || contenedor.style.display === '') {
+                contenedor.style.display = 'block';
+            } else {
+                contenedor.style.display = 'none';
+            }
+        }
+
+        // Enviar cambios de modificación a la API
+        async function enviarModificacionReserva(idReserva) {
+            const payload = {
+                fecha: document.getElementById('modFecha').value,
+                sede: document.getElementById('modSede').value,
+                cantidadPersonasInicial: Number(document.getElementById('modPersonas').value),
+                zona: document.getElementById('modZona').value
+            };
+
+            try {
+                const res = await fetch(`/api/reservas/${idReserva}/modificar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ ¡Reserva modificada correctamente!');
+                    consultarReserva(); // Refrescar los datos en pantalla
+                } else {
+                    alert(`❌ Error al modificar: ${data.mensaje || 'Inténtalo de nuevo'}`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('⚠️ Error de conexión con el servidor.');
+            }
+        }
+
+        // Cancelar reserva desde la consulta pública
+        async function cancelarReservaCliente(idReserva) {
+            if (!confirm('¿Estás seguro de que deseas cancelar tu reserva?')) return;
+
+            try {
+                const res = await fetch(`/api/reservas/${idReserva}/modificar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estadoAsistencia: 'Cancelado' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('ℹ️ La reserva ha sido cancelada exitosamente.');
+                    consultarReserva(); // Refrescar estado en pantalla
+                } else {
+                    alert(`❌ Error al cancelar: ${data.mensaje}`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('⚠️ Error de conexión con el servidor.');
             }
         }
     </script>
