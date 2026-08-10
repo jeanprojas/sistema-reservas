@@ -477,6 +477,65 @@ app.get('/api/reservas/:id', async (req, res) => {
     }
 });
 
+// Modificar reserva por parte del cliente (Público: cambiar personas, fecha, sede, zona, mesa o cancelar)
+app.put('/api/reservas/:id/modificar', async (req, res) => {
+    try {
+        const { cantidadPersonasInicial, fecha, sede, zona, mesaAsignada, mesa, estadoAsistencia, codigoIngresado } = req.body;
+        const reserva = await Reserva.findOne({ id: req.params.id });
+
+        if (!reserva) {
+            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+
+        // Validar PIN de seguridad opcional si se envía
+        if (codigoIngresado && reserva.codigoQr && codigoIngresado !== reserva.codigoQr) {
+            return res.status(400).json({ success: false, mensaje: 'El código PIN de acceso no coincide' });
+        }
+
+        // Si se va a cancelar la reserva, la marcamos como Cancelada pero NO se elimina para conservarla como lead
+        if (estadoAsistencia === 'Cancelado') {
+            reserva.estadoAsistencia = 'Cancelado';
+            await reserva.save();
+            return res.json({ success: true, mensaje: 'Reserva cancelada exitosamente y guardada como lead', reserva });
+        }
+
+        // Si cambia de fecha, sede o mesa, validamos la disponibilidad
+        const nuevaSede = sede || reserva.sede;
+        const nuevaFecha = fecha || reserva.fecha;
+        const nuevaMesa = mesaAsignada || mesa || reserva.mesaAsignada || reserva.mesa;
+
+        if (nuevaMesa && nuevaMesa !== 'Sin Asignar' && (nuevaSede !== reserva.sede || nuevaFecha !== reserva.fecha || nuevaMesa !== reserva.mesaAsignada)) {
+            const mesaLibre = await verificarDisponibilidadMesa(nuevaSede, nuevaFecha, nuevaMesa, reserva.id);
+            if (!mesaLibre) {
+                return res.status(400).json({
+                    success: false,
+                    mensaje: `La Mesa #${nuevaMesa} ya se encuentra ocupada para la sede ${nuevaSede} en la fecha ${nuevaFecha}.`
+                });
+            }
+        }
+
+        // Actualizar campos permitidos
+        if (cantidadPersonasInicial !== undefined) reserva.cantidadPersonasInicial = Number(cantidadPersonasInicial);
+        if (fecha) reserva.fecha = fecha;
+        if (sede) reserva.sede = sede;
+        if (zona) reserva.zona = zona;
+        if (mesaAsignada) {
+            reserva.mesaAsignada = mesaAsignada;
+            reserva.mesa = mesaAsignada;
+        }
+        if (mesa) {
+            reserva.mesa = mesa;
+            reserva.mesaAsignada = mesa;
+        }
+
+        await reserva.save();
+        res.json({ success: true, mensaje: 'Reserva modificada correctamente', reserva });
+    } catch (e) {
+        console.error('Error al modificar reserva:', e);
+        res.status(500).json({ success: false, mensaje: 'Error al modificar la reserva' });
+    }
+});
+
 // Crear nueva reserva pública
 app.post('/api/reservas', async (req, res) => {
     try {
