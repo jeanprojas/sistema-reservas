@@ -205,7 +205,7 @@ async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha
             subject: `¡Reserva Confirmada! #${idReserva} - ${sede || 'VIP Norte'}`,
             html: `
                 <div style="background-color: #09090b; color: #ffffff; padding: 20px; font-family: sans-serif; border-radius: 10px;">
-                    <h2 style="color: #f97316;">¡Hola, ${nombreCliente}!</h2>
+                    <h2 style="color: #00FFEF;">¡Hola, ${nombreCliente}!</h2>
                     <p>Tu reserva en <b>${sede || 'VIP Norte'}</b> ha sido registrada con éxito.</p>
                     <hr style="border-color: #27272a;">
                     <p><b>Detalles de tu visita:</b></p>
