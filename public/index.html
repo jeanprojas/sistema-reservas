@@ -330,10 +330,10 @@
                         <input type="text" id="nombreCliente" class="form-control" placeholder="Ej. Juan Pérez" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="telefono">Teléfono / WhatsApp *</label>
-                        <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" required>
-                    </div>
+                   <div class="form-group">
+                       <label for="telefono">Teléfono / WhatsApp * (10 dígitos, empieza por 3)</label>
+                       <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" maxlength="10" pattern="^3[0-9]{9}$" title="Debe tener 10 dígitos y empezar por 3" required>
+                   </div>
 
                     <div class="form-group">
                         <label for="email">Correo Electrónico</label>
@@ -514,6 +514,14 @@
             const personasNuevas = Number(document.getElementById('cantidadPersonasInicial').value) || 1;
             const promotorInput = document.getElementById('promotor').value.trim();
             const promotorFinal = promotorInput !== '' ? promotorInput : 'VIP NORTE';
+            const telefonoInput = document.getElementById('telefono').value.trim();
+
+    // Validar que el teléfono tenga exactamente 10 dígitos y empiece por 3
+    const regexTelefono = /^3\d{9}$/;
+    if (!regexTelefono.test(telefonoInput)) {
+        alert('⚠️ El número de WhatsApp debe tener exactamente 10 dígitos y comenzar por el número 3 (Ej. 3001234567).');
+        return;
+    }
 
             // Validar restricción de Salvaje + VIP/Palco
             if (sedeValue === 'Salvaje' && (zonaSeleccionada === 'VIP' || zonaSeleccionada === 'Palco')) {
