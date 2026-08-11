@@ -540,7 +540,7 @@
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Precio Cover:</label>
-                        <input type="number" id="adminNewPrecio" value="30000" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <input type="number" id="adminNewPrecio" value="10000" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     </div>
                 </div>
                 <!-- Función 4: PROMOTOR (Cédula) -->
@@ -1531,7 +1531,7 @@
                 const config = await res.json();
                 if (config) {
                     if (document.getElementById('configWhatsapp')) document.getElementById('configWhatsapp').value = config.whatsapp || '';
-                    if (document.getElementById('configPrecioCover')) document.getElementById('configPrecioCover').value = config.precioCover || 30000;
+                    if (document.getElementById('configPrecioCover')) document.getElementById('configPrecioCover').value = config.precioCover || 10000;
                     if (document.getElementById('configBannerTexto')) document.getElementById('configBannerTexto').value = config.bannerTexto || '';
                     if (document.getElementById('configMensajeWhatsapp')) document.getElementById('configMensajeWhatsapp').value = config.mensajeWhatsapp || '';
                     if (document.getElementById('configSedes')) document.getElementById('configSedes').value = Array.isArray(config.sedes) ? config.sedes.join(', ') : (config.sedes || '');
@@ -1549,7 +1549,7 @@
             e.preventDefault();
             const bodyData = {
                 whatsapp: document.getElementById('configWhatsapp').value.trim(),
-                precioCover: Number(document.getElementById('configPrecioCover').value) || 30000,
+                precioCover: Number(document.getElementById('configPrecioCover').value) || 10000,
                 bannerTexto: document.getElementById('configBannerTexto').value.trim(),
                 mensajeWhatsapp: document.getElementById('configMensajeWhatsapp').value.trim(),
                 sedes: document.getElementById('configSedes').value.split(',').map(s => s.trim()).filter(Boolean),
