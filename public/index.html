@@ -47,7 +47,7 @@
 
         /* Contenedor Principal */
         .main-container {
-            max-width: 750px;
+            max-width: 850px;
             margin: 30px auto;
             padding: 0 20px 40px 20px;
             width: 100%;
@@ -173,6 +173,112 @@
             margin-top: 5px;
         }
 
+        /* Estilos del Mapa 2D Interactivo */
+        .mapa-interactivo-container {
+            background-color: #121215;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 10px;
+        }
+
+        .mapa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .mapa-leyenda {
+            display: flex;
+            gap: 15px;
+            font-size: 0.75rem;
+            color: #a1a1aa;
+        }
+
+        .leyenda-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .leyenda-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .zona-mapa-seccion {
+            margin-bottom: 15px;
+        }
+
+        .zona-mapa-titulo {
+            font-size: 0.8rem;
+            color: #00FFEF;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #27272a;
+            padding-bottom: 4px;
+        }
+
+        .mesas-grid-mapa {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+            gap: 8px;
+        }
+
+        .mesa-node {
+            background-color: #1e1e24;
+            border: 2px solid #3f3f46;
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mesa-node:hover {
+            border-color: #00FFEF;
+            transform: translateY(-2px);
+        }
+
+        .mesa-node.disponible {
+            border-color: #16a34a;
+            background-color: rgba(22, 163, 74, 0.1);
+        }
+
+        .mesa-node.ocupada {
+            border-color: #dc2626;
+            background-color: rgba(220, 38, 38, 0.15);
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .mesa-node.seleccionada {
+            border-color: #ea580c;
+            background-color: rgba(234, 88, 12, 0.3);
+            box-shadow: 0 0 10px rgba(234, 88, 12, 0.5);
+        }
+
+        .mesa-nombre {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .mesa-cap {
+            font-size: 0.65px;
+            color: #a1a1aa;
+        }
+
         /* Cuadro de Resumen Cover */
         .cover-box {
             background-color: #09090b;
@@ -288,100 +394,119 @@
 
         <div id="secCrear" class="card">
             <form id="formReserva" onsubmit="guardarReserva(event)">
-    <div class="form-grid">
-        
-        <div class="form-group">
-            <label for="sede">Sede Discoteca *</label>
-            <select id="sede" class="form-control" onchange="cambiarSedeFormulario()" required>
-                <option value="" disabled selected>Seleccionar discoteca</option>
-                <option value="Soho">Soho</option>
-                <option value="Salvaje">Salvaje</option>
-                <option value="220 Voltios">220 Voltios</option>
-            </select>
-        </div>
+                <div class="form-grid">
+                    
+                    <div class="form-group">
+                        <label for="sede">Sede Discoteca *</label>
+                        <select id="sede" class="form-control" onchange="cambiarSedeFormulario()" required>
+                            <option value="" disabled selected>Seleccionar discoteca</option>
+                            <option value="Soho">Soho</option>
+                            <option value="Salvaje">Salvaje</option>
+                            <option value="220 Voltios">220 Voltios</option>
+                        </select>
+                    </div>
 
-        <div class="form-group">
-            <label for="fecha">Fecha de Reserva *</label>
-            <input type="date" id="fecha" class="form-control" required>
-        </div>
+                    <div class="form-group">
+                        <label for="fecha">Fecha de Reserva *</label>
+                        <input type="date" id="fecha" class="form-control" onchange="cargarMapaInteractivoSoho()" required>
+                    </div>
 
-        <div class="form-group">
-            <label for="zona">Zona / Nivel *</label>
-            <select id="zona" class="form-control" onchange="actualizarMesasPorZona(); actualizarInfoZona();" required>
-                <option value="" disabled selected>Selecciona primero la sede</option>
-            </select>
-        </div>
+                    <!-- Campos estándar (se usan para Salvaje / 220 Voltios) -->
+                    <div class="form-group" id="grupoZonaStd">
+                        <label for="zona">Zona / Nivel *</label>
+                        <select id="zona" class="form-control" onchange="actualizarMesasPorZona(); actualizarInfoZona();">
+                            <option value="" disabled selected>Selecciona primero la sede</option>
+                        </select>
+                    </div>
 
-        <div class="form-group">
-            <label for="mesa">Mesa / Espacio *</label>
-            <select id="mesa" class="form-control" required>
-                <option value="Asignar">Selecciona primero la zona</option>
-            </select>
-        </div>
+                    <div class="form-group" id="grupoMesaStd">
+                        <label for="mesa">Mesa / Espacio *</label>
+                        <select id="mesa" class="form-control">
+                            <option value="Asignar">Selecciona primero la zona</option>
+                        </select>
+                    </div>
 
-        <div class="form-group">
-            <label for="cantidadPersonasInicial">Número de Personas *</label>
-            <input type="number" id="cantidadPersonasInicial" class="form-control" min="1" max="50" value="1" required>
-        </div>
+                    <!-- Contenedor del Mapa 2D Interactivo (Exclusivo para SOHO) -->
+                    <div class="full-width form-group" id="contenedorMapaSoho" style="display: none;">
+                        <label>Plano 2D Interactivo - Sede Soho (Selecciona tu Mesa)</label>
+                        <div class="mapa-interactivo-container">
+                            <div class="mapa-header">
+                                <span style="font-size: 0.85rem; color: #00FFEF; font-weight: bold;" id="infoMesaSeleccionadaSoho">Ninguna mesa seleccionada</span>
+                                <div class="mapa-leyenda">
+                                    <div class="leyenda-item"><div class="leyenda-dot" style="background-color: #16a34a;"></div> Disponible</div>
+                                    <div class="leyenda-item"><div class="leyenda-dot" style="background-color: #dc2626;"></div> Ocupada</div>
+                                    <div class="leyenda-item"><div class="leyenda-dot" style="background-color: #ea580c;"></div> Seleccionada</div>
+                                </div>
+                            </div>
+                            <div id="cuerpoMapaSoho" style="max-height: 380px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Se renderiza dinámicamente por zonas -->
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="full-width">
-            <div id="avisoZona" class="aviso-zona">
-                - Selecciona una sede y zona para ver los detalles de consumo.
-            </div>
-        </div>
+                    <div class="form-group">
+                        <label for="cantidadPersonasInicial">Número de Personas *</label>
+                        <input type="number" id="cantidadPersonasInicial" class="form-control" min="1" max="50" value="1" required>
+                    </div>
 
-        <div class="form-group">
-            <label for="nombreCliente">Nombre Completo *</label>
-            <input type="text" id="nombreCliente" class="form-control" placeholder="Ej. Juan Pérez" required>
-        </div>
+                    <div class="full-width">
+                        <div id="avisoZona" class="aviso-zona">
+                            - Selecciona una sede y zona para ver los detalles de consumo.
+                        </div>
+                    </div>
 
-       <div class="form-group">
-           <label for="telefono">WhatsApp *</label>
-           <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" maxlength="10" pattern="^3[0-9]{9}$" title="Debe tener 10 dígitos y empezar por 3" required>
-       </div>
+                    <div class="form-group">
+                        <label for="nombreCliente">Nombre Completo *</label>
+                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej. Juan Pérez" required>
+                    </div>
 
-        <div class="form-group">
-            <label for="email">Correo Electrónico</label>
-            <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
-        </div>
+                    <div class="form-group">
+                        <label for="telefono">WhatsApp *</label>
+                        <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" maxlength="10" pattern="^3[0-9]{9}$" title="Debe tener 10 dígitos y empezar por 3" required>
+                    </div>
 
-        <div class="form-group">
-            <label for="motivo">Motivo de Reserva</label>
-            <select id="motivo" class="form-control">
-                <option value="General">General / RUMBA</option>
-                <option value="Cumpleaños">Cumpleaños</option>
-                <option value="Aniversario">Aniversario</option>
-                <option value="Evento Especial">Evento Especial</option>
-            </select>
-        </div>
+                    <div class="form-group">
+                        <label for="email">Correo Electrónico</label>
+                        <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
+                    </div>
 
-        <div class="form-group">
-            <label for="instagram">Instagram (Opcional)</label>
-            <input type="text" id="instagram" class="form-control" placeholder="@usuario">
-        </div>
+                    <div class="form-group">
+                        <label for="motivo">Motivo de Reserva</label>
+                        <select id="motivo" class="form-control">
+                            <option value="General">General / RUMBA</option>
+                            <option value="Cumpleaños">Cumpleaños</option>
+                            <option value="Aniversario">Aniversario</option>
+                            <option value="Evento Especial">Evento Especial</option>
+                        </select>
+                    </div>
 
-        <div class="form-group">
-            <label for="promotor">Promotor / Código</label>
-            <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
-        </div>
+                    <div class="form-group">
+                        <label for="instagram">Instagram (Opcional)</label>
+                        <input type="text" id="instagram" class="form-control" placeholder="@usuario">
+                    </div>
 
-        <div class="full-width form-group">
-            <label for="nota">Notas o Solicitudes Especiales</label>
-            <textarea id="nota" class="form-control" placeholder="Escribe aquí cualquier indicación adicional..."></textarea>
-        </div>
+                    <div class="form-group">
+                        <label for="promotor">Promotor / Código</label>
+                        <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
+                    </div>
 
-        <div class="full-width">
-            <div class="cover-box">
-                Cover después de las 10:30 pm: <span id="precioCoverTexto">$10,000 COP</span>
-            </div>
-        </div>
+                    <div class="full-width form-group">
+                        <label for="nota">Notas o Solicitudes Especiales</label>
+                        <textarea id="nota" class="form-control" placeholder="Escribe aquí cualquier indicación adicional..."></textarea>
+                    </div>
 
-        <div class="full-width">
-            <button type="submit" class="btn-submit">Confirmar y Enviar Reserva</button>
-        </div>
+                    <div class="full-width">
+                        <div class="cover-box">
+                            Cover después de las 10:30 pm: <span id="precioCoverTexto">$10,000 COP</span>
+                        </div>
+                    </div>
 
-    </div>
-</form>
+                    <div class="full-width">
+                        <button type="submit" class="btn-submit">Confirmar y Enviar Reserva</button>
+                    </div>
+
+                </div>
+            </form>
         </div>
 
         <div id="secConsultar" class="card" style="display: none;">
@@ -404,37 +529,74 @@
     </footer>
 
     <script>
-        const mapeoZonasSoho = {
-            'Terraza': ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
-            'General1': ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
-            'Disco1': ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
-            'PalcoReyes': ['P1'],
-            'VIP_Disco2': ['V7', 'V8', 'V9', 'V10'],
-            'VIP_General2': ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
-            'Mesas_General2': ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13']
-};
+        // Estructura oficial completa de Primer y Segundo Piso para SOHO
+        const estructuraSohoCompleta = {
+            '1er Piso - Terraza Exterior': {
+                prefijo: 'Terraza',
+                mesas: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
+                capacidad: '4 px c/u'
+            },
+            '1er Piso - Zona General #1': {
+                prefijo: 'General 1',
+                mesas: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
+                capacidad: 'G: 4px | V1-V2: 10-15px | V3: 8px'
+            },
+            '1er Piso - Zona Disco / Casino': {
+                prefijo: 'Disco 1',
+                mesas: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
+                capacidad: 'D: 4px | V4-V6: 10-15px'
+            },
+            '2do Piso - Palco Reyes (Sobre Disco)': {
+                prefijo: 'Palco Reyes',
+                mesas: ['P1', 'P1-A', 'P1-B'],
+                capacidad: 'P1: 25px (o dividido)'
+            },
+            '2do Piso - VIP Sector Disco': {
+                prefijo: 'VIP Disco 2',
+                mesas: ['V7', 'V8', 'V9', 'V10'],
+                capacidad: '15 px c/u'
+            },
+            '2do Piso - VIP Sector General': {
+                prefijo: 'VIP General 2',
+                mesas: ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
+                capacidad: 'V11, V15, V19: 15px | Otros: 6-10px'
+            },
+            '2do Piso - Mesas Redondas General': {
+                prefijo: 'Mesas 2do Piso',
+                mesas: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13'],
+                capacidad: '4 px c/u'
+            }
+        };
+
+        let mesaSohoSeleccionada = null;
+
         function cambiarSedeFormulario() {
             const sede = document.getElementById('sede').value;
             const selectZona = document.getElementById('zona');
+            const selectMesa = document.getElementById('mesa');
+            const grupoZonaStd = document.getElementById('grupoZonaStd');
+            const grupoMesaStd = document.getElementById('grupoMesaStd');
+            const contenedorMapaSoho = document.getElementById('contenedorMapaSoho');
+            
             selectZona.innerHTML = '<option value="" disabled selected>Selecciona una zona</option>';
             
             if (sede === 'Soho') {
-                const zonasSoho = [
-                    {val: 'Terraza', label: 'Terraza (1er Piso)'},
-                    {val: 'General1', label: 'Zona General #1 (1er Piso)'},
-                    {val: 'Disco1', label: 'Zona Disco (1er Piso)'},
-                    {val: 'PalcoReyes', label: 'Palco Reyes (2do Piso)'},
-                    {val: 'VIP_Disco2', label: 'VIP Sector Disco (2do Piso)'},
-                    {val: 'VIP_General2', label: 'VIP Sector General (2do Piso)'},
-                    {val: 'Mesas_General2', label: 'Mesas Redondas (2do Piso)'}
-                ];
-                zonasSoho.forEach(z => {
-                    const opt = document.createElement('option');
-                    opt.value = z.val;
-                    opt.innerText = z.label;
-                    selectZona.appendChild(opt);
-                });
+                // Ocultar selects tradicionales y mostrar el Mapa 2D Interactivo
+                grupoZonaStd.style.display = 'none';
+                grupoMesaStd.style.display = 'none';
+                contenedorMapaSoho.style.display = 'block';
+                selectZona.removeAttribute('required');
+                selectMesa.removeAttribute('required');
+                cargarMapaInteractivoSoho();
             } else {
+                // Mostrar selects estándar para Salvaje u otras sedes
+                grupoZonaStd.style.display = 'flex';
+                grupoMesaStd.style.display = 'flex';
+                contenedorMapaSoho.style.display = 'none';
+                selectZona.setAttribute('required', 'true');
+                selectMesa.setAttribute('required', 'true');
+                mesaSohoSeleccionada = null;
+
                 const zonasGenericas = [
                     {val: 'General', label: 'Zona General'},
                     {val: 'VIP', label: 'Zona VIP'},
@@ -446,38 +608,107 @@
                     opt.innerText = z.label;
                     selectZona.appendChild(opt);
                 });
+                actualizarMesasPorZona();
             }
-            actualizarMesasPorZona();
         }
+
+        // Cargar y renderizar el mapa interactivo 2D para Soho consultando reservas ocupadas en la fecha
+        async function cargarMapaInteractivoSoho() {
+            const sede = document.getElementById('sede').value;
+            if (sede !== 'Soho') return;
+
+            const fecha = document.getElementById('fecha').value;
+            const cuerpoMapa = document.getElementById('cuerpoMapaSoho');
+            cuerpoMapa.innerHTML = '<p style="color: #a1a1aa; text-align: center; font-size: 0.85rem; padding: 15px;">Cargando plano 2D y disponibilidad...</p>';
+
+            let mesasOcupadasSet = new Set();
+            try {
+                const res = await fetch(`/api/reservas?fecha=${fecha}&sede=Soho`);
+                if (res.ok) {
+                    const reservas = await res.json();
+                    reservas.forEach(r => {
+                        if (r.estadoAsistencia !== 'Cancelado' && r.mesaAsignada) {
+                            mesasOcupadasSet.add(r.mesaAsignada);
+                        }
+                        if (r.estadoAsistencia !== 'Cancelado' && r.mesa) {
+                            mesasOcupadasSet.add(r.mesa);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('No se pudo verificar ocupación en tiempo real:', e);
+            }
+
+            cuerpoMapa.innerHTML = '';
+
+            for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
+                const seccionDiv = document.createElement('div');
+                seccionDiv.className = 'zona-mapa-seccion';
+
+                const tituloZona = document.createElement('div');
+                tituloZona.className = 'zona-mapa-titulo';
+                tituloZona.innerText = `${nombreZona} (${datos.capacidad})`;
+                seccionDiv.appendChild(tituloZona);
+
+                const gridMesas = document.createElement('div');
+                gridMesas.className = 'mesas-grid-mapa';
+
+                datos.mesas.forEach(mesaId => {
+                    const node = document.createElement('div');
+                    const estaOcupada = mesasOcupadasSet.has(mesaId);
+                    const estaSeleccionada = mesaSohoSeleccionada === mesaId;
+
+                    let claseEstado = 'disponible';
+                    if (estaOcupada) claseEstado = 'ocupada';
+                    if (estaSeleccionada) claseEstado = 'seleccionada';
+
+                    node.className = `mesa-node ${claseEstado}`;
+                    node.innerHTML = `
+                        <span class="mesa-nombre">${mesaId}</span>
+                    `;
+
+                    if (!estaOcupada) {
+                        node.onclick = () => seleccionarMesaSoho(mesaId, nombreZona);
+                    } else {
+                        node.title = 'Mesa Ocupada';
+                    }
+
+                    gridMesas.appendChild(node);
+                });
+
+                seccionDiv.appendChild(gridMesas);
+                cuerpoMapa.appendChild(seccionDiv);
+            }
+        }
+
+        function seleccionarMesaSoho(mesaId, zonaNombre) {
+            mesaSohoSeleccionada = mesaId;
+            document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa Seleccionada: ${mesaId} (${zonaNombre})`;
+            document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
+            cargarMapaInteractivoSoho(); // Actualizar colores en el plano 2D
+        }
+
         function actualizarMesasPorZona() {
             const sede = document.getElementById('sede').value;
+            if (sede === 'Soho') return;
+
             const zona = document.getElementById('zona').value;
             const selectMesa = document.getElementById('mesa');
             selectMesa.innerHTML = '';
             
-            if (sede === 'Soho' && mapeoZonasSoho[zona]) {
-                mapeoZonasSoho[zona].forEach(mesa => {
-                    const opt = document.createElement('option');
-                    opt.value = mesa;
-                    opt.innerText = `Mesa/Espacio ${mesa}`;
-                    selectMesa.appendChild(opt);
-                });
-            } else {
-                const opt = document.createElement('option');
-                opt.value = 'Asignar';
-                opt.innerText = 'Asignación en puerta / General';
-                selectMesa.appendChild(opt);
-            }
+            const opt = document.createElement('option');
+            opt.value = 'Asignar';
+            opt.innerText = 'Asignación en puerta / General';
+            selectMesa.appendChild(opt);
         }
+
         let precioCoverGlobal = 10000;
 
-        // Cargar configuración inicial al abrir la página
         window.addEventListener('DOMContentLoaded', () => {
             establecerFechaMinima();
             cargarConfiguracion();
         });
 
-        // Configurar la fecha mínima como la fecha actual local
         function establecerFechaMinima() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -495,39 +726,25 @@
             }
         }
 
-        // Consultar /api/configuracion para actualizar WhatsApp y Cover dinámicamente
         async function cargarConfiguracion() {
             try {
                 const res = await fetch('/api/configuracion');
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    /* --- ELIMINADO O COMENTADO PARA QUE NO SOBRESCRIBA EL TELÉFONO ---
-                    if (data.whatsappNumero) {
-                        const telLimpio = data.whatsappNumero.toString().replace(/\D/g, '');
-                        document.getElementById('textoTelefonoWhatsapp').innerText = data.whatsappNumero;
-                        document.getElementById('linkWhatsapp').href = `https://wa.me/57${telLimpio}`;
-                    }
-                    ------------------------------------------------------------------ */
-
-                    // Actualizar precio de cover dinámico
                     if (data.precioCover !== undefined && data.precioCover !== null) {
                         precioCoverGlobal = Number(data.precioCover);
                         document.getElementById('precioCoverTexto').innerText = `$${precioCoverGlobal.toLocaleString('es-CO')} COP`;
                     }
-
-                    // Actualizar título de sede si viene configurado
                     if (data.nombreSede) {
                         document.getElementById('headerTitulo').innerText = data.nombreSede;
                         document.getElementById('tituloPagina').innerText = `Sistema de Reservas - ${data.nombreSede}`;
                     }
                 }
             } catch (error) {
-                console.warn('No se pudo cargar la configuración dinámica, usando valores por defecto.', error);
+                console.warn('No se pudo cargar la configuración dinámica.', error);
             }
         }
 
-        // Cambiar entre pestañas "Crear" y "Consultar"
         function mostrarTab(tab) {
             const secCrear = document.getElementById('secCrear');
             const secConsultar = document.getElementById('secConsultar');
@@ -547,7 +764,6 @@
             }
         }
 
-        // Mostrar u ocultar aviso de consumo mínimo en VIP/Palco
         function actualizarInfoZona() {
             const sede = document.getElementById('sede').value;
             const zona = document.getElementById('zona').value;
@@ -556,15 +772,12 @@
 
             if (sede === 'Salvaje' && (zona === 'VIP' || zona === 'Palco')) {
                 avisoZona.style.display = 'block';
-                avisoZona.innerText = `⚠️ Para la sede Salvaje en zona ${zona}, la cantidad de personas debe ser entre 8 y 10 (Mínimo 8, Máximo 10).`;
+                avisoZona.innerText = `⚠️ Para la sede Salvaje en zona ${zona}, la cantidad de personas debe ser entre 8 y 10.`;
                 inputPersonas.min = '8';
                 inputPersonas.max = '10';
-                if (Number(inputPersonas.value) < 8) {
-                    inputPersonas.value = '8';
-                }
             } else if (zona === 'VIP' || zona === 'Palco') {
                 avisoZona.style.display = 'block';
-                avisoZona.innerText = `⚠️ En la zona ${zona} aplica consumo mínimo de bebidas/botellas.`;
+                avisoZona.innerText = `⚠️ En la zona ${zona} aplica consumo mínimo de botellas.`;
                 inputPersonas.min = '1';
                 inputPersonas.max = '50';
             } else {
@@ -574,40 +787,52 @@
             }
         }
 
-        // Guardar la reserva enviando los datos a /api/admin/reservas
         async function guardarReserva(event) {
             event.preventDefault();
 
             const fechaSeleccionada = document.getElementById('fecha').value;
             const sedeValue = document.getElementById('sede').value;
-            const zonaSeleccionada = document.getElementById('zona').value;
             const personasNuevas = Number(document.getElementById('cantidadPersonasInicial').value) || 1;
             const promotorInput = document.getElementById('promotor').value.trim();
             const promotorFinal = promotorInput !== '' ? promotorInput : 'VIP NORTE';
             const telefonoInput = document.getElementById('telefono').value.trim();
 
-    // Validar que el teléfono tenga exactamente 10 dígitos y empiece por 3
-    const regexTelefono = /^3\d{9}$/;
-    if (!regexTelefono.test(telefonoInput)) {
-        alert('⚠️ El número de WhatsApp debe tener exactamente 10 dígitos y comenzar por el número 3 (Ej. 3001234567).');
-        return;
-    }
+            const regexTelefono = /^3\d{9}$/;
+            if (!regexTelefono.test(telefonoInput)) {
+                alert('⚠️ El número de WhatsApp debe tener exactamente 10 dígitos y comenzar por 3 (Ej. 3001234567).');
+                return;
+            }
 
-            // Validar restricción de Salvaje + VIP/Palco
-            if (sedeValue === 'Salvaje' && (zonaSeleccionada === 'VIP' || zonaSeleccionada === 'Palco')) {
-                if (personasNuevas < 8 || personasNuevas > 10) {
-                    alert('⚠️ Para la sede Salvaje en zonas VIP o Palco, la cantidad de personas debe estar estrictamente entre 8 y 10.');
+            let zonaFinal = 'General';
+            let mesaFinal = 'Asignar';
+
+            if (sedeValue === 'Soho') {
+                if (!mesaSohoSeleccionada) {
+                    alert('⚠️ Por favor selecciona una mesa o espacio disponible en el mapa interactivo 2D de Soho.');
                     return;
                 }
+                mesaFinal = mesaSohoSeleccionada;
+                // Encontrar la zona a la que pertenece la mesa seleccionada
+                for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
+                    if (datos.mesas.includes(mesaSohoSeleccionada)) {
+                        zonaFinal = nombreZona;
+                        break;
+                    }
+                }
+            } else {
+                zonaFinal = document.getElementById('zona').value;
+                mesaFinal = document.getElementById('mesa').value;
             }
 
             const payload = {
                 nombreCliente: document.getElementById('nombreCliente').value.trim(),
-                telefono: document.getElementById('telefono').value.trim(),
+                telefono: telefonoInput,
                 email: document.getElementById('email').value.trim(),
                 fecha: fechaSeleccionada,
                 sede: sedeValue,
-                zona: zonaSeleccionada,
+                zona: zonaFinal,
+                mesa: mesaFinal,
+                mesaAsignada: mesaFinal,
                 cantidadPersonasInicial: personasNuevas,
                 motivo: document.getElementById('motivo').value,
                 instagram: document.getElementById('instagram').value.trim(),
@@ -631,17 +856,20 @@
                     alert('🎉 ¡Reserva creada con éxito! Se ha registrado correctamente en nuestro sistema.');
                     document.getElementById('formReserva').reset();
                     document.getElementById('avisoZona').style.display = 'none';
+                    mesaSohoSeleccionada = null;
                     establecerFechaMinima();
+                    if (sedeValue === 'Soho') {
+                        cambiarSedeFormulario();
+                    }
                 } else {
-                    alert('❌ Hubo un error al registrar tu reserva. Inténtalo de nuevo o contáctanos por WhatsApp.');
+                    alert(`❌ ${data.mensaje || 'Error al registrar tu reserva.'}`);
                 }
             } catch (error) {
                 console.error('Error al enviar la reserva:', error);
-                alert('⚠️ Error de conexión con el servidor. Por favor verifica tu conexión.');
+                alert('⚠️ Error de conexión con el servidor.');
             }
         }
 
-        // Consultar reserva del cliente
         async function consultarReserva() {
             const termino = document.getElementById('busquedaReserva').value.trim();
             const resultadoContainer = document.getElementById('resultadoConsulta');
@@ -659,8 +887,6 @@
                 if (!res.ok) throw new Error('Error al consultar reservas');
                 
                 const reservas = await res.json();
-                
-                // Filtrar reservas que coincidan con el teléfono o el ID o nombre
                 const coincidencia = reservas.find(r => 
                     (r.telefono && r.telefono.includes(termino)) || 
                     (r.id && r.id.toLowerCase().includes(termino.toLowerCase())) ||
@@ -674,7 +900,6 @@
 
                     resultadoContainer.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
-                            <!-- COLUMNA IZQUIERDA: Datos de la reserva -->
                             <div style="flex: 1; min-width: 250px;">
                                 <h3 style="color: #00FFEF; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.id || 'N/A'}</h3>
                                 <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.nombreCliente}</p>
@@ -684,10 +909,8 @@
                                 <p style="margin-bottom: 0;"><b>Mesa Asignada:</b> <span style="color: #38bdf8; font-weight: bold;">${coincidencia.mesaAsignada || coincidencia.mesa || 'Sin Asignar'}</span></p>
                             </div>
 
-                            <!-- COLUMNA DERECHA: Estado y Código PIN -->
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px; min-width: 180px;">
                                 <span class="badge-status ${badgeClass}">${coincidencia.estadoAsistencia || 'Reservado'}</span>
-                                
                                 <div style="text-align: right;">
                                     <span style="font-size: 11px; color: #aaa; display: block; margin-bottom: 2px;">Código PIN:</span>
                                     <span style="color: #fb923c; font-family: monospace; letter-spacing: 2px; font-weight: bold; font-size: 32px;">${coincidencia.codigoQr}</span>
@@ -695,7 +918,6 @@
                             </div>
                         </div>
 
-                        <!-- SECCIÓN DE MODIFICACIÓN / CANCELACIÓN -->
                         <div style="margin-top: 25px; border-top: 1px solid #27272a; padding-top: 15px;">
                             <button type="button" onclick="toggleFormModificar()" id="btnToggleModificar" style="background: transparent; border: 1px solid #00FFEF; color: #00FFEF; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">
                                 ⚙️ Modificar o Cancelar Reserva
@@ -709,24 +931,8 @@
                                         <input type="date" id="modFecha" class="form-control" value="${coincidencia.fecha}" style="padding: 8px; font-size: 0.85rem;">
                                     </div>
                                     <div class="form-group">
-                                        <label style="font-size: 0.75rem;">Nueva Sede</label>
-                                        <select id="modSede" class="form-control" style="padding: 8px; font-size: 0.85rem;">
-                                            <option value="Soho" ${coincidencia.sede === 'Soho' ? 'selected' : ''}>Soho</option>
-                                            <option value="Salvaje" ${coincidencia.sede === 'Salvaje' ? 'selected' : ''}>Salvaje</option>
-                                            <option value="220 Voltios" ${coincidencia.sede === '220 Voltios' ? 'selected' : ''}>220 Voltios</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
                                         <label style="font-size: 0.75rem;">Nº Personas</label>
                                         <input type="number" id="modPersonas" class="form-control" min="1" max="50" value="${coincidencia.cantidadPersonasInicial}" style="padding: 8px; font-size: 0.85rem;">
-                                    </div>
-                                    <div class="form-group">
-                                        <label style="font-size: 0.75rem;">Zona</label>
-                                        <select id="modZona" class="form-control" style="padding: 8px; font-size: 0.85rem;">
-                                            <option value="General" ${coincidencia.zona === 'General' ? 'selected' : ''}>Zona General</option>
-                                            <option value="VIP" ${coincidencia.zona === 'VIP' ? 'selected' : ''}>Zona VIP</option>
-                                            <option value="Palco" ${coincidencia.zona === 'Palco' ? 'selected' : ''}>Zona Palco</option>
-                                        </select>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
@@ -744,28 +950,20 @@
             } catch (error) {
                 console.error(error);
                 resultadoContainer.innerHTML = `
-                    <p style="color: #ef4444; text-align: center;">⚠️ Error al consultar el servidor. Inténtalo más tarde.</p>
+                    <p style="color: #ef4444; text-align: center;">⚠️ Error al consultar el servidor.</p>
                 `;
             }
         }
 
-        // Alternar visualización del formulario de modificación
         function toggleFormModificar() {
             const contenedor = document.getElementById('formModificarContainer');
-            if (contenedor.style.display === 'none' || contenedor.style.display === '') {
-                contenedor.style.display = 'block';
-            } else {
-                contenedor.style.display = 'none';
-            }
+            contenedor.style.display = (contenedor.style.display === 'none' || contenedor.style.display === '') ? 'block' : 'none';
         }
 
-        // Enviar cambios de modificación a la API
         async function enviarModificacionReserva(idReserva) {
             const payload = {
                 fecha: document.getElementById('modFecha').value,
-                sede: document.getElementById('modSede').value,
-                cantidadPersonasInicial: Number(document.getElementById('modPersonas').value),
-                zona: document.getElementById('modZona').value
+                cantidadPersonasInicial: Number(document.getElementById('modPersonas').value)
             };
 
             try {
@@ -777,7 +975,7 @@
                 const data = await res.json();
                 if (data.success) {
                     alert('✅ ¡Reserva modificada correctamente!');
-                    consultarReserva(); // Refrescar los datos en pantalla
+                    consultarReserva();
                 } else {
                     alert(`❌ Error al modificar: ${data.mensaje || 'Inténtalo de nuevo'}`);
                 }
@@ -787,7 +985,6 @@
             }
         }
 
-        // Cancelar reserva desde la consulta pública
         async function cancelarReservaCliente(idReserva) {
             if (!confirm('¿Estás seguro de que deseas cancelar tu reserva?')) return;
 
@@ -800,7 +997,7 @@
                 const data = await res.json();
                 if (data.success) {
                     alert('ℹ️ La reserva ha sido cancelada exitosamente.');
-                    consultarReserva(); // Refrescar estado en pantalla
+                    consultarReserva();
                 } else {
                     alert(`❌ Error al cancelar: ${data.mensaje}`);
                 }
