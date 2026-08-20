@@ -243,6 +243,8 @@
             display: grid;
             gap: 10px;
             margin-bottom: 12px;
+            position: relative;
+            z-index: 1; /* Corregido: Capa base */
         }
 
         .cluster-terraza { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
@@ -263,7 +265,8 @@
             justify-content: center;
             min-height: 48px;
             position: relative;
-            z-index: 5;
+            z-index: 10; /* Corregido: Prioridad de clic */
+            pointer-events: auto; /* Corregido: Forzar captación de evento */
         }
 
         .mesa-node:hover {
@@ -281,6 +284,7 @@
             background-color: rgba(220, 38, 38, 0.15);
             opacity: 0.5;
             cursor: not-allowed;
+            pointer-events: none; /* Asegura que no intercepten clics si están ocupadas */
         }
 
         .mesa-node.seleccionada {
@@ -293,7 +297,7 @@
             font-size: 0.8rem;
             font-weight: bold;
             color: #ffffff;
-            pointer-events: none;
+            pointer-events: none; /* Asegura que el clic pase al contenedor */
         }
 
         .cover-box {
