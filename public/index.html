@@ -20,7 +20,6 @@
             flex-direction: column;
         }
 
-        /* Barra Superior de WhatsApp Dinámica */
         .whatsapp-top-banner {
             background-color: #25d366;
             color: #ffffff;
@@ -30,12 +29,7 @@
             font-weight: 600;
             font-size: 0.95rem;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-            transition: background-color 0.3s ease;
             z-index: 100;
-        }
-
-        .whatsapp-top-banner:hover {
-            background-color: #20ba5a;
         }
 
         .whatsapp-top-banner a {
@@ -45,7 +39,6 @@
             margin: 0 4px;
         }
 
-        /* Contenedor Principal */
         .main-container {
             max-width: 850px;
             margin: 30px auto;
@@ -54,7 +47,6 @@
             flex: 1;
         }
 
-        /* Encabezado */
         .header-section {
             text-align: center;
             margin-bottom: 30px;
@@ -73,7 +65,6 @@
             font-size: 0.95rem;
         }
 
-        /* Pestañas de Navegación */
         .tabs-container {
             display: flex;
             gap: 10px;
@@ -103,7 +94,6 @@
             box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
         }
 
-        /* Tarjeta de Formulario y Secciones */
         .card {
             background-color: #18181b;
             border: 1px solid #27272a;
@@ -161,7 +151,6 @@
             min-height: 80px;
         }
 
-        /* Cuadro de Aviso de Zona */
         .aviso-zona {
             display: none;
             background-color: rgba(234, 88, 12, 0.15);
@@ -173,7 +162,6 @@
             margin-top: 5px;
         }
 
-        /* Estilos del Mapa 2D Arquitectónico Digital (SOHO) */
         .mapa-interactivo-container {
             background-color: #0d0d11;
             border: 2px solid #27272a;
@@ -274,6 +262,8 @@
             align-items: center;
             justify-content: center;
             min-height: 48px;
+            position: relative;
+            z-index: 5;
         }
 
         .mesa-node:hover {
@@ -303,9 +293,9 @@
             font-size: 0.8rem;
             font-weight: bold;
             color: #ffffff;
+            pointer-events: none;
         }
 
-        /* Cuadro de Resumen Cover */
         .cover-box {
             background-color: #09090b;
             border: 1px dashed #00FFEF;
@@ -322,7 +312,6 @@
             font-size: 1.1rem;
         }
 
-        /* Botones Acción */
         .btn-submit {
             width: 100%;
             background-color: #ea580c;
@@ -341,11 +330,6 @@
             background-color: #c2410c;
         }
 
-        .btn-submit:active {
-            transform: scale(0.99);
-        }
-
-        /* Sección de Consulta */
         .consulta-box {
             display: flex;
             gap: 10px;
@@ -374,7 +358,6 @@
         .badge-lleno { background-color: #16a34a; color: #ffffff; }
         .badge-cancelado { background-color: #dc2626; color: #ffffff; }
 
-        /* Footer */
         footer {
             text-align: center;
             padding: 20px;
@@ -437,22 +420,20 @@
                         <input type="date" id="fecha" class="form-control" onchange="cargarMapaInteractivoSoho()" required>
                     </div>
 
-                    <!-- Campos estándar (se usan para Salvaje / 220 Voltios) -->
-                    <div class="form-group" id="grupoZonaStd">
+                    <div class="form-group" id="grupoZonaStd" style="display:none;">
                         <label for="zona">Zona / Nivel *</label>
                         <select id="zona" class="form-control" onchange="actualizarMesasPorZona(); actualizarInfoZona();">
                             <option value="" disabled selected>Selecciona primero la sede</option>
                         </select>
                     </div>
 
-                    <div class="form-group" id="grupoMesaStd">
+                    <div class="form-group" id="grupoMesaStd" style="display:none;">
                         <label for="mesa">Mesa / Espacio *</label>
                         <select id="mesa" class="form-control">
                             <option value="Asignar">Selecciona primero la zona</option>
                         </select>
                     </div>
 
-                    <!-- Contenedor del Mapa 2D Arquitectónico (Exclusivo para SOHO) -->
                     <div class="full-width form-group" id="contenedorMapaSoho" style="display: none;">
                         <label>Plano 2D Interactivo - Sede Soho (Selecciona tu Mesa)</label>
                         <div class="mapa-interactivo-container">
@@ -465,7 +446,6 @@
                                 </div>
                             </div>
                             <div id="cuerpoMapaSoho" style="max-height: 420px; overflow-y: auto; padding-right: 5px;">
-                                <!-- Se renderiza dinámicamente el plano arquitectónico por zonas -->
                             </div>
                         </div>
                     </div>
@@ -555,7 +535,6 @@
     </footer>
 
     <script>
-        // Estructura oficial completa de Primer y Segundo Piso para SOHO con capacidades máximas individuales
         const estructuraSohoCompleta = {
             '1er Piso - Terraza Exterior': {
                 prefijo: 'Terraza',
@@ -600,7 +579,6 @@
 
         let mesaSohoSeleccionada = null;
 
-        // Función auxiliar para obtener la capacidad exacta de una mesa de Soho
         function obtenerCapacidadMesaSoho(mesaId) {
             for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
                 if (datos.mesas.includes(mesaId)) {
@@ -653,7 +631,6 @@
             }
         }
 
-        // Cargar y renderizar el plano arquitectónico digital para Soho
         async function cargarMapaInteractivoSoho() {
             const sede = document.getElementById('sede').value;
             if (sede !== 'Soho') return;
@@ -689,19 +666,19 @@
             piso1.innerHTML += `<div class="recinto-referencia">🌿 Terraza Exterior (Aire Libre)</div>`;
             const gridTerraza = document.createElement('div');
             gridTerraza.className = 'zona-layout-cluster cluster-terraza';
-            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Terraza Exterior'].mesas, mesasOcupadasSet, gridTerraza, '1er Piso - Terraza Exterior');
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Terraza Exterior'].mesas, mesasOcupadasSet, gridTerraza);
             piso1.appendChild(gridTerraza);
 
             piso1.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">🎵 Zona General & VIP Frontal</div>`;
             const gridGen1 = document.createElement('div');
             gridGen1.className = 'zona-layout-cluster cluster-general';
-            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona General #1'].mesas, mesasOcupadasSet, gridGen1, '1er Piso - Zona General #1');
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona General #1'].mesas, mesasOcupadasSet, gridGen1);
             piso1.appendChild(gridGen1);
 
             piso1.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">🎧 Pista Principal / Zona Disco & Barra</div>`;
             const gridDisco = document.createElement('div');
             gridDisco.className = 'zona-layout-cluster cluster-general';
-            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona Disco / Casino'].mesas, mesasOcupadasSet, gridDisco, '1er Piso - Zona Disco / Casino');
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona Disco / Casino'].mesas, mesasOcupadasSet, gridDisco);
             piso1.appendChild(gridDisco);
 
             contenedorPlano.appendChild(piso1);
@@ -714,35 +691,32 @@
             piso2.innerHTML += `<div class="recinto-referencia">👑 Palco Reyes & Balcón VIP</div>`;
             const gridPalcos = document.createElement('div');
             gridPalcos.className = 'zona-layout-cluster cluster-palco';
-            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Palco Reyes (Sobre Disco)'].mesas, mesasOcupadasSet, gridPalcos, '2do Piso - Palco Reyes (Sobre Disco)');
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Palco Reyes (Sobre Disco)'].mesas, mesasOcupadasSet, gridPalcos);
             piso2.appendChild(gridPalcos);
 
-            piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ VIP Sector Disco, General & Mesas Redondas</div>`;
-            const gridVip2 = document.createElement('div');
-            gridVip2.className = 'zona-layout-cluster cluster-general';
-            
-            // Renderizar individualmente cada sección del segundo piso para mantener sus nombres de zona correctos
-            const contenedorSecVipDisco = document.createElement('div');
-            contenedorSecVipDisco.className = 'zona-layout-cluster cluster-general';
-            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector Disco'].mesas, mesasOcupadasSet, contenedorSecVipDisco, '2do Piso - VIP Sector Disco');
-            
-            const contenedorSecVipGen = document.createElement('div');
-            contenedorSecVipGen.className = 'zona-layout-cluster cluster-general';
-            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector General'].mesas, mesasOcupadasSet, contenedorSecVipGen, '2do Piso - VIP Sector General');
+            piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ VIP Sector Disco</div>`;
+            const gridVipDisco = document.createElement('div');
+            gridVipDisco.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector Disco'].mesas, mesasOcupadasSet, gridVipDisco);
+            piso2.appendChild(gridVipDisco);
 
-            const contenedorSecMesasRed = document.createElement('div');
-            contenedorSecMesasRed.className = 'zona-layout-cluster cluster-general';
-            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Mesas Redondas General'].mesas, mesasOcupadasSet, contenedorSecMesasRed, '2do Piso - Mesas Redondas General');
+            piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ VIP Sector General</div>`;
+            const gridVipGen = document.createElement('div');
+            gridVipGen.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector General'].mesas, mesasOcupadasSet, gridVipGen);
+            piso2.appendChild(gridVipGen);
 
-            piso2.appendChild(contenedorSecVipDisco);
-            piso2.appendChild(contenedorSecVipGen);
-            piso2.appendChild(contenedorSecMesasRed);
+            piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ Mesas Redondas General</div>`;
+            const gridMesasRed = document.createElement('div');
+            gridMesasRed.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Mesas Redondas General'].mesas, mesasOcupadasSet, gridMesasRed);
+            piso2.appendChild(gridMesasRed);
 
             contenedorPlano.appendChild(piso2);
             cuerpoMapa.appendChild(contenedorPlano);
         }
 
-        function renderizarGrupoMesas(listaMesas, ocupadasSet, contenedorDestino, nombreZonaDefecto = 'Zona Soho') {
+        function renderizarGrupoMesas(listaMesas, ocupadasSet, contenedorDestino) {
             listaMesas.forEach(mesaId => {
                 const node = document.createElement('div');
                 const estaOcupada = ocupadasSet.has(mesaId);
@@ -756,7 +730,9 @@
                 node.innerHTML = `<span class="mesa-nombre">${mesaId}</span>`;
 
                 if (!estaOcupada) {
-                    node.onclick = () => seleccionarMesaSoho(mesaId, nombreZonaDefecto);
+                    node.addEventListener('click', () => {
+                        seleccionarMesaSoho(mesaId);
+                    });
                 } else {
                     node.title = 'Mesa Ocupada';
                 }
@@ -764,20 +740,17 @@
             });
         }
 
-        function seleccionarMesaSoho(mesaId, zonaNombre) {
+        function seleccionarMesaSoho(mesaId) {
             mesaSohoSeleccionada = mesaId;
             const capacidadMaxima = obtenerCapacidadMesaSoho(mesaId);
 
-            // Actualizar texto informativo de selección
             document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa ${mesaId}: Capacidad máxima ${capacidadMaxima} personas`;
             document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
 
-            // Ajustar automáticamente el input de personas al límite de la mesa seleccionada
             const inputPersonas = document.getElementById('cantidadPersonasInicial');
             inputPersonas.value = capacidadMaxima;
             inputPersonas.max = capacidadMaxima;
 
-            // Alerta informativa al usuario sobre la capacidad del espacio seleccionado
             alert(`ℹ️ Has seleccionado la mesa ${mesaId}. Su capacidad máxima permitida es de ${capacidadMaxima} personas. Se ha actualizado el campo de asistentes automáticamente.`);
 
             cargarMapaInteractivoSoho();
@@ -787,7 +760,6 @@
             const sede = document.getElementById('sede').value;
             if (sede === 'Soho') return;
 
-            const zona = document.getElementById('zona').value;
             const selectMesa = document.getElementById('mesa');
             selectMesa.innerHTML = '';
             
@@ -908,7 +880,6 @@
                 }
                 mesaFinal = mesaSohoSeleccionada;
 
-                // Validación estricta del límite de capacidad máxima para Soho
                 const capacidadPermitida = obtenerCapacidadMesaSoho(mesaSohoSeleccionada);
                 if (personasNuevas > capacidadPermitida) {
                     alert(`⚠️ La mesa ${mesaSohoSeleccionada} tiene una capacidad máxima de ${capacidadPermitida} personas. Has indicado ${personasNuevas} asistentes. Por favor ajusta la cantidad.`);
