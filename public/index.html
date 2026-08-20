@@ -173,20 +173,21 @@
             margin-top: 5px;
         }
 
-        /* Estilos del Mapa 2D Interactivo */
+        /* Estilos del Mapa 2D Arquitectónico Digital (SOHO) */
         .mapa-interactivo-container {
-            background-color: #121215;
-            border: 1px solid #27272a;
-            border-radius: 12px;
-            padding: 16px;
+            background-color: #0d0d11;
+            border: 2px solid #27272a;
+            border-radius: 14px;
+            padding: 20px;
             margin-top: 10px;
+            position: relative;
         }
 
         .mapa-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
             gap: 10px;
         }
@@ -210,29 +211,58 @@
             border-radius: 50%;
         }
 
-        .zona-mapa-seccion {
-            margin-bottom: 15px;
+        .plano-recinto {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
         }
 
-        .zona-mapa-titulo {
-            font-size: 0.8rem;
+        .piso-seccion-plano {
+            background-color: #121216;
+            border: 1px solid #3f3f46;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .piso-titulo-header {
+            font-size: 0.9rem;
             color: #00FFEF;
             text-transform: uppercase;
-            margin-bottom: 8px;
             font-weight: bold;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #27272a;
-            padding-bottom: 4px;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed #3f3f46;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .mesas-grid-mapa {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
-            gap: 8px;
+        .recinto-referencia {
+            background-color: #1f1f2e;
+            border: 1px dashed #52525b;
+            color: #a1a1aa;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
         }
+
+        .zona-layout-cluster {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .cluster-terraza { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
+        .cluster-general { grid-template-columns: repeat(6, 1fr); }
+        .cluster-palco { grid-template-columns: repeat(3, 1fr); }
 
         .mesa-node {
-            background-color: #1e1e24;
+            background-color: #18181b;
             border: 2px solid #3f3f46;
             border-radius: 8px;
             padding: 8px 4px;
@@ -243,40 +273,36 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            min-height: 48px;
         }
 
         .mesa-node:hover {
             border-color: #00FFEF;
-            transform: translateY(-2px);
+            transform: scale(1.05);
         }
 
         .mesa-node.disponible {
             border-color: #16a34a;
-            background-color: rgba(22, 163, 74, 0.1);
+            background-color: rgba(22, 163, 74, 0.12);
         }
 
         .mesa-node.ocupada {
             border-color: #dc2626;
             background-color: rgba(220, 38, 38, 0.15);
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
         .mesa-node.seleccionada {
             border-color: #ea580c;
-            background-color: rgba(234, 88, 12, 0.3);
-            box-shadow: 0 0 10px rgba(234, 88, 12, 0.5);
+            background-color: rgba(234, 88, 12, 0.4);
+            box-shadow: 0 0 12px rgba(234, 88, 12, 0.6);
         }
 
         .mesa-nombre {
             font-size: 0.8rem;
             font-weight: bold;
             color: #ffffff;
-        }
-
-        .mesa-cap {
-            font-size: 0.65px;
-            color: #a1a1aa;
         }
 
         /* Cuadro de Resumen Cover */
@@ -426,7 +452,7 @@
                         </select>
                     </div>
 
-                    <!-- Contenedor del Mapa 2D Interactivo (Exclusivo para SOHO) -->
+                    <!-- Contenedor del Mapa 2D Arquitectónico (Exclusivo para SOHO) -->
                     <div class="full-width form-group" id="contenedorMapaSoho" style="display: none;">
                         <label>Plano 2D Interactivo - Sede Soho (Selecciona tu Mesa)</label>
                         <div class="mapa-interactivo-container">
@@ -438,8 +464,8 @@
                                     <div class="leyenda-item"><div class="leyenda-dot" style="background-color: #ea580c;"></div> Seleccionada</div>
                                 </div>
                             </div>
-                            <div id="cuerpoMapaSoho" style="max-height: 380px; overflow-y: auto; padding-right: 5px;">
-                                <!-- Se renderiza dinámicamente por zonas -->
+                            <div id="cuerpoMapaSoho" style="max-height: 420px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Se renderiza dinámicamente el plano arquitectónico por zonas -->
                             </div>
                         </div>
                     </div>
@@ -581,7 +607,6 @@
             selectZona.innerHTML = '<option value="" disabled selected>Selecciona una zona</option>';
             
             if (sede === 'Soho') {
-                // Ocultar selects tradicionales y mostrar el Mapa 2D Interactivo
                 grupoZonaStd.style.display = 'none';
                 grupoMesaStd.style.display = 'none';
                 contenedorMapaSoho.style.display = 'block';
@@ -589,7 +614,6 @@
                 selectMesa.removeAttribute('required');
                 cargarMapaInteractivoSoho();
             } else {
-                // Mostrar selects estándar para Salvaje u otras sedes
                 grupoZonaStd.style.display = 'flex';
                 grupoMesaStd.style.display = 'flex';
                 contenedorMapaSoho.style.display = 'none';
@@ -612,14 +636,14 @@
             }
         }
 
-        // Cargar y renderizar el mapa interactivo 2D para Soho consultando reservas ocupadas en la fecha
+        // Cargar y renderizar el plano arquitectónico digital para Soho
         async function cargarMapaInteractivoSoho() {
             const sede = document.getElementById('sede').value;
             if (sede !== 'Soho') return;
 
             const fecha = document.getElementById('fecha').value;
             const cuerpoMapa = document.getElementById('cuerpoMapaSoho');
-            cuerpoMapa.innerHTML = '<p style="color: #a1a1aa; text-align: center; font-size: 0.85rem; padding: 15px;">Cargando plano 2D y disponibilidad...</p>';
+            cuerpoMapa.innerHTML = '<p style="color: #a1a1aa; text-align: center; font-size: 0.85rem; padding: 15px;">Cargando plano arquitectónico y disponibilidad...</p>';
 
             let mesasOcupadasSet = new Set();
             try {
@@ -627,11 +651,8 @@
                 if (res.ok) {
                     const reservas = await res.json();
                     reservas.forEach(r => {
-                        if (r.estadoAsistencia !== 'Cancelado' && r.mesaAsignada) {
-                            mesasOcupadasSet.add(r.mesaAsignada);
-                        }
-                        if (r.estadoAsistencia !== 'Cancelado' && r.mesa) {
-                            mesasOcupadasSet.add(r.mesa);
+                        if (r.estadoAsistencia !== 'Cancelado' && (r.mesaAsignada || r.mesa)) {
+                            mesasOcupadasSet.add(r.mesaAsignada || r.mesa);
                         }
                     });
                 }
@@ -640,52 +661,87 @@
             }
 
             cuerpoMapa.innerHTML = '';
+            const contenedorPlano = document.createElement('div');
+            contenedorPlano.className = 'plano-recinto';
 
-            for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
-                const seccionDiv = document.createElement('div');
-                seccionDiv.className = 'zona-mapa-seccion';
+            // --- PLANTA 1 ---
+            const piso1 = document.createElement('div');
+            piso1.className = 'piso-seccion-plano';
+            piso1.innerHTML = `<div class="piso-titulo-header"><span>1er Piso - Planta Principal y Terraza</span><span>Distribución Real</span></div>`;
+            
+            piso1.innerHTML += `<div class="recinto-referencia">🌿 Terraza Exterior (Aire Libre)</div>`;
+            const gridTerraza = document.createElement('div');
+            gridTerraza.className = 'zona-layout-cluster cluster-terraza';
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Terraza Exterior'].mesas, mesasOcupadasSet, gridTerraza, '1er Piso - Terraza Exterior');
+            piso1.appendChild(gridTerraza);
 
-                const tituloZona = document.createElement('div');
-                tituloZona.className = 'zona-mapa-titulo';
-                tituloZona.innerText = `${nombreZona} (${datos.capacidad})`;
-                seccionDiv.appendChild(tituloZona);
+            piso1.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">🎵 Zona General & VIP Frontal</div>`;
+            const gridGen1 = document.createElement('div');
+            gridGen1.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona General #1'].mesas, mesasOcupadasSet, gridGen1, '1er Piso - Zona General #1');
+            piso1.appendChild(gridGen1);
 
-                const gridMesas = document.createElement('div');
-                gridMesas.className = 'mesas-grid-mapa';
+            piso1.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">🎧 Pista Principal / Zona Disco & Barra</div>`;
+            const gridDisco = document.createElement('div');
+            gridDisco.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['1er Piso - Zona Disco / Casino'].mesas, mesasOcupadasSet, gridDisco, '1er Piso - Zona Disco / Casino');
+            piso1.appendChild(gridDisco);
 
-                datos.mesas.forEach(mesaId => {
-                    const node = document.createElement('div');
-                    const estaOcupada = mesasOcupadasSet.has(mesaId);
-                    const estaSeleccionada = mesaSohoSeleccionada === mesaId;
+            contenedorPlano.appendChild(piso1);
 
-                    let claseEstado = 'disponible';
-                    if (estaOcupada) claseEstado = 'ocupada';
-                    if (estaSeleccionada) claseEstado = 'seleccionada';
+            // --- PLANTA 2 ---
+            const piso2 = document.createElement('div');
+            piso2.className = 'piso-seccion-plano';
+            piso2.innerHTML = `<div class="piso-titulo-header"><span>2do Piso - Balcón y Palcos Exclusivos</span><span>Zona VIP</span></div>`;
+            
+            piso2.innerHTML += `<div class="recinto-referencia">👑 Palco Reyes & Balcón VIP</div>`;
+            const gridPalcos = document.createElement('div');
+            gridPalcos.className = 'zona-layout-cluster cluster-palco';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Palco Reyes (Sobre Disco)'].mesas, mesasOcupadasSet, gridPalcos, '2do Piso - Palco Reyes (Sobre Disco)');
+            piso2.appendChild(gridPalcos);
 
-                    node.className = `mesa-node ${claseEstado}`;
-                    node.innerHTML = `
-                        <span class="mesa-nombre">${mesaId}</span>
-                    `;
+            piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ VIP Sector Disco, General & Mesas Redondas</div>`;
+            const gridVip2 = document.createElement('div');
+            gridVip2.className = 'zona-layout-cluster cluster-general';
+            const mesasVip2 = [
+                ...estructuraSohoCompleta['2do Piso - VIP Sector Disco'].mesas,
+                ...estructuraSohoCompleta['2do Piso - VIP Sector General'].mesas,
+                ...estructuraSohoCompleta['2do Piso - Mesas Redondas General'].mesas
+            ];
+            renderizarGrupoMesas(mesasVip2, mesasOcupadasSet, gridVip2, '2do Piso - VIP Sector General');
+            piso2.appendChild(gridVip2);
 
-                    if (!estaOcupada) {
-                        node.onclick = () => seleccionarMesaSoho(mesaId, nombreZona);
-                    } else {
-                        node.title = 'Mesa Ocupada';
-                    }
+            contenedorPlano.appendChild(piso2);
+            cuerpoMapa.appendChild(contenedorPlano);
+        }
 
-                    gridMesas.appendChild(node);
-                });
+        function renderizarGrupoMesas(listaMesas, ocupadasSet, contenedorDestino, nombreZonaDefecto = 'Zona Soho') {
+            listaMesas.forEach(mesaId => {
+                const node = document.createElement('div');
+                const estaOcupada = ocupadasSet.has(mesaId);
+                const estaSeleccionada = mesaSohoSeleccionada === mesaId;
 
-                seccionDiv.appendChild(gridMesas);
-                cuerpoMapa.appendChild(seccionDiv);
-            }
+                let claseEstado = 'disponible';
+                if (estaOcupada) claseEstado = 'ocupada';
+                if (estaSeleccionada) claseEstado = 'seleccionada';
+
+                node.className = `mesa-node ${claseEstado}`;
+                node.innerHTML = `<span class="mesa-nombre">${mesaId}</span>`;
+
+                if (!estaOcupada) {
+                    node.onclick = () => seleccionarMesaSoho(mesaId, nombreZonaDefecto);
+                } else {
+                    node.title = 'Mesa Ocupada';
+                }
+                contenedorDestino.appendChild(node);
+            });
         }
 
         function seleccionarMesaSoho(mesaId, zonaNombre) {
             mesaSohoSeleccionada = mesaId;
             document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa Seleccionada: ${mesaId} (${zonaNombre})`;
             document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
-            cargarMapaInteractivoSoho(); // Actualizar colores en el plano 2D
+            cargarMapaInteractivoSoho();
         }
 
         function actualizarMesasPorZona() {
@@ -808,11 +864,10 @@
 
             if (sedeValue === 'Soho') {
                 if (!mesaSohoSeleccionada) {
-                    alert('⚠️ Por favor selecciona una mesa o espacio disponible en el mapa interactivo 2D de Soho.');
+                    alert('⚠️ Por favor selecciona una mesa o espacio disponible en el plano interactivo de Soho.');
                     return;
                 }
                 mesaFinal = mesaSohoSeleccionada;
-                // Encontrar la zona a la que pertenece la mesa seleccionada
                 for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
                     if (datos.mesas.includes(mesaSohoSeleccionada)) {
                         zonaFinal = nombreZona;
