@@ -720,13 +720,23 @@
             piso2.innerHTML += `<div class="recinto-referencia" style="margin-top: 15px;">✨ VIP Sector Disco, General & Mesas Redondas</div>`;
             const gridVip2 = document.createElement('div');
             gridVip2.className = 'zona-layout-cluster cluster-general';
-            const mesasVip2 = [
-                ...estructuraSohoCompleta['2do Piso - VIP Sector Disco'].mesas,
-                ...estructuraSohoCompleta['2do Piso - VIP Sector General'].mesas,
-                ...estructuraSohoCompleta['2do Piso - Mesas Redondas General'].mesas
-            ];
-            renderizarGrupoMesas(mesasVip2, mesasOcupadasSet, gridVip2, '2do Piso - VIP Sector General');
-            piso2.appendChild(gridVip2);
+            
+            // Renderizar individualmente cada sección del segundo piso para mantener sus nombres de zona correctos
+            const contenedorSecVipDisco = document.createElement('div');
+            contenedorSecVipDisco.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector Disco'].mesas, mesasOcupadasSet, contenedorSecVipDisco, '2do Piso - VIP Sector Disco');
+            
+            const contenedorSecVipGen = document.createElement('div');
+            contenedorSecVipGen.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - VIP Sector General'].mesas, mesasOcupadasSet, contenedorSecVipGen, '2do Piso - VIP Sector General');
+
+            const contenedorSecMesasRed = document.createElement('div');
+            contenedorSecMesasRed.className = 'zona-layout-cluster cluster-general';
+            renderizarGrupoMesas(estructuraSohoCompleta['2do Piso - Mesas Redondas General'].mesas, mesasOcupadasSet, contenedorSecMesasRed, '2do Piso - Mesas Redondas General');
+
+            piso2.appendChild(contenedorSecVipDisco);
+            piso2.appendChild(contenedorSecVipGen);
+            piso2.appendChild(contenedorSecMesasRed);
 
             contenedorPlano.appendChild(piso2);
             cuerpoMapa.appendChild(contenedorPlano);
