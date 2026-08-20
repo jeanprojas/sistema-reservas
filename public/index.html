@@ -404,74 +404,71 @@
     </footer>
 
     <script>
-        // Mapeo detallado de zonas y mesas exclusivamente para SOHO (1er y 2do Piso)
-const mapeoZonasSoho = {
-    'Terraza': ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
-    'General1': ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
-    'Disco1': ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
-    'PalcoReyes': ['P1'],
-    'VIP_Disco2': ['V7', 'V8', 'V9', 'V10'],
-    'VIP_General2': ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
-    'Mesas_General2': ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13']
+        const mapeoZonasSoho = {
+            'Terraza': ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
+            'General1': ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
+            'Disco1': ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
+            'PalcoReyes': ['P1'],
+            'VIP_Disco2': ['V7', 'V8', 'V9', 'V10'],
+            'VIP_General2': ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
+            'Mesas_General2': ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13']
 };
-
-function cambiarSedeFormulario() {
-    const sede = document.getElementById('sede').value;
-    const selectZona = document.getElementById('zona');
-    selectZona.innerHTML = '<option value="" disabled selected>Selecciona una zona</option>';
-
-    if (sede === 'Soho') {
-        const zonasSoho = [
-            {val: 'Terraza', label: 'Terraza (1er Piso)'},
-            {val: 'General1', label: 'Zona General #1 (1er Piso)'},
-            {val: 'Disco1', label: 'Zona Disco (1er Piso)'},
-            {val: 'PalcoReyes', label: 'Palco Reyes (2do Piso)'},
-            {val: 'VIP_Disco2', label: 'VIP Sector Disco (2do Piso)'},
-            {val: 'VIP_General2', label: 'VIP Sector General (2do Piso)'},
-            {val: 'Mesas_General2', label: 'Mesas Redondas (2do Piso)'}
-        ];
-        zonasSoho.forEach(z => {
-            const opt = document.createElement('option');
-            opt.value = z.val;
-            opt.innerText = z.label;
-            selectZona.appendChild(opt);
-        });
-    } else {
-        const zonasGenericas = [
-            {val: 'General', label: 'Zona General'},
-            {val: 'VIP', label: 'Zona VIP'},
-            {val: 'Palco', label: 'Zona Palco'}
-        ];
-        zonasGenericas.forEach(z => {
-            const opt = document.createElement('option');
-            opt.value = z.val;
-            opt.innerText = z.label;
-            selectZona.appendChild(opt);
-        });
-    }
-    actualizarMesasPorZona();
-}
-
-function actualizarMesasPorZona() {
-    const sede = document.getElementById('sede').value;
-    const zona = document.getElementById('zona').value;
-    const selectMesa = document.getElementById('mesa');
-    selectMesa.innerHTML = '';
-
-    if (sede === 'Soho' && mapeoZonasSoho[zona]) {
-        mapeoZonasSoho[zona].forEach(mesa => {
-            const opt = document.createElement('option');
-            opt.value = mesa;
-            opt.innerText = `Mesa/Espacio ${mesa}`;
-            selectMesa.appendChild(opt);
-        });
-    } else {
-        const opt = document.createElement('option');
-        opt.value = 'Asignar';
-        opt.innerText = 'Asignación en puerta / General';
-        selectMesa.appendChild(opt);
-    }
-}
+        function cambiarSedeFormulario() {
+            const sede = document.getElementById('sede').value;
+            const selectZona = document.getElementById('zona');
+            selectZona.innerHTML = '<option value="" disabled selected>Selecciona una zona</option>';
+            
+            if (sede === 'Soho') {
+                const zonasSoho = [
+                    {val: 'Terraza', label: 'Terraza (1er Piso)'},
+                    {val: 'General1', label: 'Zona General #1 (1er Piso)'},
+                    {val: 'Disco1', label: 'Zona Disco (1er Piso)'},
+                    {val: 'PalcoReyes', label: 'Palco Reyes (2do Piso)'},
+                    {val: 'VIP_Disco2', label: 'VIP Sector Disco (2do Piso)'},
+                    {val: 'VIP_General2', label: 'VIP Sector General (2do Piso)'},
+                    {val: 'Mesas_General2', label: 'Mesas Redondas (2do Piso)'}
+                ];
+                zonasSoho.forEach(z => {
+                    const opt = document.createElement('option');
+                    opt.value = z.val;
+                    opt.innerText = z.label;
+                    selectZona.appendChild(opt);
+                });
+            } else {
+                const zonasGenericas = [
+                    {val: 'General', label: 'Zona General'},
+                    {val: 'VIP', label: 'Zona VIP'},
+                    {val: 'Palco', label: 'Zona Palco'}
+                ];
+                zonasGenericas.forEach(z => {
+                    const opt = document.createElement('option');
+                    opt.value = z.val;
+                    opt.innerText = z.label;
+                    selectZona.appendChild(opt);
+                });
+            }
+            actualizarMesasPorZona();
+        }
+        function actualizarMesasPorZona() {
+            const sede = document.getElementById('sede').value;
+            const zona = document.getElementById('zona').value;
+            const selectMesa = document.getElementById('mesa');
+            selectMesa.innerHTML = '';
+            
+            if (sede === 'Soho' && mapeoZonasSoho[zona]) {
+                mapeoZonasSoho[zona].forEach(mesa => {
+                    const opt = document.createElement('option');
+                    opt.value = mesa;
+                    opt.innerText = `Mesa/Espacio ${mesa}`;
+                    selectMesa.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.value = 'Asignar';
+                opt.innerText = 'Asignación en puerta / General';
+                selectMesa.appendChild(opt);
+            }
+        }
         let precioCoverGlobal = 10000;
 
         // Cargar configuración inicial al abrir la página
