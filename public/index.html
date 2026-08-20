@@ -288,95 +288,100 @@
 
         <div id="secCrear" class="card">
             <form id="formReserva" onsubmit="guardarReserva(event)">
-                <div class="form-grid">
-                    
-                    <div class="form-group">
-                        <label for="sede">Sede Discoteca *</label>
-                        <select id="sede" class="form-control" onchange="actualizarInfoZona()" required>
-                            <option value="" disabled selected>Seleccionar discoteca</option>
-                            <option value="Soho">Soho</option>
-                            <option value="Salvaje">Salvaje</option>
-                            <option value="220 Voltios">220 Voltios</option>
-                        </select>
-                    </div>
+    <div class="form-grid">
+        
+        <div class="form-group">
+            <label for="sede">Sede Discoteca *</label>
+            <select id="sede" class="form-control" onchange="cambiarSedeFormulario()" required>
+                <option value="" disabled selected>Seleccionar discoteca</option>
+                <option value="Soho">Soho</option>
+                <option value="Salvaje">Salvaje</option>
+                <option value="220 Voltios">220 Voltios</option>
+            </select>
+        </div>
 
-                    <div class="form-group">
-                        <label for="fecha">Fecha de Reserva *</label>
-                        <input type="date" id="fecha" class="form-control" required>
-                    </div>
+        <div class="form-group">
+            <label for="fecha">Fecha de Reserva *</label>
+            <input type="date" id="fecha" class="form-control" required>
+        </div>
 
-                    <div class="form-group">
-                        <label for="zona">Zona Preferida *</label>
-                        <select id="zona" class="form-control" onchange="actualizarInfoZona()" required>
-                            <option value="General">Zona General</option>
-                            <option value="VIP">Zona VIP</option>
-                            <option value="Palco">Zona Palco</option>
-                        </select>
-                    </div>
+        <div class="form-group">
+            <label for="zona">Zona / Nivel *</label>
+            <select id="zona" class="form-control" onchange="actualizarMesasPorZona(); actualizarInfoZona();" required>
+                <option value="" disabled selected>Selecciona primero la sede</option>
+            </select>
+        </div>
 
-                    <div class="form-group">
-                        <label for="cantidadPersonasInicial">Número de Personas *</label>
-                        <input type="number" id="cantidadPersonasInicial" class="form-control" min="1" max="50" value="1" required>
-                    </div>
+        <div class="form-group">
+            <label for="mesa">Mesa / Espacio *</label>
+            <select id="mesa" class="form-control" required>
+                <option value="Asignar">Selecciona primero la zona</option>
+            </select>
+        </div>
 
-                    <div class="full-width">
-                        <div id="avisoZona" class="aviso-zona">
-                            - En VIP y Palco hay consumo mínimo requerido.
-                        </div>
-                    </div>
+        <div class="form-group">
+            <label for="cantidadPersonasInicial">Número de Personas *</label>
+            <input type="number" id="cantidadPersonasInicial" class="form-control" min="1" max="50" value="1" required>
+        </div>
 
-                    <div class="form-group">
-                        <label for="nombreCliente">Nombre Completo *</label>
-                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej. Juan Pérez" required>
-                    </div>
+        <div class="full-width">
+            <div id="avisoZona" class="aviso-zona">
+                - Selecciona una sede y zona para ver los detalles de consumo.
+            </div>
+        </div>
 
-                   <div class="form-group">
-                       <label for="telefono">WhatsApp *</label>
-                       <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" maxlength="10" pattern="^3[0-9]{9}$" title="Debe tener 10 dígitos y empezar por 3" required>
-                   </div>
+        <div class="form-group">
+            <label for="nombreCliente">Nombre Completo *</label>
+            <input type="text" id="nombreCliente" class="form-control" placeholder="Ej. Juan Pérez" required>
+        </div>
 
-                    <div class="form-group">
-                        <label for="email">Correo Electrónico</label>
-                        <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
-                    </div>
+       <div class="form-group">
+           <label for="telefono">WhatsApp *</label>
+           <input type="tel" id="telefono" class="form-control" placeholder="Ej. 3001234567" maxlength="10" pattern="^3[0-9]{9}$" title="Debe tener 10 dígitos y empezar por 3" required>
+       </div>
 
-                    <div class="form-group">
-                        <label for="motivo">Motivo de Reserva</label>
-                        <select id="motivo" class="form-control">
-                            <option value="General">General / RUMBA</option>
-                            <option value="Cumpleaños">Cumpleaños</option>
-                            <option value="Aniversario">Aniversario</option>
-                            <option value="Evento Especial">Evento Especial</option>
-                        </select>
-                    </div>
+        <div class="form-group">
+            <label for="email">Correo Electrónico</label>
+            <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
+        </div>
 
-                    <div class="form-group">
-                        <label for="instagram">Instagram (Opcional)</label>
-                        <input type="text" id="instagram" class="form-control" placeholder="@usuario">
-                    </div>
+        <div class="form-group">
+            <label for="motivo">Motivo de Reserva</label>
+            <select id="motivo" class="form-control">
+                <option value="General">General / RUMBA</option>
+                <option value="Cumpleaños">Cumpleaños</option>
+                <option value="Aniversario">Aniversario</option>
+                <option value="Evento Especial">Evento Especial</option>
+            </select>
+        </div>
 
-                    <div class="form-group">
-                        <label for="promotor">Promotor / Código</label>
-                        <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
-                    </div>
+        <div class="form-group">
+            <label for="instagram">Instagram (Opcional)</label>
+            <input type="text" id="instagram" class="form-control" placeholder="@usuario">
+        </div>
 
-                    <div class="full-width form-group">
-                        <label for="nota">Notas o Solicitudes Especiales</label>
-                        <textarea id="nota" class="form-control" placeholder="Escribe aquí cualquier indicación adicional..."></textarea>
-                    </div>
+        <div class="form-group">
+            <label for="promotor">Promotor / Código</label>
+            <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
+        </div>
 
-                    <div class="full-width">
-                        <div class="cover-box">
-                            Cover despúes de las 10:30 pm: <span id="precioCoverTexto">$10,000 COP</span>
-                        </div>
-                    </div>
+        <div class="full-width form-group">
+            <label for="nota">Notas o Solicitudes Especiales</label>
+            <textarea id="nota" class="form-control" placeholder="Escribe aquí cualquier indicación adicional..."></textarea>
+        </div>
 
-                    <div class="full-width">
-                        <button type="submit" class="btn-submit">Confirmar y Enviar Reserva</button>
-                    </div>
+        <div class="full-width">
+            <div class="cover-box">
+                Cover después de las 10:30 pm: <span id="precioCoverTexto">$10,000 COP</span>
+            </div>
+        </div>
 
-                </div>
-            </form>
+        <div class="full-width">
+            <button type="submit" class="btn-submit">Confirmar y Enviar Reserva</button>
+        </div>
+
+    </div>
+</form>
         </div>
 
         <div id="secConsultar" class="card" style="display: none;">
