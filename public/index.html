@@ -244,7 +244,7 @@
             gap: 10px;
             margin-bottom: 12px;
             position: relative;
-            z-index: 1; /* Corregido: Capa base */
+            z-index: 1;
         }
 
         .cluster-terraza { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
@@ -265,8 +265,8 @@
             justify-content: center;
             min-height: 48px;
             position: relative;
-            z-index: 10; /* Corregido: Prioridad de clic */
-            pointer-events: auto; /* Corregido: Forzar captación de evento */
+            z-index: 10;
+            pointer-events: auto;
         }
 
         .mesa-node:hover {
@@ -284,20 +284,20 @@
             background-color: rgba(220, 38, 38, 0.15);
             opacity: 0.5;
             cursor: not-allowed;
-            pointer-events: none; /* Asegura que no intercepten clics si están ocupadas */
+            pointer-events: none;
         }
 
         .mesa-node.seleccionada {
-            border-color: #ea580c;
-            background-color: rgba(234, 88, 12, 0.4);
-            box-shadow: 0 0 12px rgba(234, 88, 12, 0.6);
+            border-color: #ea580c !important;
+            background-color: rgba(234, 88, 12, 0.4) !important;
+            box-shadow: 0 0 12px rgba(234, 88, 12, 0.6) !important;
         }
 
         .mesa-nombre {
             font-size: 0.8rem;
             font-weight: bold;
             color: #ffffff;
-            pointer-events: none; /* Asegura que el clic pase al contenedor */
+            pointer-events: none;
         }
 
         .cover-box {
@@ -731,11 +731,12 @@
                 if (estaSeleccionada) claseEstado = 'seleccionada';
 
                 node.className = `mesa-node ${claseEstado}`;
+                node.id = `mesa-node-${mesaId}`;
                 node.innerHTML = `<span class="mesa-nombre">${mesaId}</span>`;
 
                 if (!estaOcupada) {
                     node.addEventListener('click', () => {
-                        seleccionarMesaSoho(mesaId);
+                        seleccionarMesaSoho(mesaId, node);
                     });
                 } else {
                     node.title = 'Mesa Ocupada';
@@ -744,9 +745,27 @@
             });
         }
 
-        function seleccionarMesaSoho(mesaId) {
+        function seleccionarMesaSoho(mesaId, elementoNode) {
+            // Remover selección previa en el DOM visualmente si existe
+            document.querySelectorAll('.mesa-node.seleccionada').forEach(el => {
+                el.classList.remove('seleccionada');
+                el.classList.add('disponible');
+            });
+
             mesaSohoSeleccionada = mesaId;
             const capacidadMaxima = obtenerCapacidadMesaSoho(mesaId);
+
+            // Marcar inmediatamente el nodo actual como seleccionado (color naranja)
+            if (elementoNode) {
+                elementoNode.classList.remove('disponible');
+                elementoNode.classList.add('seleccionada');
+            } else {
+                const nodoFallback = document.getElementById(`mesa-node-${mesaId}`);
+                if (nodoFallback) {
+                    nodoFallback.classList.remove('disponible');
+                    nodoFallback.classList.add('seleccionada');
+                }
+            }
 
             document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa ${mesaId}: Capacidad máxima ${capacidadMaxima} personas`;
             document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
@@ -756,8 +775,6 @@
             inputPersonas.max = capacidadMaxima;
 
             alert(`ℹ️ Has seleccionado la mesa ${mesaId}. Su capacidad máxima permitida es de ${capacidadMaxima} personas. Se ha actualizado el campo de asistentes automáticamente.`);
-
-            cargarMapaInteractivoSoho();
         }
 
         function actualizarMesasPorZona() {
