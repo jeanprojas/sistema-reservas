@@ -555,46 +555,63 @@
     </footer>
 
     <script>
-        // Estructura oficial completa de Primer y Segundo Piso para SOHO
+        // Estructura oficial completa de Primer y Segundo Piso para SOHO con capacidades máximas individuales
         const estructuraSohoCompleta = {
             '1er Piso - Terraza Exterior': {
                 prefijo: 'Terraza',
                 mesas: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
-                capacidad: '4 px c/u'
+                capacidadPorMesa: 4
             },
             '1er Piso - Zona General #1': {
                 prefijo: 'General 1',
                 mesas: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
-                capacidad: 'G: 4px | V1-V2: 10-15px | V3: 8px'
+                capacidadesEspecificas: { 'V1': 15, 'V2': 15, 'V3': 8 },
+                capacidadPorMesa: 4
             },
             '1er Piso - Zona Disco / Casino': {
                 prefijo: 'Disco 1',
                 mesas: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
-                capacidad: 'D: 4px | V4-V6: 10-15px'
+                capacidadesEspecificas: { 'V4': 15, 'V5': 15, 'V6': 15 },
+                capacidadPorMesa: 4
             },
             '2do Piso - Palco Reyes (Sobre Disco)': {
                 prefijo: 'Palco Reyes',
                 mesas: ['P1', 'P1-A', 'P1-B'],
-                capacidad: 'P1: 25px (o dividido)'
+                capacidadesEspecificas: { 'P1': 25, 'P1-A': 12, 'P1-B': 12 },
+                capacidadPorMesa: 25
             },
             '2do Piso - VIP Sector Disco': {
                 prefijo: 'VIP Disco 2',
                 mesas: ['V7', 'V8', 'V9', 'V10'],
-                capacidad: '15 px c/u'
+                capacidadPorMesa: 15
             },
             '2do Piso - VIP Sector General': {
                 prefijo: 'VIP General 2',
                 mesas: ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
-                capacidad: 'V11, V15, V19: 15px | Otros: 6-10px'
+                capacidadesEspecificas: { 'V11': 15, 'V15': 15, 'V19': 15 },
+                capacidadPorMesa: 8
             },
             '2do Piso - Mesas Redondas General': {
                 prefijo: 'Mesas 2do Piso',
                 mesas: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13'],
-                capacidad: '4 px c/u'
+                capacidadPorMesa: 4
             }
         };
 
         let mesaSohoSeleccionada = null;
+
+        // Función auxiliar para obtener la capacidad exacta de una mesa de Soho
+        function obtenerCapacidadMesaSoho(mesaId) {
+            for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
+                if (datos.mesas.includes(mesaId)) {
+                    if (datos.capacidadesEspecificas && datos.capacidadesEspecificas[mesaId] !== undefined) {
+                        return datos.capacidadesEspecificas[mesaId];
+                    }
+                    return datos.capacidadPorMesa || 4;
+                }
+            }
+            return 4;
+        }
 
         function cambiarSedeFormulario() {
             const sede = document.getElementById('sede').value;
@@ -739,8 +756,20 @@
 
         function seleccionarMesaSoho(mesaId, zonaNombre) {
             mesaSohoSeleccionada = mesaId;
-            document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa Seleccionada: ${mesaId} (${zonaNombre})`;
+            const capacidadMaxima = obtenerCapacidadMesaSoho(mesaId);
+
+            // Actualizar texto informativo de selección
+            document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa ${mesaId}: Capacidad máxima ${capacidadMaxima} personas`;
             document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
+
+            // Ajustar automáticamente el input de personas al límite de la mesa seleccionada
+            const inputPersonas = document.getElementById('cantidadPersonasInicial');
+            inputPersonas.value = capacidadMaxima;
+            inputPersonas.max = capacidadMaxima;
+
+            // Alerta informativa al usuario sobre la capacidad del espacio seleccionado
+            alert(`ℹ️ Has seleccionado la mesa ${mesaId}. Su capacidad máxima permitida es de ${capacidadMaxima} personas. Se ha actualizado el campo de asistentes automáticamente.`);
+
             cargarMapaInteractivoSoho();
         }
 
@@ -868,6 +897,14 @@
                     return;
                 }
                 mesaFinal = mesaSohoSeleccionada;
+
+                // Validación estricta del límite de capacidad máxima para Soho
+                const capacidadPermitida = obtenerCapacidadMesaSoho(mesaSohoSeleccionada);
+                if (personasNuevas > capacidadPermitida) {
+                    alert(`⚠️ La mesa ${mesaSohoSeleccionada} tiene una capacidad máxima de ${capacidadPermitida} personas. Has indicado ${personasNuevas} asistentes. Por favor ajusta la cantidad.`);
+                    return;
+                }
+
                 for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
                     if (datos.mesas.includes(mesaSohoSeleccionada)) {
                         zonaFinal = nombreZona;
