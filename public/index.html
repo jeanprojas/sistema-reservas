@@ -243,8 +243,6 @@
             display: grid;
             gap: 10px;
             margin-bottom: 12px;
-            position: relative;
-            z-index: 1;
         }
 
         .cluster-terraza { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
@@ -264,12 +262,10 @@
             align-items: center;
             justify-content: center;
             min-height: 48px;
-            position: relative;
-            z-index: 10;
-            pointer-events: auto;
+            user-select: none;
         }
 
-        .mesa-node:hover {
+        .mesa-node:hover:not(.ocupada) {
             border-color: #00FFEF;
             transform: scale(1.05);
         }
@@ -284,7 +280,6 @@
             background-color: rgba(220, 38, 38, 0.15);
             opacity: 0.5;
             cursor: not-allowed;
-            pointer-events: none;
         }
 
         .mesa-node.seleccionada {
@@ -718,6 +713,18 @@
 
             contenedorPlano.appendChild(piso2);
             cuerpoMapa.appendChild(contenedorPlano);
+
+            // APLICAR DELEGACIÓN DE EVENTOS GLOBAL PARA EVITAR FALLOS DE CLIC
+            cuerpoMapa.onclick = function(e) {
+                const node = e.target.closest('.mesa-node');
+                if (!node) return;
+                if (node.classList.contains('ocupada')) return;
+
+                const mesaId = node.getAttribute('data-mesa');
+                if (mesaId) {
+                    seleccionarMesaSohoDirecta(mesaId, node);
+                }
+            };
         }
 
         function renderizarGrupoMesas(listaMesas, ocupadasSet, contenedorDestino) {
@@ -731,22 +738,18 @@
                 if (estaSeleccionada) claseEstado = 'seleccionada';
 
                 node.className = `mesa-node ${claseEstado}`;
-                node.id = `mesa-node-${mesaId}`;
+                node.setAttribute('data-mesa', mesaId);
                 node.innerHTML = `<span class="mesa-nombre">${mesaId}</span>`;
 
-                if (!estaOcupada) {
-                    node.addEventListener('click', () => {
-                        seleccionarMesaSoho(mesaId, node);
-                    });
-                } else {
+                if (estaOcupada) {
                     node.title = 'Mesa Ocupada';
                 }
                 contenedorDestino.appendChild(node);
             });
         }
 
-        function seleccionarMesaSoho(mesaId, elementoNode) {
-            // Remover selección previa en el DOM visualmente si existe
+        function seleccionarMesaSohoDirecta(mesaId, elementoNode) {
+            // Limpiar selección visual anterior en todo el documento
             document.querySelectorAll('.mesa-node.seleccionada').forEach(el => {
                 el.classList.remove('seleccionada');
                 el.classList.add('disponible');
@@ -755,26 +758,23 @@
             mesaSohoSeleccionada = mesaId;
             const capacidadMaxima = obtenerCapacidadMesaSoho(mesaId);
 
-            // Marcar inmediatamente el nodo actual como seleccionado (color naranja)
+            // Marcar de forma segura la mesa actual seleccionada
             if (elementoNode) {
                 elementoNode.classList.remove('disponible');
                 elementoNode.classList.add('seleccionada');
-            } else {
-                const nodoFallback = document.getElementById(`mesa-node-${mesaId}`);
-                if (nodoFallback) {
-                    nodoFallback.classList.remove('disponible');
-                    nodoFallback.classList.add('seleccionada');
-                }
             }
 
-            document.getElementById('infoMesaSeleccionadaSoho').innerText = `Mesa ${mesaId}: Capacidad máxima ${capacidadMaxima} personas`;
-            document.getElementById('infoMesaSeleccionadaSoho').style.color = '#ea580c';
+            const labelInfo = document.getElementById('infoMesaSeleccionadaSoho');
+            if (labelInfo) {
+                labelInfo.innerText = `Mesa ${mesaId}: Capacidad máxima ${capacidadMaxima} personas`;
+                labelInfo.style.color = '#ea580c';
+            }
 
             const inputPersonas = document.getElementById('cantidadPersonasInicial');
-            inputPersonas.value = capacidadMaxima;
-            inputPersonas.max = capacidadMaxima;
-
-            alert(`ℹ️ Has seleccionado la mesa ${mesaId}. Su capacidad máxima permitida es de ${capacidadMaxima} personas. Se ha actualizado el campo de asistentes automáticamente.`);
+            if (inputPersonas) {
+                inputPersonas.value = capacidadMaxima;
+                inputPersonas.max = capacidadMaxima;
+            }
         }
 
         function actualizarMesasPorZona() {
