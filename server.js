@@ -12,22 +12,33 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de Resend usando la variable de entorno RESEND_API_KEY
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Conexión a MongoDB (Base de datos en la nube para evitar pérdida de datos por reinicios)
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/vipnorte';
 
-if (!MONGO_URI) {
-    console.error("ERROR CRÍTICO: Falta la variable de entorno MONGO_URI en Render.");
+if (!process.env.MONGO_URI) {
+    console.warn('Advertencia: No se encontró MONGO_URI. Se usará la base local por defecto (mongodb://127.0.0.1:27017/vipnorte).');
 }
 
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('Conectado exitosamente a la Base de Datos en la Nube'))
-    .catch(err => console.error('Error conectando a MongoDB:', err));
+async function conectarBaseDatos() {
+    try {
+        await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+        console.log('Conectado exitosamente a la Base de Datos en la Nube');
+        await inicializarAdmin();
+        await migrarDatosLocales();
+    } catch (err) {
+        console.warn('No se pudo conectar a MongoDB. El servidor seguirá arrancando en modo de desarrollo limitado:', err.message);
+    }
+}
 
 // ================= MIGRACIÓN AUTOMÁTICA DE DATOS LOCALES =================
 async function migrarDatosLocales() {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return;
+        }
+
         const totalReservas = await Reserva.countDocuments();
         if (totalReservas === 0) {
             const rutaArchivo = path.join(__dirname, 'data', 'reservas.json');
@@ -76,9 +87,6 @@ async function migrarDatosLocales() {
     }
 }
 
-// Ejecutar la migración al iniciar
-setTimeout(migrarDatosLocales, 2000);
-
 // ================= ESQUEMAS Y MODELOS DE LA BASE DE DATOS =================
 const reservaSchema = new mongoose.Schema({
     id: { type: String, unique: true, required: true },
@@ -91,7 +99,9 @@ const reservaSchema = new mongoose.Schema({
     zona: String,
     mesa: String,
     mesaAsignada: { type: String, default: 'Sin Asignar' }, 
-    motivoReserva: { type: String, default: 'General' },    
+    motivoReserva: { type: String, default: 'General' },
+    nota: { type: String, default: '' },
+    comentarios: { type: String, default: '' },
     cantidadPersonasInicial: Number,
     personasLlegadas: { type: Number, default: 0 },
     cortesias: { type: Number, default: 0 },
@@ -135,9 +145,145 @@ const Reserva = mongoose.model('Reserva', reservaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 const ConfiguracionIndex = mongoose.model('ConfiguracionIndex', configuracionSchema);
 
+const memoryDb = {
+    usuarios: [{
+        id: 'USR-ADMIN',
+        username: 'admin',
+        password: '123',
+        rol: 'Administrador',
+        sede: 'TODAS'
+    }],
+    configuracion: {
+        clave: 'global',
+        whatsapp: 'https://wa.me/573014815281',
+        whatsappLink: 'https://wa.me/573014815281',
+        whatsappNumero: '3014815281',
+        whatsappTexto: 'Comunícate al número de WhatsApp: 3014815281',
+        whatsappSubititulo: 'Para una atención más inmediata.',
+        subtitulo: 'Para una atención más inmediata.',
+        titulo: 'Sistema de Reservas - VIP Norte',
+        tituloConsulta: 'Consultar Mi Reserva',
+        tituloCreacion: 'Crear Nueva Reserva',
+        precioCover: 10000,
+        camposConfig: {
+            emailRequerido: false,
+            instagramRequerido: false,
+            notaRequerida: false,
+            promotorRequerido: false,
+            email: 'opcional',
+            telefono: 'obligatorio'
+        },
+        campos: {
+            email: 'opcional',
+            telefono: 'obligatorio'
+        },
+        actualizadoEn: Date.now()
+    },
+    reservas: []
+};
+
+function normalizarConfiguracionPayload(payload = {}) {
+    const rawCampos = payload.campos || payload.camposConfig || {};
+    const emailEstado = String((rawCampos.email ?? rawCampos.emailRequerido ?? payload.email ?? payload.emailRequerido ?? 'opcional')).toLowerCase();
+    const telefonoEstado = String((rawCampos.telefono ?? rawCampos.telefonoRequerido ?? payload.telefono ?? payload.telefonoRequerido ?? 'obligatorio')).toLowerCase();
+    const whatsappLink = payload.whatsappLink || payload.whatsapp || '';
+    const whatsappNumero = payload.whatsappNumero || (whatsappLink.match(/\d+/g) || []).join('').slice(-10) || '3014815281';
+    return {
+        whatsapp: payload.whatsapp || whatsappLink,
+        whatsappLink,
+        whatsappNumero,
+        whatsappTexto: payload.whatsappTexto || payload.whatsappMensaje || `Comunícate al número de WhatsApp: ${whatsappNumero}`,
+        whatsappSubititulo: payload.whatsappSubititulo || payload.subtitulo || 'Para una atención más inmediata.',
+        titulo: payload.titulo || payload.tituloConsulta || 'Sistema de Reservas - VIP Norte',
+        tituloConsulta: payload.tituloConsulta || payload.titulo || 'Consultar Mi Reserva',
+        tituloCreacion: payload.tituloCreacion || payload.titulo || 'Crear Nueva Reserva',
+        subtitulo: payload.subtitulo || payload.whatsappSubititulo || 'Para una atención más inmediata.',
+        precioCover: Number(payload.precioCover ?? 10000),
+        camposConfig: {
+            emailRequerido: emailEstado === 'obligatorio' || emailEstado === 'true',
+            instagramRequerido: Boolean(payload.instagramRequerido || rawCampos.instagramRequerido),
+            notaRequerida: Boolean(payload.notaRequerida || rawCampos.notaRequerida),
+            promotorRequerido: Boolean(payload.promotorRequerido || rawCampos.promotorRequerido),
+            email: emailEstado,
+            telefono: telefonoEstado
+        },
+        campos: {
+            email: emailEstado,
+            telefono: telefonoEstado
+        },
+        actualizadoEn: Date.now()
+    };
+}
+
+function isMemoryMode() {
+    return mongoose.connection.readyState !== 1;
+}
+
+function normalizarPromotor(valor) {
+    const valorNormalizado = valor ? String(valor).trim() : '';
+    if (!valorNormalizado) return 'VIP NORTE';
+    const valorMayus = valorNormalizado.toUpperCase();
+    if (valorMayus === 'FREDYFREE') return 'FREDYFREE';
+    return valorNormalizado;
+}
+
+function aplicarReglaPromocionCover(reserva) {
+    const promotor = normalizarPromotor(reserva.promotor);
+    const codigo = String(reserva.promotor || reserva.codigoPromocional || '').toUpperCase();
+    const esFredyFree = promotor === 'FREDYFREE' || codigo.includes('FREDYFREE');
+    if (esFredyFree) {
+        reserva.promotor = 'FREDYFREE';
+        reserva.precioCover = 0;
+        reserva.pagaronCover = 0;
+    }
+    return reserva;
+}
+
+function obtenerDataReserva(r) {
+    return {
+        ...r,
+        creadoEn: r.creadoEn || new Date()
+    };
+}
+
+function buscarReservaEnMemoria(id) {
+    return memoryDb.reservas.find(r => String(r.id) === String(id));
+}
+
+function construirFiltroReservasMemoria({ fecha, sede, query, id } = {}) {
+    return memoryDb.reservas.filter(r => {
+        if (fecha && String(r.fecha) !== String(fecha)) return false;
+        if (sede && sede !== 'TODAS' && String(r.sede) !== String(sede)) return false;
+        if (query && !(
+            String(r.telefono || '').toLowerCase().includes(String(query).toLowerCase()) ||
+            String(r.id || '').toLowerCase().includes(String(query).toLowerCase()) ||
+            String(r.codigoQr || '').includes(String(query))
+        )) {
+            return false;
+        }
+        if (id && String(r.id) !== String(id)) return false;
+        return true;
+    });
+}
+
+function desbloquearMesaEnMemoria(sede, fecha, mesa, idActualExcluir = null) {
+    if (!mesa || mesa === 'Sin Asignar' || mesa === 'Mesa Asignar' || mesa === 'Asignar') {
+        return true;
+    }
+    const coinciden = memoryDb.reservas.some(r => {
+        if (idActualExcluir && String(r.id) === String(idActualExcluir)) return false;
+        return String(r.fecha) === String(fecha) && String(r.sede) === String(sede) && String(r.mesa) === String(mesa);
+    });
+    return !coinciden;
+}
+
 // Inicializar usuario Administrador por defecto si no existe
 async function inicializarAdmin() {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return;
+        }
+
         const adminExiste = await Usuario.findOne({ username: 'admin' });
         if (!adminExiste) {
             await Usuario.create({
@@ -174,7 +320,6 @@ async function inicializarAdmin() {
         console.error('Error al inicializar admin o configuraciones:', e);
     }
 }
-inicializarAdmin();
 
 // ================= VALIDACIÓN DE DISPONIBILIDAD DE MESA =================
 async function verificarDisponibilidadMesa(nuevaSede, nuevaFecha, nuevaMesa, idActualExcluir = null) {
@@ -200,6 +345,11 @@ async function verificarDisponibilidadMesa(nuevaSede, nuevaFecha, nuevaMesa, idA
 // Función auxiliar para enviar correos de reserva utilizando Resend
 async function enviarCorreoReserva(destinatario, nombreCliente, idReserva, fecha, zona, mesa, pinQr, sede) {
     try {
+        if (!resend) {
+            console.warn('Resend no está configurado; se omite el envío de correo para la reserva:', idReserva);
+            return { success: false, mensaje: 'La API key de Resend no está configurada.' };
+        }
+
         const data = await resend.emails.send({
             from: process.env.RESEND_FROM || 'Portal VIP Norte <onboarding@resend.dev>',
             to: [destinatario],
@@ -249,6 +399,20 @@ function obtenerNocheOperativa(fechaStr, horaStr = "21:00") {
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
+        if (isMemoryMode()) {
+            const usuario = memoryDb.usuarios.find(u => u.username === username && u.password === password);
+            if (!usuario) {
+                return res.status(401).json({ success: false, mensaje: 'Usuario o contraseña incorrectos' });
+            }
+            return res.json({
+                success: true,
+                rol: usuario.rol,
+                sede: usuario.sede,
+                username: usuario.username,
+                mensaje: 'Autenticación exitosa'
+            });
+        }
+
         const usuario = await Usuario.findOne({ username, password });
 
         if (!usuario) {
@@ -270,11 +434,17 @@ app.post('/api/login', async (req, res) => {
 // ================= GESTIÓN DE CONFIGURACIÓN DEL INDEX =================
 app.get(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            const config = { ...memoryDb.configuracion, clave: 'global' };
+            return res.json({ success: true, config, ...config });
+        }
+
         let config = await ConfiguracionIndex.findOne({ clave: 'global' });
         if (!config) {
             config = await ConfiguracionIndex.create({ clave: 'global' });
         }
-        res.json({ success: true, config, ...config._doc });
+        const payload = config.toObject ? config.toObject() : config;
+        res.json({ success: true, config: payload, ...payload });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener la configuración' });
     }
@@ -282,16 +452,12 @@ app.get(['/api/configuracion-index', '/api/admin/configuracion', '/api/configura
 
 app.put(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
-        const updateData = {
-            whatsappLink: req.body.whatsappLink,
-            whatsappNumero: req.body.whatsappNumero,
-            whatsappTexto: req.body.whatsappTexto,
-            whatsappSubititulo: req.body.whatsappSubititulo,
-            tituloConsulta: req.body.tituloConsulta,
-            tituloCreacion: req.body.tituloCreacion,
-            camposConfig: req.body.camposConfig || {},
-            actualizadoEn: Date.now()
-        };
+        const updateData = normalizarConfiguracionPayload(req.body);
+
+        if (isMemoryMode()) {
+            memoryDb.configuracion = { ...memoryDb.configuracion, ...updateData, clave: 'global' };
+            return res.json({ success: true, mensaje: 'Configuración actualizada con éxito', config: memoryDb.configuracion });
+        }
 
         const configActualizada = await ConfiguracionIndex.findOneAndUpdate(
             { clave: 'global' }, 
@@ -307,16 +473,12 @@ app.put(['/api/configuracion-index', '/api/admin/configuracion', '/api/configura
 
 app.post(['/api/configuracion-index', '/api/admin/configuracion', '/api/configuracion'], async (req, res) => {
     try {
-        const updateData = {
-            whatsappLink: req.body.whatsappLink,
-            whatsappNumero: req.body.whatsappNumero,
-            whatsappTexto: req.body.whatsappTexto,
-            whatsappSubititulo: req.body.whatsappSubititulo,
-            tituloConsulta: req.body.tituloConsulta,
-            tituloCreacion: req.body.tituloCreacion,
-            camposConfig: req.body.camposConfig || {},
-            actualizadoEn: Date.now()
-        };
+        const updateData = normalizarConfiguracionPayload(req.body);
+
+        if (isMemoryMode()) {
+            memoryDb.configuracion = { ...memoryDb.configuracion, ...updateData, clave: 'global' };
+            return res.json({ success: true, mensaje: 'Configuración guardada exitosamente', config: memoryDb.configuracion });
+        }
 
         const configActualizada = await ConfiguracionIndex.findOneAndUpdate(
             { clave: 'global' }, 
@@ -333,6 +495,9 @@ app.post(['/api/configuracion-index', '/api/admin/configuracion', '/api/configur
 // ================= GESTIÓN DE USUARIOS =================
 app.get('/api/usuarios', async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            return res.json(memoryDb.usuarios.map(({ password, ...usuario }) => usuario));
+        }
         const usuarios = await Usuario.find({}, { password: 0 });
         res.json(usuarios);
     } catch (e) {
@@ -343,6 +508,22 @@ app.get('/api/usuarios', async (req, res) => {
 app.post('/api/usuarios', async (req, res) => {
     try {
         const { username, password, rol, sede } = req.body;
+
+        if (isMemoryMode()) {
+            const usuarioExiste = memoryDb.usuarios.some(u => u.username === username);
+            if (usuarioExiste) {
+                return res.status(400).json({ success: false, mensaje: 'El nombre de usuario ya existe' });
+            }
+            const nuevoUsuario = {
+                id: 'USR-' + Date.now().toString().slice(-6),
+                username,
+                password,
+                rol: rol || 'Staff',
+                sede: sede || 'TODAS'
+            };
+            memoryDb.usuarios.push(nuevoUsuario);
+            return res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito', usuario: nuevoUsuario });
+        }
         
         const usuarioExiste = await Usuario.findOne({ username });
         if (usuarioExiste) {
@@ -373,6 +554,15 @@ app.put('/api/usuarios/:id', async (req, res) => {
         if (req.body.rol) updateData.rol = req.body.rol;
         if (req.body.sede) updateData.sede = req.body.sede;
 
+        if (isMemoryMode()) {
+            const index = memoryDb.usuarios.findIndex(u => String(u.id) === String(id));
+            if (index === -1) {
+                return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+            }
+            memoryDb.usuarios[index] = { ...memoryDb.usuarios[index], ...updateData };
+            return res.json({ success: true, mensaje: 'Usuario actualizado con éxito', usuario: memoryDb.usuarios[index] });
+        }
+
         const usuarioActualizado = await Usuario.findOneAndUpdate({ id }, updateData, { new: true });
         if (!usuarioActualizado) {
             return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
@@ -387,6 +577,18 @@ app.put('/api/usuarios/:id', async (req, res) => {
 app.delete('/api/usuarios/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        if (isMemoryMode()) {
+            const usuarioAEliminar = memoryDb.usuarios.find(u => String(u.id) === String(id));
+            if (!usuarioAEliminar) {
+                return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+            }
+            if (usuarioAEliminar.username === 'admin') {
+                return res.status(403).json({ success: false, mensaje: 'Por seguridad, el usuario administrador principal no se puede eliminar' });
+            }
+            memoryDb.usuarios = memoryDb.usuarios.filter(u => String(u.id) !== String(id));
+            return res.json({ success: true, mensaje: 'Usuario eliminado con éxito' });
+        }
+
         const usuarioAEliminar = await Usuario.findOne({ id });
 
         if (!usuarioAEliminar) {
@@ -410,6 +612,11 @@ app.delete('/api/usuarios/:id', async (req, res) => {
 app.get('/api/reservas', async (req, res) => {
     try {
         const { fecha, sede } = req.query;
+        if (isMemoryMode()) {
+            const reservas = construirFiltroReservasMemoria({ fecha, sede });
+            return res.json([...reservas].sort((a, b) => new Date(b.creadoEn || b.fecha) - new Date(a.creadoEn || a.fecha)));
+        }
+
         let filtro = {};
 
         if (fecha) filtro.fecha = fecha;
@@ -426,6 +633,11 @@ app.get('/api/reservas', async (req, res) => {
 app.get('/api/admin/reservas', async (req, res) => {
     try {
         const { fecha, sede } = req.query;
+        if (isMemoryMode()) {
+            const reservas = construirFiltroReservasMemoria({ fecha, sede });
+            return res.json([...reservas].sort((a, b) => new Date(b.creadoEn || b.fecha) - new Date(a.creadoEn || a.fecha)));
+        }
+
         let filtro = {};
 
         if (fecha) filtro.fecha = fecha;
@@ -444,6 +656,11 @@ app.get('/api/reservas/buscar', async (req, res) => {
         const { query, sede } = req.query;
         if (!query) {
             return res.status(400).json({ success: false, mensaje: 'Debe ingresar un criterio de búsqueda' });
+        }
+
+        if (isMemoryMode()) {
+            const reservas = construirFiltroReservasMemoria({ query, sede });
+            return res.json(reservas);
         }
 
         let filtro = {
@@ -468,6 +685,14 @@ app.get('/api/reservas/buscar', async (req, res) => {
 // Obtener reserva por ID específico
 app.get('/api/reservas/:id', async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+            return res.json(reserva);
+        }
+
         const reserva = await Reserva.findOne({ id: req.params.id });
         if (!reserva) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
@@ -482,6 +707,51 @@ app.get('/api/reservas/:id', async (req, res) => {
 app.put('/api/reservas/:id/modificar', async (req, res) => {
     try {
         const { cantidadPersonasInicial, fecha, sede, zona, mesaAsignada, mesa, estadoAsistencia, codigoIngresado } = req.body;
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+
+            if (codigoIngresado && reserva.codigoQr && codigoIngresado !== reserva.codigoQr) {
+                return res.status(400).json({ success: false, mensaje: 'El código PIN de acceso no coincide' });
+            }
+
+            if (estadoAsistencia === 'Cancelado') {
+                reserva.estadoAsistencia = 'Cancelado';
+                return res.json({ success: true, mensaje: 'Reserva cancelada exitosamente y guardada como lead', reserva });
+            }
+
+            const nuevaSede = sede || reserva.sede;
+            const nuevaFecha = fecha || reserva.fecha;
+            const nuevaMesa = mesaAsignada || mesa || reserva.mesaAsignada || reserva.mesa;
+
+            if (nuevaMesa && nuevaMesa !== 'Sin Asignar' && (nuevaSede !== reserva.sede || nuevaFecha !== reserva.fecha || nuevaMesa !== reserva.mesaAsignada)) {
+                const mesaLibre = desbloquearMesaEnMemoria(nuevaSede, nuevaFecha, nuevaMesa, reserva.id);
+                if (!mesaLibre) {
+                    return res.status(400).json({
+                        success: false,
+                        mensaje: `La Mesa #${nuevaMesa} ya se encuentra ocupada para la sede ${nuevaSede} en la fecha ${nuevaFecha}.`
+                    });
+                }
+            }
+
+            if (cantidadPersonasInicial !== undefined) reserva.cantidadPersonasInicial = Number(cantidadPersonasInicial);
+            if (fecha) reserva.fecha = fecha;
+            if (sede) reserva.sede = sede;
+            if (zona) reserva.zona = zona;
+            if (mesaAsignada) {
+                reserva.mesaAsignada = mesaAsignada;
+                reserva.mesa = mesaAsignada;
+            }
+            if (mesa) {
+                reserva.mesa = mesa;
+                reserva.mesaAsignada = mesa;
+            }
+
+            return res.json({ success: true, mensaje: 'Reserva modificada correctamente', reserva });
+        }
+
         const reserva = await Reserva.findOne({ id: req.params.id });
 
         if (!reserva) {
@@ -544,6 +814,63 @@ app.post('/api/reservas', async (req, res) => {
         const fechaReserva = req.body.fecha;
         const mesaReserva = req.body.mesa;
 
+        if (isMemoryMode()) {
+            if (!desbloquearMesaEnMemoria(sedeReserva, fechaReserva, mesaReserva)) {
+                return res.status(400).json({
+                    success: false,
+                    mensaje: `La Mesa #${mesaReserva} ya se encuentra ocupada para la sede ${sedeReserva} en la fecha ${fechaReserva}.`
+                });
+            }
+
+            const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
+            const idGenerado = 'RES-' + Date.now().toString().slice(-6);
+            const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
+            const promotorSeleccionado = normalizarPromotor(req.body.promotor);
+            const notaReserva = String(req.body.nota || req.body.comentario || req.body.notas || req.body.comentarios || '').trim();
+            const nuevaReserva = {
+                id: idGenerado,
+                codigoQr: codigoQrPin,
+                nombreCliente: req.body.nombreCliente,
+                telefono: req.body.telefono,
+                email: req.body.email || '',
+                fecha: fechaReserva,
+                sede: sedeReserva,
+                zona: req.body.zona || 'General',
+                mesa: mesaReserva || 'Asignar',
+                mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
+                motivoReserva: motivoSeleccionado,
+                nota: notaReserva,
+                comentarios: notaReserva,
+                cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+                personasLlegadas: 0,
+                cortesias: 0,
+                pagaronCover: 0,
+                precioCover: Number(req.body.precioCover) || 10000,
+                estadoAsistencia: 'Reservado',
+                usuarioCreador: req.body.usuarioCreador || 'Web Pública',
+                nocheOperativa: fechaReserva,
+                promotor: promotorSeleccionado,
+                creadoEn: new Date()
+            };
+            aplicarReglaPromocionCover(nuevaReserva);
+            memoryDb.reservas.push(nuevaReserva);
+
+            if (nuevaReserva.email) {
+                await enviarCorreoReserva(
+                    nuevaReserva.email,
+                    nuevaReserva.nombreCliente,
+                    nuevaReserva.id,
+                    nuevaReserva.fecha,
+                    nuevaReserva.zona,
+                    nuevaReserva.mesa,
+                    nuevaReserva.codigoQr,
+                    nuevaReserva.sede
+                );
+            }
+
+            return res.status(201).json({ success: true, mensaje: 'Reserva registrada con éxito', reserva: nuevaReserva });
+        }
+
         const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
         if (!mesaLibre) {
             return res.status(400).json({
@@ -555,7 +882,8 @@ app.post('/api/reservas', async (req, res) => {
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
         const idGenerado = 'RES-' + Date.now().toString().slice(-6);
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
-        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
+        const promotorSeleccionado = normalizarPromotor(req.body.promotor);
+        const notaReserva = String(req.body.nota || req.body.comentario || req.body.notas || req.body.comentarios || '').trim();
 
         const nuevaReserva = new Reserva({
             id: idGenerado,
@@ -569,6 +897,8 @@ app.post('/api/reservas', async (req, res) => {
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: motivoSeleccionado,
+            nota: notaReserva,
+            comentarios: notaReserva,
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: 0,
             cortesias: 0,
@@ -580,6 +910,7 @@ app.post('/api/reservas', async (req, res) => {
             promotor: promotorSeleccionado
         });
 
+        aplicarReglaPromocionCover(nuevaReserva);
         await nuevaReserva.save();
 
         if (nuevaReserva.email) {
@@ -608,6 +939,45 @@ app.post('/api/admin/reservas', async (req, res) => {
         const fechaReserva = req.body.fecha;
         const mesaReserva = req.body.mesa;
 
+        if (isMemoryMode()) {
+            if (!desbloquearMesaEnMemoria(sedeReserva, fechaReserva, mesaReserva)) {
+                return res.status(400).json({
+                    success: false,
+                    mensaje: `Error de inconsistencia: La Mesa #${mesaReserva} ya se encuentra reservada para la sede ${sedeReserva} en la fecha ${fechaReserva}.`
+                });
+            }
+
+            const notaReserva = String(req.body.nota || req.body.comentario || req.body.notas || req.body.comentarios || '').trim();
+            const nuevaReserva = {
+                id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
+                codigoQr: Math.floor(1000 + Math.random() * 9000).toString(),
+                nombreCliente: req.body.nombreCliente,
+                telefono: req.body.telefono,
+                email: req.body.email || '',
+                fecha: fechaReserva,
+                sede: sedeReserva,
+                zona: req.body.zona || 'General',
+                mesa: mesaReserva || 'Asignar',
+                mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
+                motivoReserva: req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General',
+                nota: notaReserva,
+                comentarios: notaReserva,
+                cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+                personasLlegadas: Number(req.body.personasLlegadas) || 0,
+                cortesias: Number(req.body.cortesias) || 0,
+                pagaronCover: Number(req.body.pagaronCover) || 0,
+                precioCover: Number(req.body.precioCover) || 10000,
+                estadoAsistencia: req.body.estadoAsistencia || 'Reservado',
+                usuarioCreador: req.body.usuarioCreador || 'Administrador',
+                nocheOperativa: fechaReserva,
+                promotor: normalizarPromotor(req.body.promotor),
+                creadoEn: new Date()
+            };
+            aplicarReglaPromocionCover(nuevaReserva);
+            memoryDb.reservas.push(nuevaReserva);
+            return res.status(201).json({ success: true, mensaje: 'Reserva administrativa creada con éxito', reserva: nuevaReserva });
+        }
+
         const mesaLibre = await verificarDisponibilidadMesa(sedeReserva, fechaReserva, mesaReserva);
         if (!mesaLibre) {
             return res.status(400).json({
@@ -618,7 +988,8 @@ app.post('/api/admin/reservas', async (req, res) => {
 
         const codigoQrPin = Math.floor(1000 + Math.random() * 9000).toString();
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva || 'General';
-        const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
+        const promotorSeleccionado = normalizarPromotor(req.body.promotor);
+        const notaReserva = String(req.body.nota || req.body.comentario || req.body.notas || req.body.comentarios || '').trim();
 
         const nuevaReserva = new Reserva({
             id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
@@ -632,6 +1003,8 @@ app.post('/api/admin/reservas', async (req, res) => {
             mesa: mesaReserva || 'Asignar',
             mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
             motivoReserva: motivoSeleccionado,
+            nota: notaReserva,
+            comentarios: notaReserva,
             cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
             personasLlegadas: Number(req.body.personasLlegadas) || 0,
             cortesias: Number(req.body.cortesias) || 0,
@@ -643,6 +1016,7 @@ app.post('/api/admin/reservas', async (req, res) => {
             promotor: promotorSeleccionado
         });
 
+        aplicarReglaPromocionCover(nuevaReserva);
         await nuevaReserva.save();
 
         if (nuevaReserva.email) {
@@ -672,6 +1046,31 @@ app.post('/api/sincronizar-sheets', async (req, res) => {
         const mesaReserva = req.body.mesa || 'Asignar';
         const motivoSeleccionado = req.body.motivo_reserva || req.body.motivoReserva || 'General';
         const promotorSeleccionado = req.body.promotor ? req.body.promotor.trim() : 'VIP NORTE';
+
+        if (isMemoryMode()) {
+            const nuevaReserva = {
+                id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
+                codigoQr: Math.floor(1000 + Math.random() * 9000).toString(),
+                nombreCliente: req.body.nombreCliente || 'Sin Nombre',
+                telefono: req.body.telefono || '',
+                email: req.body.email || '',
+                fecha: fechaReserva,
+                sede: sedeReserva,
+                zona: req.body.zona || 'General',
+                mesa: mesaReserva,
+                mesaAsignada: req.body.mesaAsignada || mesaReserva || 'Sin Asignar',
+                motivoReserva: motivoSeleccionado,
+                cantidadPersonasInicial: Number(req.body.cantidadPersonasInicial) || 1,
+                estadoAsistencia: 'Reservado',
+                nocheOperativa: fechaReserva,
+                usuarioCreador: 'Google Sheets',
+                promotor: promotorSeleccionado,
+                creadoEn: new Date()
+            };
+            memoryDb.reservas.push(nuevaReserva);
+            console.log('✅ Nueva reserva sincronizada desde Google Sheets:', nuevaReserva.nombreCliente);
+            return res.json({ success: true, mensaje: 'Reserva sincronizada exitosamente' });
+        }
 
         const nuevaReserva = new Reserva({
             id: req.body.id || 'RES-' + Date.now().toString().slice(-6),
@@ -732,17 +1131,47 @@ app.post('/api/reservas/:id/reenviar-correo', async (req, res) => {
 // Actualizar detalle parcial de reserva (Staff)
 app.put('/api/reservas/:id/detalle', async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+            const updateData = {};
+            if (req.body.cantidadPersonasInicial !== undefined) updateData.cantidadPersonasInicial = Number(req.body.cantidadPersonasInicial);
+            if (req.body.personasLlegadas !== undefined) updateData.personasLlegadas = Number(req.body.personasLlegadas);
+            if (req.body.cortesias !== undefined) updateData.cortesias = Number(req.body.cortesias);
+            if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
+            if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
+            if (req.body.promotor !== undefined) updateData.promotor = normalizarPromotor(req.body.promotor);
+            const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
+            if (motivoSeleccionado !== undefined) updateData.motivoReserva = motivoSeleccionado;
+            if (req.body.mesaAsignada !== undefined) updateData.mesaAsignada = req.body.mesaAsignada;
+            if (req.body.nota !== undefined || req.body.comentario !== undefined || req.body.notas !== undefined || req.body.comentarios !== undefined) {
+                const notaTexto = String(req.body.nota ?? req.body.comentario ?? req.body.notas ?? req.body.comentarios ?? '').trim();
+                updateData.nota = notaTexto;
+                updateData.comentarios = notaTexto;
+            }
+            Object.assign(reserva, updateData);
+            aplicarReglaPromocionCover(reserva);
+            return res.json({ success: true, mensaje: 'Detalle actualizado correctamente', reserva });
+        }
+
         const updateData = {};
         if (req.body.cantidadPersonasInicial !== undefined) updateData.cantidadPersonasInicial = Number(req.body.cantidadPersonasInicial);
         if (req.body.personasLlegadas !== undefined) updateData.personasLlegadas = Number(req.body.personasLlegadas);
         if (req.body.cortesias !== undefined) updateData.cortesias = Number(req.body.cortesias);
         if (req.body.pagaronCover !== undefined) updateData.pagaronCover = Number(req.body.pagaronCover);
         if (req.body.precioCover !== undefined) updateData.precioCover = Number(req.body.precioCover);
-        if (req.body.promotor !== undefined) updateData.promotor = req.body.promotor.trim() || 'VIP NORTE';
+        if (req.body.promotor !== undefined) updateData.promotor = normalizarPromotor(req.body.promotor);
 
         const motivoSeleccionado = req.body.motivo || req.body.motivoReserva || req.body.motivo_reserva;
         if (motivoSeleccionado !== undefined) updateData.motivoReserva = motivoSeleccionado;
         if (req.body.mesaAsignada !== undefined) updateData.mesaAsignada = req.body.mesaAsignada;
+        if (req.body.nota !== undefined || req.body.comentario !== undefined || req.body.notas !== undefined || req.body.comentarios !== undefined) {
+            const notaTexto = String(req.body.nota ?? req.body.comentario ?? req.body.notas ?? req.body.comentarios ?? '').trim();
+            updateData.nota = notaTexto;
+            updateData.comentarios = notaTexto;
+        }
 
         const reserva = await Reserva.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
         if (!reserva) {
@@ -758,6 +1187,32 @@ app.put('/api/reservas/:id/detalle', async (req, res) => {
 app.put('/api/admin/reservas/:id', async (req, res) => {
     try {
         const { sede, fecha, mesa } = req.body;
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+            if (mesa) {
+                const mesaLibre = desbloquearMesaEnMemoria(sede || reserva.sede, fecha || reserva.fecha, mesa, req.params.id);
+                if (!mesaLibre) {
+                    return res.status(400).json({
+                        success: false,
+                        mensaje: `No se puede asignar: La Mesa #${mesa} ya se encuentra reservada para esa sede y fecha.`
+                    });
+                }
+            }
+            if (req.body.nota !== undefined || req.body.comentario !== undefined || req.body.notas !== undefined || req.body.comentarios !== undefined) {
+                const notaTexto = String(req.body.nota ?? req.body.comentario ?? req.body.notas ?? req.body.comentarios ?? '').trim();
+                reserva.nota = notaTexto;
+                reserva.comentarios = notaTexto;
+            }
+            if (req.body.promotor !== undefined) {
+                reserva.promotor = normalizarPromotor(req.body.promotor);
+            }
+            Object.assign(reserva, req.body);
+            aplicarReglaPromocionCover(reserva);
+            return res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva });
+        }
         if (mesa) {
             const mesaLibre = await verificarDisponibilidadMesa(sede, fecha, mesa, req.params.id);
             if (!mesaLibre) {
@@ -768,6 +1223,15 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
             }
         }
 
+        if (req.body.nota !== undefined || req.body.comentario !== undefined || req.body.notas !== undefined || req.body.comentarios !== undefined) {
+            const notaTexto = String(req.body.nota ?? req.body.comentario ?? req.body.notas ?? req.body.comentarios ?? '').trim();
+            req.body.nota = notaTexto;
+            req.body.comentarios = notaTexto;
+        }
+        if (req.body.promotor !== undefined) {
+            req.body.promotor = normalizarPromotor(req.body.promotor);
+        }
+
         const reservaActualizada = await Reserva.findOneAndUpdate(
             { id: req.params.id },
             req.body,
@@ -776,6 +1240,13 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
 
         if (!reservaActualizada) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+
+        if (reservaActualizada.promotor && reservaActualizada.promotor.toUpperCase().includes('FREDYFREE')) {
+            reservaActualizada.promotor = 'FREDYFREE';
+            reservaActualizada.precioCover = 0;
+            reservaActualizada.pagaronCover = 0;
+            await reservaActualizada.save();
         }
 
         res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva: reservaActualizada });
@@ -789,6 +1260,21 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
     try {
         const nuevoEstado = req.body.nuevoEstado || req.body.estadoAsistencia;
         const codigoIngresado = req.body.codigoIngresado;
+
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+            if (codigoIngresado && reserva.codigoQr && codigoIngresado !== reserva.codigoQr) {
+                return res.status(400).json({ success: false, mensaje: 'El código PIN/QR no coincide' });
+            }
+            reserva.estadoAsistencia = nuevoEstado || reserva.estadoAsistencia;
+            if (req.body.personasLlegadas !== undefined) {
+                reserva.personasLlegadas = Number(req.body.personasLlegadas);
+            }
+            return res.json({ success: true, mensaje: 'Estado de reserva actualizado con éxito', reserva });
+        }
 
         const reserva = await Reserva.findOne({ id: req.params.id });
         if (!reserva) {
@@ -814,6 +1300,15 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
 // Eliminar reserva por ID
 app.delete('/api/admin/reservas/:id', async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            const index = memoryDb.reservas.findIndex(r => String(r.id) === String(req.params.id));
+            if (index === -1) {
+                return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            }
+            memoryDb.reservas.splice(index, 1);
+            return res.json({ success: true, mensaje: 'Reserva eliminada con éxito' });
+        }
+
         const reserva = await Reserva.findOneAndDelete({ id: req.params.id });
         if (!reserva) {
             return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
@@ -827,6 +1322,32 @@ app.delete('/api/admin/reservas/:id', async (req, res) => {
 // Limpiar base de datos (Admin)
 app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
     try {
+        if (isMemoryMode()) {
+            const count = memoryDb.reservas.length;
+            memoryDb.reservas = [];
+            memoryDb.usuarios = [{ id: 'USR-ADMIN', username: 'admin', password: '123', rol: 'Administrador', sede: 'TODAS' }];
+            memoryDb.configuracion = {
+                clave: 'global',
+                whatsappLink: 'https://wa.me/573014815281',
+                whatsappNumero: '3014815281',
+                whatsappTexto: 'Comunícate al número de WhatsApp: 3014815281',
+                whatsappSubititulo: 'Para una atención más inmediata.',
+                tituloConsulta: 'Consultar Mi Reserva',
+                tituloCreacion: 'Crear Nueva Reserva',
+                camposConfig: {
+                    emailRequerido: false,
+                    instagramRequerido: false,
+                    notaRequerida: false,
+                    promotorRequerido: false
+                },
+                actualizadoEn: Date.now()
+            };
+            return res.json({
+                success: true,
+                mensaje: `Base de datos limpiada exitosamente. Se eliminaron ${count} reservas.`
+            });
+        }
+
         const resultadoReservas = await Reserva.deleteMany({});
         await Usuario.deleteMany({ username: { $ne: 'admin' } });
         await inicializarAdmin();
@@ -839,12 +1360,24 @@ app.delete('/api/admin/limpiar-base-datos', async (req, res) => {
     }
 });
 
+// ================= HEALTH CHECK =================
+app.get('/health', (req, res) => {
+    res.json({
+        success: true,
+        status: 'ok',
+        dbConnected: mongoose.connection.readyState === 1,
+        timestamp: new Date().toISOString()
+    });
+});
+
 // ================= RUTAS DE FRONTEND (CATCH ALL) =================
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ================= INICIALIZACIÓN DEL SERVIDOR =================
+conectarBaseDatos();
+
 app.listen(PORT, () => {
     console.log(`Servidor iniciado correctamente y escuchando en el puerto ${PORT}`);
 });
