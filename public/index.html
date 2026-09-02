@@ -493,6 +493,7 @@
                     <div class="form-group">
                         <label for="promotor">Promotor / Código</label>
                         <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
+                        <small style="display:block; margin-top:6px; color:#a1a1aa; font-size:0.72rem;">Tip: si escribes <strong>FREDYFREE</strong>, el cover queda en <strong>$0</strong> para esa reserva.</small>
                     </div>
 
                     <div class="full-width form-group">
@@ -772,8 +773,11 @@
 
             const inputPersonas = document.getElementById('cantidadPersonasInicial');
             if (inputPersonas) {
-                inputPersonas.value = capacidadMaxima;
                 inputPersonas.max = capacidadMaxima;
+                const valorActual = Number(inputPersonas.value) || 1;
+                if (valorActual > capacidadMaxima) {
+                    inputPersonas.value = capacidadMaxima;
+                }
             }
         }
 
@@ -938,12 +942,12 @@
             };
 
             try {
-                const res = await fetch('/api/admin/reservas', {
+                const res = await fetch('/api/reservas', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
+
                 const data = await res.json();
 
                 if (data.success) {
@@ -977,15 +981,16 @@
             resultadoContainer.innerHTML = '<p style="color: #a1a1aa; text-align: center;">Buscando reserva...</p>';
 
             try {
-                const res = await fetch('/api/admin/reservas');
+                const query = encodeURIComponent(termino);
+                const res = await fetch(`/api/reservas/buscar?query=${query}`);
                 if (!res.ok) throw new Error('Error al consultar reservas');
-                
+
                 const reservas = await res.json();
-                const coincidencia = reservas.find(r => 
+                const coincidencia = Array.isArray(reservas) ? reservas.find(r => 
                     (r.telefono && r.telefono.includes(termino)) || 
                     (r.id && r.id.toLowerCase().includes(termino.toLowerCase())) ||
                     (r.nombreCliente && r.nombreCliente.toLowerCase().includes(termino.toLowerCase()))
-                );
+                ) : null;
 
                 if (coincidencia) {
                     let badgeClass = 'badge-reservado';
@@ -1001,6 +1006,7 @@
                                 <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede} - ${coincidencia.zona}</p>
                                 <p style="margin-bottom: 6px;"><b>Personas:</b> ${coincidencia.cantidadPersonasInicial}</p>
                                 <p style="margin-bottom: 0;"><b>Mesa Asignada:</b> <span style="color: #38bdf8; font-weight: bold;">${coincidencia.mesaAsignada || coincidencia.mesa || 'Sin Asignar'}</span></p>
+                                ${coincidencia.nota || coincidencia.comentario || coincidencia.comentarios ? `<p style="margin-top: 10px; margin-bottom: 0;"><b>Notas / Comentarios:</b> ${coincidencia.nota || coincidencia.comentario || coincidencia.comentarios}</p>` : ''}
                             </div>
 
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px; min-width: 180px;">
