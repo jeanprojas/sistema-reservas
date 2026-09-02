@@ -190,30 +190,50 @@ function normalizarConfiguracionPayload(payload = {}) {
     const rawCampos = payload.campos || payload.camposConfig || {};
     const emailEstado = String((rawCampos.email ?? rawCampos.emailRequerido ?? payload.email ?? payload.emailRequerido ?? 'opcional')).toLowerCase();
     const telefonoEstado = String((rawCampos.telefono ?? rawCampos.telefonoRequerido ?? payload.telefono ?? payload.telefonoRequerido ?? 'obligatorio')).toLowerCase();
-    const whatsappLink = payload.whatsappLink || payload.whatsapp || '';
+    const instagramEstado = String((rawCampos.instagram ?? rawCampos.instagramRequerido ?? payload.instagram ?? payload.instagramRequerido ?? 'opcional')).toLowerCase();
+    const promotorEstado = String((rawCampos.promotor ?? rawCampos.promotorRequerido ?? payload.promotor ?? payload.promotorRequerido ?? 'opcional')).toLowerCase();
+    const notaEstado = String((rawCampos.nota ?? rawCampos.notaRequerida ?? payload.nota ?? payload.notaRequerida ?? 'opcional')).toLowerCase();
+    const whatsappLink = payload.whatsappLink || payload.whatsapp || 'https://wa.me/573014815281';
     const whatsappNumero = payload.whatsappNumero || (whatsappLink.match(/\d+/g) || []).join('').slice(-10) || '3014815281';
+    const tituloPrincipal = payload.tituloPrincipal || payload.titulo || payload.headerTitulo || 'Sistema de Reservas - VIP Norte';
+    const subtituloPrincipal = payload.subtitulo || payload.subtituloHeader || payload.descripcionPrincipal || 'Para una atención más inmediata.';
+    const textoWhatsApp = payload.whatsappTexto || payload.whatsappMensaje || payload.textoWhatsApp || `Comunícate al número de WhatsApp: ${whatsappNumero}`;
+    const tituloConsulta = payload.tituloConsulta || payload.consultaTitulo || 'Consultar Mi Reserva';
+    const tituloCreacion = payload.tituloCreacion || payload.creacionTitulo || 'Crear Nueva Reserva';
+    const nombreSede = payload.nombreSede || payload.sedeNombre || 'VIP NORTE';
+
     return {
         whatsapp: payload.whatsapp || whatsappLink,
         whatsappLink,
         whatsappNumero,
-        whatsappTexto: payload.whatsappTexto || payload.whatsappMensaje || `Comunícate al número de WhatsApp: ${whatsappNumero}`,
-        whatsappSubititulo: payload.whatsappSubititulo || payload.subtitulo || 'Para una atención más inmediata.',
-        titulo: payload.titulo || payload.tituloConsulta || 'Sistema de Reservas - VIP Norte',
-        tituloConsulta: payload.tituloConsulta || payload.titulo || 'Consultar Mi Reserva',
-        tituloCreacion: payload.tituloCreacion || payload.titulo || 'Crear Nueva Reserva',
-        subtitulo: payload.subtitulo || payload.whatsappSubititulo || 'Para una atención más inmediata.',
+        whatsappTexto: textoWhatsApp,
+        whatsappSubititulo: payload.whatsappSubititulo || payload.subtitulo || subtituloPrincipal,
+        titulo: tituloPrincipal,
+        tituloPrincipal,
+        tituloConsulta,
+        tituloCreacion,
+        nombreSede,
+        tituloPagina: payload.tituloPagina || `Sistema de Reservas - ${nombreSede}`,
+        subtitulo: subtituloPrincipal,
+        descripcionPrincipal: subtituloPrincipal,
         precioCover: Number(payload.precioCover ?? 10000),
         camposConfig: {
             emailRequerido: emailEstado === 'obligatorio' || emailEstado === 'true',
-            instagramRequerido: Boolean(payload.instagramRequerido || rawCampos.instagramRequerido),
-            notaRequerida: Boolean(payload.notaRequerida || rawCampos.notaRequerida),
-            promotorRequerido: Boolean(payload.promotorRequerido || rawCampos.promotorRequerido),
+            instagramRequerido: instagramEstado === 'obligatorio' || instagramEstado === 'true',
+            notaRequerida: notaEstado === 'obligatorio' || notaEstado === 'true',
+            promotorRequerido: promotorEstado === 'obligatorio' || promotorEstado === 'true',
             email: emailEstado,
-            telefono: telefonoEstado
+            telefono: telefonoEstado,
+            instagram: instagramEstado,
+            promotor: promotorEstado,
+            nota: notaEstado
         },
         campos: {
             email: emailEstado,
-            telefono: telefonoEstado
+            telefono: telefonoEstado,
+            instagram: instagramEstado,
+            promotor: promotorEstado,
+            nota: notaEstado
         },
         actualizadoEn: Date.now()
     };
