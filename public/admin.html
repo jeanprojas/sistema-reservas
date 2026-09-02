@@ -401,51 +401,107 @@
 
         <!-- VISTA NUEVA: CONFIGURACIÓN GENERAL (SOLICITUD ACTUAL) -->
         <div id="seccionConfiguracion" class="hidden space-y-6">
-            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 max-w-2xl shadow">
-                <h3 class="text-xl font-bold text-orange-400 mb-2">Configuración General y Campos de Reserva</h3>
-                <p class="text-xs text-gray-400 mb-6">Administra los textos principales, el enlace de WhatsApp flotante y define qué campos de la reserva son obligatorios, opcionales u ocultos.</p>
+            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 max-w-4xl shadow">
+                <h3 class="text-xl font-bold text-orange-400 mb-2">Configuración General del Index y Campos de Reserva</h3>
+                <p class="text-xs text-gray-400 mb-6">Edita los textos principales del portal público, el enlace de WhatsApp, los textos de los tabs y la visibilidad de cada campo del formulario. Los cambios se reflejan en la página de reservas y quedan guardados en el servidor.</p>
                 
-                <form onsubmit="guardarConfiguracionGeneral(event)" class="space-y-4 text-left">
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">Link de WhatsApp:</label>
-                        <input type="url" id="configWhatsapp" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500" placeholder="https://wa.me/...">
+                <form onsubmit="guardarConfiguracionGeneral(event)" class="space-y-5 text-left">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Link de WhatsApp:</label>
+                            <input type="url" id="configWhatsapp" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500" placeholder="https://wa.me/...">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Texto del banner WhatsApp:</label>
+                            <input type="text" id="configWhatsappTexto" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500" placeholder="Comunícate al número de WhatsApp">
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">Título Principal:</label>
-                        <input type="text" id="configTitulo" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Título Principal del Index:</label>
+                            <input type="text" id="configTitulo" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Nombre / Sede visible:</label>
+                            <input type="text" id="configNombreSede" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500" placeholder="VIP NORTE">
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">Subtítulo:</label>
-                        <input type="text" id="configSubtitulo" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Subtítulo principal:</label>
+                            <input type="text" id="configSubtitulo" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Subtítulo WhatsApp:</label>
+                            <input type="text" id="configWhatsappSubtitulo" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500" placeholder="Para una atención más inmediata.">
+                        </div>
                     </div>
 
-                    <div class="border-t border-gray-800 pt-4 mt-4">
-                        <label class="block text-sm font-bold text-gray-300 mb-3">Configuración de Campos del Formulario de Reserva:</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Título pestaña "Crear Reserva":</label>
+                            <input type="text" id="configTituloCreacion" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Título pestaña "Consultar Reserva":</label>
+                            <input type="text" id="configTituloConsulta" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-orange-500">
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-5 mt-1">
+                        <label class="block text-sm font-bold text-gray-300 mb-4">Configuración de Campos del Formulario de Reserva</label>
                         
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800">
+                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800 gap-4">
                                 <span class="text-sm text-white">Campo: Correo Electrónico</span>
-                                <select id="campoEmailReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none">
+                                <select id="campoEmailReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none min-w-[150px]">
                                     <option value="obligatorio">Obligatorio</option>
                                     <option value="opcional">Opcional</option>
                                     <option value="oculto">Oculto</option>
                                 </select>
                             </div>
-                            
-                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800">
-                                <span class="text-sm text-white">Campo: Teléfono / WhatsApp</span>
-                                <select id="campoTelefonoReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none">
+
+                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800 gap-4">
+                                <span class="text-sm text-white">Campo: WhatsApp</span>
+                                <select id="campoTelefonoReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none min-w-[150px]">
                                     <option value="obligatorio">Obligatorio</option>
                                     <option value="opcional">Opcional</option>
+                                    <option value="oculto">Oculto</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800 gap-4">
+                                <span class="text-sm text-white">Campo: Instagram</span>
+                                <select id="campoInstagramReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none min-w-[150px]">
+                                    <option value="opcional">Opcional</option>
+                                    <option value="obligatorio">Obligatorio</option>
+                                    <option value="oculto">Oculto</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800 gap-4">
+                                <span class="text-sm text-white">Campo: Promotor / Código</span>
+                                <select id="campoPromotorReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none min-w-[150px]">
+                                    <option value="opcional">Opcional</option>
+                                    <option value="obligatorio">Obligatorio</option>
+                                    <option value="oculto">Oculto</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center justify-between bg-gray-950 p-3 rounded-lg border border-gray-800 gap-4">
+                                <span class="text-sm text-white">Campo: Notas / Comentarios</span>
+                                <select id="campoNotaReq" class="bg-gray-900 border border-gray-800 rounded p-2 text-white text-xs focus:outline-none min-w-[150px]">
+                                    <option value="opcional">Opcional</option>
+                                    <option value="obligatorio">Obligatorio</option>
                                     <option value="oculto">Oculto</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold p-3 rounded-lg transition-colors mt-6 shadow">
+                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold p-3 rounded-lg transition-colors mt-2 shadow">
                         Guardar Cambios en el Servidor
                     </button>
                 </form>
@@ -939,106 +995,119 @@
             }
         }
 
-/* MAPA INTERACTIVO DE MESAS */
-        async function cargarMapaMesas() {
-            const sede = document.getElementById('mapaSede').value;
-
-    if (sede === 'Soho' && typeof cargarMapaSoho === 'function') {
-        return cargarMapaSoho();
-    }
-
-    const fecha = document.getElementById('mapaFecha').value;
-    const tituloPlano = document.getElementById('tituloPlanoSede');
-    if (tituloPlano) {
-        tituloPlano.textContent = `Plano de Mesas - Sede ${sede} (${fecha})`;
-    }
-
-    try {
-        const res = await fetch('/api/reservas');
-        const data = await res.json();
-
-        const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha);
-
-        let mapaOcupacion = {};
-        reservasSede.forEach(r => {
-            mapaOcupacion[String(r.mesa)] = r;
-        });
-
-        const grid = document.getElementById('gridPlanoMesas');
-        if (!grid) return;
-        grid.innerHTML = '';
-
-        for (let i = 1; i <= 20; i++) {
-            let mesaNum = String(i);
-            let reservaAsignada = mapaOcupacion[mesaNum];
-            let estaOcupada = !!reservaAsignada;
-
-            let bgColor = estaOcupada ? 'bg-red-950 border-red-600 text-red-300' : 'bg-gray-950 border-gray-800 text-green-400 hover:border-green-500';
-            let indicadorEstado = estaOcupada ? '<span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Ocupada' : '<span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Libre';
-
-            grid.innerHTML += `
-                <div onclick="seleccionarMesaMapa('${mesaNum}', ${JSON.stringify(reservaAsignada || null).replace(/"/g, '&quot;')})" class="border ${bgColor} p-4 rounded-xl cursor-pointer transition flex flex-col justify-between items-center text-center shadow">
-                    <span class="text-xs text-gray-400 font-bold">MESA</span>
-                    <span class="text-2xl font-black my-1">${mesaNum}</span>
-                    <span class="text-[10px] font-semibold">${indicadorEstado}</span>
-                </div>
-            `;
-        }
-    } catch (e) {
-        console.error("Error al cargar mapa de mesas:", e);
-    }
-}
-
 function armarPayloadConfiguracion() {
     const whatsappVal = document.getElementById('configWhatsapp')?.value.trim() || 'https://wa.me/573014815281';
     const tituloVal = document.getElementById('configTitulo')?.value.trim() || 'Sistema de Reservas - VIP Norte';
-    const subtituloVal = document.getElementById('configSubtitulo')?.value.trim() || 'Para una atención más inmediata.';
-    const campos = {
-        email: document.getElementById('campoEmailReq')?.value || 'opcional',
-        telefono: document.getElementById('campoTelefonoReq')?.value || 'obligatorio'
-    };
-    const numeroWhatsapp = (whatsappVal.match(/\d+/g) || []).join('').slice(-10) || '3014815281';
+const nombreSedeVal = document.getElementById('configNombreSede')?.value.trim() || 'VIP NORTE';
+const subtituloVal = document.getElementById('configSubtitulo')?.value.trim() || 'Para una atención más inmediata.';
+const whatsappSubtituloVal = document.getElementById('configWhatsappSubtitulo')?.value.trim() || subtituloVal;
+const whatsappTextoVal = document.getElementById('configWhatsappTexto')?.value.trim() || 'Comunícate al número de WhatsApp';
+const tituloCreacionVal = document.getElementById('configTituloCreacion')?.value.trim() || 'Crear Nueva Reserva';
+const tituloConsultaVal = document.getElementById('configTituloConsulta')?.value.trim() || 'Consultar Mi Reserva';
+const campos = {
+    email: document.getElementById('campoEmailReq')?.value || 'opcional',
+    telefono: document.getElementById('campoTelefonoReq')?.value || 'obligatorio',
+    instagram: document.getElementById('campoInstagramReq')?.value || 'opcional',
+    promotor: document.getElementById('campoPromotorReq')?.value || 'opcional',
+    nota: document.getElementById('campoNotaReq')?.value || 'opcional'
+};
+const numeroWhatsapp = (whatsappVal.match(/\d+/g) || []).join('').slice(-10) || '3014815281';
 
-    return {
-        whatsapp: whatsappVal,
-        whatsappLink: whatsappVal,
-        whatsappNumero: numeroWhatsapp,
-        whatsappTexto: `Comunícate al número de WhatsApp: ${numeroWhatsapp}`,
-        whatsappSubititulo: subtituloVal,
-        subtitulo: subtituloVal,
-        titulo: tituloVal,
-        tituloConsulta: tituloVal,
-        tituloCreacion: tituloVal,
-        camposConfig: {
-            emailRequerido: campos.email === 'obligatorio',
-            telefonoRequerido: campos.telefono === 'obligatorio',
-            email: campos.email,
-            telefono: campos.telefono
-        },
-        campos,
-        precioCover: 10000
-    };
+return {
+    whatsapp: whatsappVal,
+    whatsappLink: whatsappVal,
+    whatsappNumero: numeroWhatsapp,
+    whatsappTexto: whatsappTextoVal,
+    whatsappSubititulo: whatsappSubtituloVal,
+    whatsappMensaje: whatsappTextoVal,
+    subtitulo: subtituloVal,
+    descripcionPrincipal: subtituloVal,
+    titulo: tituloVal,
+    tituloPrincipal: tituloVal,
+    nombreSede: nombreSedeVal,
+    tituloPagina: `Sistema de Reservas - ${nombreSedeVal}`,
+    tituloConsulta: tituloConsultaVal,
+    tituloCreacion: tituloCreacionVal,
+    consultaTitulo: tituloConsultaVal,
+    creacionTitulo: tituloCreacionVal,
+    camposConfig: {
+        emailRequerido: campos.email === 'obligatorio',
+        telefonoRequerido: campos.telefono === 'obligatorio',
+        instagramRequerido: campos.instagram === 'obligatorio',
+        promotorRequerido: campos.promotor === 'obligatorio',
+        notaRequerida: campos.nota === 'obligatorio',
+        email: campos.email,
+        telefono: campos.telefono,
+        instagram: campos.instagram,
+        promotor: campos.promotor,
+        nota: campos.nota
+    },
+    campos,
+    precioCover: 10000
+};
 }
 
 async function guardarConfiguracionGeneral(event) {
-    event.preventDefault();
+event.preventDefault();
 
-    try {
-        const res = await fetch('/api/admin/configuracion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(armarPayloadConfiguracion())
-        });
-        const result = await res.json();
-        if (result.success || res.ok) {
-            alert('Configuración general actualizada y enviada al servidor correctamente.');
-        } else {
-            alert('No se pudo guardar la configuración.');
-        }
-    } catch (error) {
-        console.error('Error al enviar configuración:', error);
-        alert('Configuración guardada correctamente en el sistema.');
+try {
+    const payload = armarPayloadConfiguracion();
+    const res = await fetch('/api/admin/configuracion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (result.success || res.ok) {
+        alert('Configuración general actualizada correctamente. Se reflejará en el index.');
+        await cargarConfiguracion();
+    } else {
+        alert('No se pudo guardar la configuración.');
     }
+} catch (error) {
+    console.error('Error al enviar configuración:', error);
+    alert('Configuración guardada correctamente en el sistema.');
+}
+}
+
+async function cargarConfiguracion() {
+try {
+    const res = await fetch('/api/configuracion');
+    if (!res.ok) return;
+    const data = await res.json();
+    const config = data.config || data;
+
+    const setValue = (id, value, fallback = '') => {
+        const input = document.getElementById(id);
+        if (input) input.value = value ?? fallback;
+    };
+
+    setValue('configWhatsapp', config.whatsappLink || config.whatsapp || 'https://wa.me/573014815281');
+    setValue('configWhatsappTexto', config.whatsappTexto || config.whatsappMensaje || 'Comunícate al número de WhatsApp');
+    setValue('configTitulo', config.titulo || config.tituloPrincipal || 'Sistema de Reservas - VIP Norte');
+    setValue('configNombreSede', config.nombreSede || 'VIP NORTE');
+    setValue('configSubtitulo', config.subtitulo || config.descripcionPrincipal || 'Para una atención más inmediata.');
+    setValue('configWhatsappSubtitulo', config.whatsappSubititulo || config.subtitulo || 'Para una atención más inmediata.');
+    setValue('configTituloCreacion', config.tituloCreacion || 'Crear Nueva Reserva');
+    setValue('configTituloConsulta', config.tituloConsulta || 'Consultar Mi Reserva');
+
+    const campos = config.camposConfig || config.campos || {};
+    const opciones = {
+        email: campos.email || campos.emailRequerido || 'opcional',
+        telefono: campos.telefono || campos.telefonoRequerido || 'obligatorio',
+        instagram: campos.instagram || campos.instagramRequerido || 'opcional',
+        promotor: campos.promotor || campos.promotorRequerido || 'opcional',
+        nota: campos.nota || campos.notaRequerida || 'opcional'
+    };
+
+    document.getElementById('campoEmailReq').value = opciones.email;
+    document.getElementById('campoTelefonoReq').value = opciones.telefono;
+    document.getElementById('campoInstagramReq').value = opciones.instagram;
+    document.getElementById('campoPromotorReq').value = opciones.promotor;
+    document.getElementById('campoNotaReq').value = opciones.nota;
+} catch (error) {
+    console.warn('No se pudo consultar la configuración del servidor.', error);
+}
 }
 
         async function cargarAdmin() {
@@ -1858,32 +1927,6 @@ async function guardarConfiguracionGeneral(event) {
                     alert(data.mensaje || 'No se pudo eliminar el usuario.');
                 }
             }
-        }
-        async function cargarConfiguracion() {
-            try {
-                const res = await fetch('/api/configuracion');
-                const response = await res.json();
-                const config = response.config || response;
-                const campos = config.campos || config.camposConfig || {};
-                const whatsappLink = config.whatsapp || config.whatsappLink || '';
-                const titulo = config.titulo || config.tituloConsulta || '';
-                const subtitulo = config.subtitulo || config.whatsappSubititulo || '';
-
-                if (document.getElementById('configWhatsapp')) document.getElementById('configWhatsapp').value = whatsappLink;
-                if (document.getElementById('configTitulo')) document.getElementById('configTitulo').value = titulo;
-                if (document.getElementById('configSubtitulo')) document.getElementById('configSubtitulo').value = subtitulo;
-                if (document.getElementById('campoEmailReq')) document.getElementById('campoEmailReq').value = (campos.email || campos.emailRequerido || 'opcional').toString();
-                if (document.getElementById('campoTelefonoReq')) document.getElementById('campoTelefonoReq').value = (campos.telefono || campos.telefonoRequerido || 'obligatorio').toString();
-            } catch (e) {
-                console.error('Error al cargar configuración en admin:', e);
-            }
-        }
-
-        async function guardarConfiguracion(e) {
-            if (e && typeof e.preventDefault === 'function') {
-                e.preventDefault();
-            }
-            return guardarConfiguracionGeneral({ preventDefault: () => {} });
         }
     </script>
 </body>
