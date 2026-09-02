@@ -115,7 +115,7 @@
                         <div>
                             <span class="text-gray-400 block">Promotor / Motivo:</span>
                             <span id="resConsultaPromotorMotivo" class="text-purple-300 font-medium"></span>
-                            <div class="mt-1 text-[10px] text-green-300">Si el promotor es FREDYFREE, el cover aplica en $0.</div>
+                            <div class="mt-1 text-[10px] text-green-300">Si el promotor es FREDYFREE o PRUEBASISTEMA, el cover aplica en $0 y la reserva se marca como prueba.</div>
                         </div>
                     </div>
                     <div id="resConsultaNotas"></div>
@@ -634,9 +634,10 @@
             let cortesiaCalculadas = 0;
             let paganCalculadas = llegadas;
 
-            const esCodigoFredy = document.getElementById('resConsultaPromotorMotivo').textContent.includes('FREDYFREE');
+            const textoPromotor = document.getElementById('resConsultaPromotorMotivo').textContent || '';
+            const esCodigoPromocional = textoPromotor.includes('FREDYFREE') || textoPromotor.includes('PRUEBASISTEMA');
 
-            if (minutosActuales > limiteMinutosGratis && !esCodigoFredy) {
+            if (minutosActuales > limiteMinutosGratis && !esCodigoPromocional) {
                 cortesiaCalculadas = 0;
                 paganCalculadas = llegadas;
             } else {
@@ -856,21 +857,116 @@
             });
         }
 
+        const estructuraSohoStaff = {
+            '1er Piso - Terraza Exterior': {
+                mesas: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
+                capacidadPorMesa: 4
+            },
+            '1er Piso - Zona General #1': {
+                mesas: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
+                capacidadesEspecificas: { 'V1': 15, 'V2': 15, 'V3': 8 },
+                capacidadPorMesa: 4
+            },
+            '1er Piso - Zona Disco / Casino': {
+                mesas: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
+                capacidadesEspecificas: { 'V4': 15, 'V5': 15, 'V6': 15 },
+                capacidadPorMesa: 4
+            },
+            '2do Piso - Palco Reyes (Sobre Disco)': {
+                mesas: ['P1', 'P1-A', 'P1-B'],
+                capacidadesEspecificas: { 'P1': 25, 'P1-A': 12, 'P1-B': 12 },
+                capacidadPorMesa: 25
+            },
+            '2do Piso - VIP Sector Disco': {
+                mesas: ['V7', 'V8', 'V9', 'V10'],
+                capacidadPorMesa: 15
+            },
+            '2do Piso - VIP Sector General': {
+                mesas: ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
+                capacidadesEspecificas: { 'V11': 15, 'V15': 15, 'V19': 15 },
+                capacidadPorMesa: 8
+            },
+            '2do Piso - Mesas Redondas General': {
+                mesas: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13'],
+                capacidadPorMesa: 4
+            }
+        };
+
+        function renderizarGrupoMesasStaff(listaMesas, ocupadasMap, contenedorDestino) {
+            listaMesas.forEach(mesaId => {
+                const reserva = ocupadasMap[String(mesaId)] || null;
+                const estaOcupada = !!reserva;
+                const clase = estaOcupada ? 'bg-red-950 border-red-600 text-red-300' : 'bg-gray-900 border-gray-700 text-green-300';
+                const node = document.createElement('div');
+                node.className = `border rounded-xl p-2 text-center cursor-pointer transition hover:border-orange-400 ${clase}`;
+                node.setAttribute('title', estaOcupada ? `${reserva.nombreCliente || 'Cliente'}` : `Mesa ${mesaId} disponible`);
+                node.setAttribute('onclick', `seleccionarMesaStaff('${mesaId}', ${JSON.stringify(reserva || null).replace(/"/g, '&quot;')})`);
+                node.innerHTML = `<div class="text-[10px] uppercase tracking-wide text-gray-300">${mesaId}</div><div class="text-[9px] font-bold mt-1">${estaOcupada ? 'Ocupada' : 'Libre'}</div>`;
+                contenedorDestino.appendChild(node);
+            });
+        }
+
         async function cargarMapaStaff() {
             const fecha = document.getElementById('staffMapaFecha').value;
             const res = await fetch('/api/reservas');
             const data = await res.json();
-
             const reservasSede = data.filter(r => {
                 const sedeRes = r.sede || 'Salvaje';
                 return (sedeActualStaff === 'TODAS' || sedeRes === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha;
             });
 
-            let mapaOcupacion = {};
+            const grid = document.getElementById('gridPlanoMesasStaff');
+            if (!grid) return;
+            grid.innerHTML = '';
+            const mapaOcupacion = {};
             reservasSede.forEach(r => { mapaOcupacion[String(r.mesa)] = r; });
 
-            const grid = document.getElementById('gridPlanoMesasStaff');
-            grid.innerHTML = '';
+            if (sedeActualStaff === 'Soho' || (sedeActualStaff === 'TODAS' && reservasSede.some(r => (r.sede || 'Salvaje') === 'Soho'))) {
+                const ocupadasMap = {};
+                reservasSede.filter(r => (r.sede || 'Salvaje') === 'Soho').forEach(r => {
+                    if (r.mesa && r.mesa !== 'Sin Asignar' && r.mesa !== 'Asignar') {
+                        ocupadasMap[String(r.mesa)] = r;
+                    }
+                });
+
+                const panel = document.createElement('div');
+                panel.className = 'w-full space-y-6';
+                const plantas = [
+                    { titulo: '1er Piso - Planta Principal y Terraza', secciones: [
+                        ['1er Piso - Terraza Exterior', 'terraza'],
+                        ['1er Piso - Zona General #1', 'general'],
+                        ['1er Piso - Zona Disco / Casino', 'general']
+                    ]},
+                    { titulo: '2do Piso - Balcón y Palcos Exclusivos', secciones: [
+                        ['2do Piso - Palco Reyes (Sobre Disco)', 'palco'],
+                        ['2do Piso - VIP Sector Disco', 'general'],
+                        ['2do Piso - VIP Sector General', 'general'],
+                        ['2do Piso - Mesas Redondas General', 'general']
+                    ]}
+                ];
+
+                plantas.forEach(planta => {
+                    const section = document.createElement('div');
+                    section.className = 'border border-gray-700 rounded-xl bg-gray-950/70 p-3';
+                    section.innerHTML = `<div class="mb-3 text-xs font-bold uppercase tracking-widest text-orange-400">${planta.titulo}</div>`;
+                    planta.secciones.forEach(([nombreZona]) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'mb-3';
+                        wrapper.innerHTML = `<div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400">${nombreZona}</div>`;
+                        const grupo = document.createElement('div');
+                        grupo.className = 'grid grid-cols-5 md:grid-cols-7 gap-2';
+                        renderizarGrupoMesasStaff(estructuraSohoStaff[nombreZona].mesas, ocupadasMap, grupo);
+                        wrapper.appendChild(grupo);
+                        section.appendChild(wrapper);
+                    });
+                    panel.appendChild(section);
+                });
+
+                grid.appendChild(panel);
+                document.getElementById('detalleMesaInfoStaff').innerHTML = '<p class="text-gray-500 italic">Selecciona una mesa del plano interactivo de Soho para asignar, cambiar o liberar.</p>';
+                document.getElementById('accionesMesaContainerStaff').classList.add('hidden');
+                return;
+            }
 
             for (let i = 1; i <= 20; i++) {
                 let mesaNum = String(i);
@@ -928,22 +1024,47 @@
                 return;
             }
 
-            let listado = disponibles.map(r => `ID: ${r.id} | ${r.nombreCliente}`).join('\n');
-            let escogido = prompt(`Ingresa el ID de la reserva para la Mesa #${mesaNum}:\n\n` + listado);
-            if (escogido) {
-                const idLimpio = escogido.trim();
+            const modalId = 'modalAsignarReservaStaff';
+            const existing = document.getElementById(modalId);
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold text-green-400 mb-4">Asignar reserva a Mesa ${mesaNum}</h3>
+                    <label class="block text-xs text-gray-400 mb-1">Reserva disponible para ${fecha}</label>
+                    <select id="selectReservaStaffAsignar" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
+                        <option value="">-- Seleccionar reserva --</option>
+                        ${disponibles.map(r => `<option value="${r.id}">${r.id} - ${r.nombreCliente} (${r.cantidadPersonasInicial || 1} pers.)</option>`).join('')}
+                    </select>
+                    <div class="flex gap-3 mt-6">
+                        <button id="confirmarAsignarStaffBtn" class="flex-1 bg-green-600 hover:bg-green-700 font-bold py-2.5 rounded text-sm transition">Asignar</button>
+                        <button id="cancelarAsignarStaffBtn" class="bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded text-sm font-bold transition">Cancelar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('#cancelarAsignarStaffBtn').addEventListener('click', () => modal.remove());
+            modal.querySelector('#confirmarAsignarStaffBtn').addEventListener('click', async () => {
+                const idLimpio = String(modal.querySelector('#selectReservaStaffAsignar').value || '').trim();
+                if (!idLimpio) {
+                    alert('Debes seleccionar la reserva antes de asignar la mesa.');
+                    return;
+                }
+
                 const reservaSeleccionada = disponibles.find(r => r.id === idLimpio);
                 if (reservaSeleccionada) {
-                    const mesaDestino = String(mesaNum);
-                    const conflicto = data.find(r => 
-                        (r.sede || 'Salvaje') === (sedeActualStaff === 'TODAS' ? (reservaSeleccionada.sede || 'Salvaje') : sedeActualStaff) && 
-                        (r.fecha || r.nocheOperativa) === fecha && 
-                        String(r.mesa) === mesaDestino && 
+                    const conflicto = data.find(r =>
+                        (r.sede || 'Salvaje') === ((sedeActualStaff === 'TODAS' ? (reservaSeleccionada.sede || 'Salvaje') : sedeActualStaff)) &&
+                        (r.fecha || r.nocheOperativa) === fecha &&
+                        String(r.mesa) === String(mesaNum) &&
                         r.id !== idLimpio
                     );
-
                     if (conflicto) {
-                        alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                        alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La mesa ${mesaNum} ya está ocupada por ${conflicto.nombreCliente}.`);
                         return;
                     }
                 }
@@ -953,8 +1074,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mesa: mesaNum })
                 });
+                modal.remove();
                 cargarMapaStaff();
-            }
+            });
         }
 
         async function exportarMapaPDFStaff() {
@@ -984,28 +1106,51 @@
                         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
                         th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
                         th { background: #f3f4f6; color: #374151; }
+                        .zona-seccion { margin-top: 12px; }
+                        .zona-grid { display: grid; grid-template-columns: repeat(5, minmax(75px, 1fr)); gap: 8px; margin-top: 8px; }
                     </style>
                 </head>
                 <body>
                     <h1>VIP NORTE - REPORTE GERENCIAL DE MESAS</h1>
                     <p><b>Sede:</b> ${sedeActualStaff} | <b>Fecha Operativa:</b> ${fecha}</p>
                     <h3>Distribución de Mesas (Plano Asignado)</h3>
-                    <div class="grid-plano">
             `;
 
-            for (let i = 1; i <= 20; i++) {
-                let mesaNum = String(i);
-                let reserva = mapaOcupacion[mesaNum];
-                let ocupada = !!reserva;
-                contenidoHtml += `
-                    <div class="mesa-box ${ocupada ? 'ocupada' : 'libre'}">
-                        <span>Mesa #${mesaNum}</span>
-                        <span class="mesa-num">${ocupada ? 'Ocupada' : 'Libre'}</span>
-                        <span style="font-size: 9px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            ${ocupada ? 'Por: ' + reserva.nombreCliente : 'Disponible'}
-                        </span>
-                    </div>
-                `;
+            if (sedeActualStaff === 'Soho' || (sedeActualStaff === 'TODAS' && reservasSede.some(r => (r.sede || 'Salvaje') === 'Soho'))) {
+                Object.entries(estructuraSohoStaff).forEach(([zonaNombre, zonaData]) => {
+                    contenidoHtml += `<div class="zona-seccion"><strong>${zonaNombre}</strong><div class="zona-grid">`;
+                    zonaData.mesas.forEach(mesaNum => {
+                        const reserva = reservasSede.find(r => String(r.mesa) === String(mesaNum) && (r.sede || 'Salvaje') === 'Soho');
+                        const ocupada = !!reserva;
+                        contenidoHtml += `
+                            <div class="mesa-box ${ocupada ? 'ocupada' : 'libre'}">
+                                <span>${mesaNum}</span>
+                                <span class="mesa-num">${ocupada ? 'Ocupada' : 'Libre'}</span>
+                                <span style="font-size: 9px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${ocupada ? 'Por: ' + reserva.nombreCliente : 'Disponible'}
+                                </span>
+                            </div>
+                        `;
+                    });
+                    contenidoHtml += '</div></div>';
+                });
+            } else {
+                contenidoHtml += '<div class="grid-plano">';
+                for (let i = 1; i <= 20; i++) {
+                    let mesaNum = String(i);
+                    let reserva = mapaOcupacion[mesaNum];
+                    let ocupada = !!reserva;
+                    contenidoHtml += `
+                        <div class="mesa-box ${ocupada ? 'ocupada' : 'libre'}">
+                            <span>Mesa #${mesaNum}</span>
+                            <span class="mesa-num">${ocupada ? 'Ocupada' : 'Libre'}</span>
+                            <span style="font-size: 9px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${ocupada ? 'Por: ' + reserva.nombreCliente : 'Disponible'}
+                            </span>
+                        </div>
+                    `;
+                }
+                contenidoHtml += '</div>';
             }
 
             contenidoHtml += `
