@@ -120,7 +120,9 @@ const usuarioSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     rol: String,
-    sede: String
+    sede: String,
+    activo: { type: Boolean, default: true },
+    estado: { type: String, default: 'Activo' }
 });
 
 // Esquema para Configuración Dinámica del Index
@@ -151,7 +153,9 @@ const memoryDb = {
         username: 'admin',
         password: '123',
         rol: 'Administrador',
-        sede: 'TODAS'
+        sede: 'TODAS',
+        activo: true,
+        estado: 'Activo'
     }],
     configuracion: {
         clave: 'global',
@@ -224,6 +228,7 @@ function normalizarPromotor(valor) {
     if (!valorNormalizado) return 'VIP NORTE';
     const valorMayus = valorNormalizado.toUpperCase();
     if (valorMayus === 'FREDYFREE') return 'FREDYFREE';
+    if (valorMayus === 'PRUEBASISTEMA') return 'PRUEBASISTEMA';
     return valorNormalizado;
 }
 
@@ -231,11 +236,21 @@ function aplicarReglaPromocionCover(reserva) {
     const promotor = normalizarPromotor(reserva.promotor);
     const codigo = String(reserva.promotor || reserva.codigoPromocional || '').toUpperCase();
     const esFredyFree = promotor === 'FREDYFREE' || codigo.includes('FREDYFREE');
+    const esPruebaSistema = promotor === 'PRUEBASISTEMA' || codigo.includes('PRUEBASISTEMA');
+
     if (esFredyFree) {
         reserva.promotor = 'FREDYFREE';
         reserva.precioCover = 0;
         reserva.pagaronCover = 0;
     }
+
+    if (esPruebaSistema) {
+        reserva.promotor = 'PRUEBASISTEMA';
+        reserva.estadoAsistencia = reserva.estadoAsistencia === 'Cancelado' ? 'Cancelado' : 'Prueba';
+        reserva.precioCover = 0;
+        reserva.pagaronCover = 0;
+    }
+
     return reserva;
 }
 
@@ -404,6 +419,9 @@ app.post('/api/login', async (req, res) => {
             if (!usuario) {
                 return res.status(401).json({ success: false, mensaje: 'Usuario o contraseña incorrectos' });
             }
+            if (usuario.activo === false || String(usuario.estado || 'Activo').toLowerCase() === 'suspendido') {
+                return res.status(403).json({ success: false, mensaje: 'Este usuario está suspendido y no puede ingresar al sistema.' });
+            }
             return res.json({
                 success: true,
                 rol: usuario.rol,
@@ -417,6 +435,10 @@ app.post('/api/login', async (req, res) => {
 
         if (!usuario) {
             return res.status(401).json({ success: false, mensaje: 'Usuario o contraseña incorrectos' });
+        }
+
+        if (usuario.activo === false || String(usuario.estado || 'Activo').toLowerCase() === 'suspendido') {
+            return res.status(403).json({ success: false, mensaje: 'Este usuario está suspendido y no puede ingresar al sistema.' });
         }
 
         res.json({ 
@@ -496,10 +518,18 @@ app.post(['/api/configuracion-index', '/api/admin/configuracion', '/api/configur
 app.get('/api/usuarios', async (req, res) => {
     try {
         if (isMemoryMode()) {
-            return res.json(memoryDb.usuarios.map(({ password, ...usuario }) => usuario));
+            return res.json(memoryDb.usuarios.map(usuario => ({
+                ...usuario,
+                activo: usuario.activo !== false,
+                estado: usuario.estado || (usuario.activo === false ? 'Suspendido' : 'Activo')
+            })));
         }
-        const usuarios = await Usuario.find({}, { password: 0 });
-        res.json(usuarios);
+        const usuarios = await Usuario.find({});
+        res.json(usuarios.map(usuario => ({
+            ...usuario.toObject(),
+            activo: usuario.activo !== false,
+            estado: usuario.estado || (usuario.activo === false ? 'Suspendido' : 'Activo')
+        })));
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener usuarios' });
     }
@@ -507,7 +537,7 @@ app.get('/api/usuarios', async (req, res) => {
 
 app.post('/api/usuarios', async (req, res) => {
     try {
-        const { username, password, rol, sede } = req.body;
+        const { username, password, rol, sede, activo, estado } = req.body;
 
         if (isMemoryMode()) {
             const usuarioExiste = memoryDb.usuarios.some(u => u.username === username);
@@ -519,7 +549,9 @@ app.post('/api/usuarios', async (req, res) => {
                 username,
                 password,
                 rol: rol || 'Staff',
-                sede: sede || 'TODAS'
+                sede: sede || 'TODAS',
+                activo: activo !== false,
+                estado: estado || (activo === false ? 'Suspendido' : 'Activo')
             };
             memoryDb.usuarios.push(nuevoUsuario);
             return res.status(201).json({ success: true, mensaje: 'Usuario creado con éxito', usuario: nuevoUsuario });
@@ -535,7 +567,9 @@ app.post('/api/usuarios', async (req, res) => {
             username,
             password,
             rol: rol || 'Staff',
-            sede: sede || 'TODAS'
+            sede: sede || 'TODAS',
+            activo: activo !== false,
+            estado: estado || (activo === false ? 'Suspendido' : 'Activo')
         });
 
         await nuevoUsuario.save();
@@ -553,6 +587,8 @@ app.put('/api/usuarios/:id', async (req, res) => {
         if (req.body.password) updateData.password = req.body.password;
         if (req.body.rol) updateData.rol = req.body.rol;
         if (req.body.sede) updateData.sede = req.body.sede;
+        if (req.body.activo !== undefined) updateData.activo = Boolean(req.body.activo);
+        if (req.body.estado) updateData.estado = req.body.estado;
 
         if (isMemoryMode()) {
             const index = memoryDb.usuarios.findIndex(u => String(u.id) === String(id));
@@ -560,7 +596,14 @@ app.put('/api/usuarios/:id', async (req, res) => {
                 return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
             }
             memoryDb.usuarios[index] = { ...memoryDb.usuarios[index], ...updateData };
+            if (updateData.activo !== undefined) {
+                memoryDb.usuarios[index].estado = memoryDb.usuarios[index].activo ? 'Activo' : 'Suspendido';
+            }
             return res.json({ success: true, mensaje: 'Usuario actualizado con éxito', usuario: memoryDb.usuarios[index] });
+        }
+
+        if (req.body.activo !== undefined) {
+            updateData.estado = Boolean(req.body.activo) ? 'Activo' : 'Suspendido';
         }
 
         const usuarioActualizado = await Usuario.findOneAndUpdate({ id }, updateData, { new: true });
@@ -568,9 +611,38 @@ app.put('/api/usuarios/:id', async (req, res) => {
             return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
         }
 
-        res.json({ success: true, mensaje: 'Usuario actualizado con éxito' });
+        res.json({ success: true, mensaje: 'Usuario actualizado con éxito', usuario: usuarioActualizado });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al actualizar usuario' });
+    }
+});
+
+app.patch('/api/usuarios/:id/suspend', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const activo = req.body.activo !== undefined ? Boolean(req.body.activo) : false;
+
+        if (isMemoryMode()) {
+            const usuario = memoryDb.usuarios.find(u => String(u.id) === String(id));
+            if (!usuario) {
+                return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+            }
+            usuario.activo = activo;
+            usuario.estado = activo ? 'Activo' : 'Suspendido';
+            return res.json({ success: true, mensaje: activo ? 'Usuario activado con éxito' : 'Usuario suspendido con éxito', usuario });
+        }
+
+        const usuario = await Usuario.findOne({ id });
+        if (!usuario) {
+            return res.status(404).json({ success: false, mensaje: 'Usuario no encontrado' });
+        }
+
+        usuario.activo = activo;
+        usuario.estado = activo ? 'Activo' : 'Suspendido';
+        await usuario.save();
+        res.json({ success: true, mensaje: activo ? 'Usuario activado con éxito' : 'Usuario suspendido con éxito', usuario });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al cambiar el estado del usuario' });
     }
 });
 
@@ -847,7 +919,7 @@ app.post('/api/reservas', async (req, res) => {
                 pagaronCover: 0,
                 precioCover: Number(req.body.precioCover) || 10000,
                 estadoAsistencia: 'Reservado',
-                usuarioCreador: req.body.usuarioCreador || 'Web Pública',
+                usuarioCreador: req.body.usuarioCreador || 'VIP NORTE',
                 nocheOperativa: fechaReserva,
                 promotor: promotorSeleccionado,
                 creadoEn: new Date()
@@ -905,7 +977,7 @@ app.post('/api/reservas', async (req, res) => {
             pagaronCover: 0,
             precioCover: Number(req.body.precioCover) || 10000,
             estadoAsistencia: 'Reservado',
-            usuarioCreador: req.body.usuarioCreador || 'Web Pública',
+            usuarioCreador: req.body.usuarioCreador || 'VIP NORTE',
             nocheOperativa: fechaReserva,
             promotor: promotorSeleccionado
         });
