@@ -1287,6 +1287,10 @@ try {
         /* MAPA INTERACTIVO DE MESAS */
         async function cargarMapaMesas() {
             const sede = document.getElementById('mapaSede').value;
+            if (sede === 'Soho' && typeof cargarMapaSoho === 'function') {
+                return cargarMapaSoho();
+            }
+
             const fecha = document.getElementById('mapaFecha').value;
             document.getElementById('tituloPlanoSede').textContent = `Plano de Mesas - Sede ${sede} (${fecha})`;
 
