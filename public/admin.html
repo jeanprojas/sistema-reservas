@@ -200,7 +200,7 @@
                 <!-- Plano Visual de Mesas (Grid Interactivo) -->
                 <div class="lg:col-span-2 bg-gray-900 p-6 rounded-xl border border-gray-800 shadow">
                     <h3 id="tituloPlanoSede" class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Distribución de Pista y Zona VIP</h3>
-                    <div id="gridPlanoMesas" class="grid grid-cols-4 sm:grid-cols-5 gap-4 min-h-[300px] content-start">
+                    <div id="gridPlanoMesas" class="grid w-full gap-4 min-h-[300px] content-start" style="grid-template-columns: 1fr;">
                         <!-- Generado dinámicamente -->
                     </div>
                 </div>
@@ -725,7 +725,11 @@
                 const tooltip = estaOcupada ? `${reserva.nombreCliente || 'Cliente'} (${reserva.cantidadPersonasInicial || 1})` : `Mesa ${mesaId} disponible`;
 
                 const node = document.createElement('div');
-                node.className = `border rounded-xl p-2 text-center cursor-pointer transition hover:border-orange-400 ${clase}`;
+                node.className = `w-full min-h-[62px] border rounded-xl p-2 text-center cursor-pointer transition hover:border-orange-400 hover:scale-[1.02] ${clase}`;
+                node.style.display = 'flex';
+                node.style.flexDirection = 'column';
+                node.style.justifyContent = 'center';
+                node.style.alignItems = 'center';
                 node.setAttribute('title', tooltip);
                 node.setAttribute('onclick', `seleccionarMesaMapa('${mesaId}', ${JSON.stringify(reserva || null).replace(/"/g, '&quot;')})`);
                 node.innerHTML = `<div class="text-[10px] uppercase tracking-wide text-gray-300">${mesaId}</div><div class="text-[9px] font-bold mt-1">${label}</div>`;
@@ -750,6 +754,8 @@
             const grid = document.getElementById('gridPlanoMesas');
             if (!grid) return;
             grid.innerHTML = '';
+            grid.className = 'grid w-full gap-4 min-h-[300px] content-start';
+            grid.style.gridTemplateColumns = '1fr';
 
             const panel = document.createElement('div');
             panel.className = 'w-full space-y-6';
@@ -770,14 +776,17 @@
 
             plantas.forEach(planta => {
                 const section = document.createElement('div');
-                section.className = 'border border-gray-700 rounded-xl bg-gray-950/70 p-3';
+                section.className = 'border border-gray-700 rounded-xl bg-gray-950/70 p-3 w-full';
                 section.innerHTML = `<div class="mb-3 text-xs font-bold uppercase tracking-widest text-orange-400">${planta.titulo}</div>`;
                 planta.secciones.forEach(([nombreZona, clase]) => {
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'mb-3';
+                    wrapper.className = 'mb-4 w-full';
                     wrapper.innerHTML = `<div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400">${nombreZona}</div>`;
                     const grupo = document.createElement('div');
-                    grupo.className = `grid grid-cols-5 md:grid-cols-7 gap-2`;
+                    grupo.className = 'w-full';
+                    grupo.style.display = 'grid';
+                    grupo.style.gridTemplateColumns = 'repeat(auto-fit, minmax(72px, 1fr))';
+                    grupo.style.gap = '8px';
                     renderizarGrupoMesasAdmin(estructuraSohoAdmin[nombreZona].mesas, ocupadasMap, grupo);
                     wrapper.appendChild(grupo);
                     section.appendChild(wrapper);
