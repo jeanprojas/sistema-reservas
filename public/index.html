@@ -433,6 +433,14 @@
                         </select>
                     </div>
 
+                    <div class="full-width form-group" id="grupoAsignacionMesa" style="display:none;">
+                        <label for="modoAsignacionMesa">Asignación de mesa</label>
+                        <select id="modoAsignacionMesa" class="form-control" onchange="actualizarModoAsignacionMesa()">
+                            <option value="staff">Asignamos la mesa por ti</option>
+                            <option value="manual">Asignar mesa manualmente</option>
+                        </select>
+                    </div>
+
                     <div class="full-width form-group" id="contenedorMapaSoho" style="display: none;">
                         <label>Plano 2D Interactivo - Sede Soho (Selecciona tu Mesa)</label>
                         <div class="mapa-interactivo-container">
@@ -493,7 +501,7 @@
                     <div class="form-group">
                         <label for="promotor">Promotor / Código</label>
                         <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
-                        <small style="display:block; margin-top:6px; color:#a1a1aa; font-size:0.72rem;">Tip: escribe el codigo <strong>de tú promotor </strong>para las cortesias en el cover <strong>.</strong> para esa reserva.</small>
+                        <small style="display:block; margin-top:6px; color:#a1a1aa; font-size:0.72rem;">Tip: si escribes <strong>FREDYFREE</strong> o <strong>PRUEBASISTEMA</strong>, el cover queda en <strong>$0</strong> para esa reserva y el estado pasa a <strong>Prueba</strong> en el sistema.</small>
                     </div>
 
                     <div class="full-width form-group">
@@ -591,6 +599,32 @@
             return 4;
         }
 
+        function actualizarModoAsignacionMesa() {
+            const sede = document.getElementById('sede').value;
+            const grupoAsignacion = document.getElementById('grupoAsignacionMesa');
+            const contenedorMapaSoho = document.getElementById('contenedorMapaSoho');
+            const modo = document.getElementById('modoAsignacionMesa')?.value || 'staff';
+
+            if (sede !== 'Soho') {
+                if (grupoAsignacion) grupoAsignacion.style.display = 'none';
+                if (contenedorMapaSoho) contenedorMapaSoho.style.display = 'none';
+                return;
+            }
+
+            if (grupoAsignacion) grupoAsignacion.style.display = 'block';
+            if (modo === 'manual') {
+                if (contenedorMapaSoho) contenedorMapaSoho.style.display = 'block';
+            } else {
+                if (contenedorMapaSoho) contenedorMapaSoho.style.display = 'none';
+                mesaSohoSeleccionada = null;
+                const info = document.getElementById('infoMesaSeleccionadaSoho');
+                if (info) {
+                    info.innerText = 'La mesa será asignada por el staff';
+                    info.style.color = '#00FFEF';
+                }
+            }
+        }
+
         function cambiarSedeFormulario() {
             const sede = document.getElementById('sede').value;
             const selectZona = document.getElementById('zona');
@@ -598,19 +632,25 @@
             const grupoZonaStd = document.getElementById('grupoZonaStd');
             const grupoMesaStd = document.getElementById('grupoMesaStd');
             const contenedorMapaSoho = document.getElementById('contenedorMapaSoho');
+            const grupoAsignacion = document.getElementById('grupoAsignacionMesa');
+            const modoAsignacion = document.getElementById('modoAsignacionMesa');
             
             selectZona.innerHTML = '<option value="" disabled selected>Selecciona una zona</option>';
             
             if (sede === 'Soho') {
                 grupoZonaStd.style.display = 'none';
                 grupoMesaStd.style.display = 'none';
-                contenedorMapaSoho.style.display = 'block';
+                if (grupoAsignacion) grupoAsignacion.style.display = 'block';
+                if (modoAsignacion) modoAsignacion.value = 'staff';
+                contenedorMapaSoho.style.display = 'none';
                 selectZona.removeAttribute('required');
                 selectMesa.removeAttribute('required');
                 cargarMapaInteractivoSoho();
+                actualizarModoAsignacionMesa();
             } else {
                 grupoZonaStd.style.display = 'flex';
                 grupoMesaStd.style.display = 'flex';
+                if (grupoAsignacion) grupoAsignacion.style.display = 'none';
                 contenedorMapaSoho.style.display = 'none';
                 selectZona.setAttribute('required', 'true');
                 selectMesa.setAttribute('required', 'true');
@@ -897,25 +937,31 @@
 
             let zonaFinal = 'General';
             let mesaFinal = 'Asignar';
+            const modoAsignacion = document.getElementById('modoAsignacionMesa')?.value || 'staff';
 
             if (sedeValue === 'Soho') {
-                if (!mesaSohoSeleccionada) {
-                    alert('⚠️ Por favor selecciona una mesa o espacio disponible en el plano interactivo de Soho.');
-                    return;
-                }
-                mesaFinal = mesaSohoSeleccionada;
-
-                const capacidadPermitida = obtenerCapacidadMesaSoho(mesaSohoSeleccionada);
-                if (personasNuevas > capacidadPermitida) {
-                    alert(`⚠️ La mesa ${mesaSohoSeleccionada} tiene una capacidad máxima de ${capacidadPermitida} personas. Has indicado ${personasNuevas} asistentes. Por favor ajusta la cantidad.`);
-                    return;
-                }
-
-                for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
-                    if (datos.mesas.includes(mesaSohoSeleccionada)) {
-                        zonaFinal = nombreZona;
-                        break;
+                if (modoAsignacion === 'manual') {
+                    if (!mesaSohoSeleccionada) {
+                        alert('⚠️ Por favor selecciona una mesa o espacio disponible en el plano interactivo de Soho.');
+                        return;
                     }
+                    mesaFinal = mesaSohoSeleccionada;
+
+                    const capacidadPermitida = obtenerCapacidadMesaSoho(mesaSohoSeleccionada);
+                    if (personasNuevas > capacidadPermitida) {
+                        alert(`⚠️ La mesa ${mesaSohoSeleccionada} tiene una capacidad máxima de ${capacidadPermitida} personas. Has indicado ${personasNuevas} asistentes. Por favor ajusta la cantidad.`);
+                        return;
+                    }
+
+                    for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
+                        if (datos.mesas.includes(mesaSohoSeleccionada)) {
+                            zonaFinal = nombreZona;
+                            break;
+                        }
+                    }
+                } else {
+                    mesaFinal = 'Asignar';
+                    zonaFinal = 'Asignación por Staff';
                 }
             } else {
                 zonaFinal = document.getElementById('zona').value;
@@ -938,7 +984,7 @@
                 nota: document.getElementById('nota').value.trim(),
                 precioCover: precioCoverGlobal,
                 estadoAsistencia: 'Reservado',
-                usuarioCreador: 'Web Pública'
+                usuarioCreador: 'VIP NORTE'
             };
 
             try {
