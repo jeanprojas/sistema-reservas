@@ -39,6 +39,24 @@
             margin: 0 4px;
         }
 
+        .whatsapp-float {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 58px;
+            height: 58px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #25d366, #1ebc5a);
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.45);
+            text-decoration: none;
+        }
+
         .main-container {
             max-width: 850px;
             margin: 30px auto;
@@ -388,11 +406,13 @@
         para una atención más inmediata.
     </div>
 
+    <a id="botonWhatsappFlotante" class="whatsapp-float" href="https://wa.me/573014815281" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">💬</a>
+
     <div class="main-container">
 
         <div class="header-section">
             <h1 id="headerTitulo">RESERVAS VIP NORTE</h1>
-            <p>Reserva tu mesa en línea y asegura tu lugar en la mejor fiesta</p>
+            <p id="headerSubtitulo">Reserva tu mesa en línea y asegura tu lugar en la mejor fiesta</p>
         </div>
 
         <div class="tabs-container">
@@ -858,19 +878,92 @@
             }
         }
 
+        function aplicarEstadoCampo(id, estado) {
+            const campo = document.getElementById(id);
+            if (!campo) return;
+
+            const contenedor = campo.closest('.form-group');
+            if (!contenedor) return;
+
+            if (estado === 'oculto') {
+                contenedor.style.display = 'none';
+                campo.disabled = true;
+                campo.removeAttribute('required');
+                return;
+            }
+
+            contenedor.style.display = 'flex';
+            campo.disabled = false;
+            if (estado === 'obligatorio') {
+                campo.setAttribute('required', 'required');
+            } else {
+                campo.removeAttribute('required');
+            }
+        }
+
+        function aplicarConfiguracionFormulario(config = {}) {
+            const campos = config.camposConfig || config.campos || {};
+            const estados = {
+                email: (campos.email || campos.emailRequerido || 'opcional').toString().toLowerCase(),
+                telefono: (campos.telefono || campos.telefonoRequerido || 'obligatorio').toString().toLowerCase(),
+                instagram: (campos.instagram || campos.instagramRequerido || 'opcional').toString().toLowerCase(),
+                promotor: (campos.promotor || campos.promotorRequerido || 'opcional').toString().toLowerCase(),
+                nota: (campos.nota || campos.notaRequerida || 'opcional').toString().toLowerCase()
+            };
+
+            aplicarEstadoCampo('email', estados.email);
+            aplicarEstadoCampo('telefono', estados.telefono);
+            aplicarEstadoCampo('instagram', estados.instagram);
+            aplicarEstadoCampo('promotor', estados.promotor);
+            aplicarEstadoCampo('nota', estados.nota);
+
+            const labelTelefono = document.querySelector('label[for="telefono"]');
+            if (labelTelefono) {
+                labelTelefono.textContent = estados.telefono === 'oculto' ? 'WhatsApp' : 'WhatsApp *';
+            }
+        }
+
         async function cargarConfiguracion() {
             try {
                 const res = await fetch('/api/configuracion');
                 if (res.ok) {
                     const data = await res.json();
+                    const config = data.config || data;
+                    const tituloPrincipal = config.titulo || config.tituloPrincipal || config.nombreSede || 'RESERVAS VIP NORTE';
+                    const subtituloPrincipal = config.subtitulo || config.descripcionPrincipal || 'Reserva tu mesa en línea y asegura tu lugar en la mejor fiesta';
+                    const textoWhatsapp = config.whatsappTexto || config.whatsappMensaje || 'Comunícate al número de WhatsApp';
+                    const linkWhatsapp = config.whatsappLink || config.whatsapp || 'https://wa.me/573014815281';
+                    const numeroWhatsapp = config.whatsappNumero || (linkWhatsapp.match(/\d+/g) || []).join('').slice(-10) || '3014815281';
+
+                    document.getElementById('headerTitulo').innerText = String(tituloPrincipal).toUpperCase();
+                    document.getElementById('headerSubtitulo').innerText = subtituloPrincipal;
+                    document.getElementById('tituloPagina').innerText = config.tituloPagina || `Sistema de Reservas - ${tituloPrincipal}`;
+
+                    const linkEl = document.getElementById('linkWhatsapp');
+                    if (linkEl) {
+                        linkEl.href = linkWhatsapp;
+                        document.getElementById('textoTelefonoWhatsapp').innerText = numeroWhatsapp;
+                    }
+                    const bannerTexto = document.querySelector('.whatsapp-top-banner');
+                    if (bannerTexto) {
+                        bannerTexto.innerHTML = `${textoWhatsapp} <a id="linkWhatsapp" href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer"><span id="textoTelefonoWhatsapp">${numeroWhatsapp}</span></a> ${config.whatsappSubititulo || 'para una atención más inmediata.'}`;
+                    }
+                    const botonFlotante = document.getElementById('botonWhatsappFlotante');
+                    if (botonFlotante) {
+                        botonFlotante.href = linkWhatsapp;
+                    }
+
                     if (data.precioCover !== undefined && data.precioCover !== null) {
                         precioCoverGlobal = Number(data.precioCover);
                         document.getElementById('precioCoverTexto').innerText = `$${precioCoverGlobal.toLocaleString('es-CO')} COP`;
                     }
-                    if (data.nombreSede) {
-                        document.getElementById('headerTitulo').innerText = data.nombreSede;
-                        document.getElementById('tituloPagina').innerText = `Sistema de Reservas - ${data.nombreSede}`;
-                    }
+
+                    const tabCrear = document.getElementById('tabCrear');
+                    const tabConsultar = document.getElementById('tabConsultar');
+                    if (tabCrear) tabCrear.innerText = config.tituloCreacion || 'Crear Nueva Reserva';
+                    if (tabConsultar) tabConsultar.innerText = config.tituloConsulta || 'Consultar Mi Reserva';
+
+                    aplicarConfiguracionFormulario(config);
                 }
             } catch (error) {
                 console.warn('No se pudo cargar la configuración dinámica.', error);
