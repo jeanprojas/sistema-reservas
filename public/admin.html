@@ -389,6 +389,7 @@
                                 <th class="p-4">Usuario</th>
                                 <th class="p-4">Rol</th>
                                 <th class="p-4">Sede</th>
+                                <th class="p-4">Estado</th>
                                 <th class="p-4 text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -548,7 +549,7 @@
                     <label class="block text-xs text-orange-400 mb-1 font-bold">PROMOTOR (Cédula del promotor):</label>
                     <input type="text" id="adminNewPromotor" placeholder="Dejar vacío o ingresar cédula" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-white">
                     <span class="text-[10px] text-gray-400">Si no se ingresa, por defecto se asignará "VIP NORTE".</span>
-                    <span class="block mt-1 text-[10px] text-green-300">Uso recomendado: escribir <strong>FREDYFREE</strong> para activar cover $0 en esa reserva.</span>
+                    <span class="block mt-1 text-[10px] text-green-300">Uso recomendado: escribir <strong>FREDYFREE</strong> para cover $0 o <strong>PRUEBASISTEMA</strong> para reservar como prueba del sistema.</span>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Motivo de Reserva:</label>
@@ -667,6 +668,128 @@
     <script>
         let filtroModoActual = 'hoy';
         let mesaSeleccionadaMapa = null;
+
+        const estructuraSohoAdmin = {
+            '1er Piso - Terraza Exterior': {
+                mesas: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16', 'T17', 'T18', 'T19'],
+                capacidadPorMesa: 4
+            },
+            '1er Piso - Zona General #1': {
+                mesas: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'V1', 'V2', 'V3'],
+                capacidadesEspecificas: { 'V1': 15, 'V2': 15, 'V3': 8 },
+                capacidadPorMesa: 4
+            },
+            '1er Piso - Zona Disco / Casino': {
+                mesas: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D15', 'D16', 'D17', 'V4', 'V5', 'V6'],
+                capacidadesEspecificas: { 'V4': 15, 'V5': 15, 'V6': 15 },
+                capacidadPorMesa: 4
+            },
+            '2do Piso - Palco Reyes (Sobre Disco)': {
+                mesas: ['P1', 'P1-A', 'P1-B'],
+                capacidadesEspecificas: { 'P1': 25, 'P1-A': 12, 'P1-B': 12 },
+                capacidadPorMesa: 25
+            },
+            '2do Piso - VIP Sector Disco': {
+                mesas: ['V7', 'V8', 'V9', 'V10'],
+                capacidadPorMesa: 15
+            },
+            '2do Piso - VIP Sector General': {
+                mesas: ['V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19'],
+                capacidadesEspecificas: { 'V11': 15, 'V15': 15, 'V19': 15 },
+                capacidadPorMesa: 8
+            },
+            '2do Piso - Mesas Redondas General': {
+                mesas: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13'],
+                capacidadPorMesa: 4
+            }
+        };
+
+        function obtenerCapacidadSohoAdmin(mesaId) {
+            for (const datos of Object.values(estructuraSohoAdmin)) {
+                if (datos.mesas.includes(mesaId)) {
+                    if (datos.capacidadesEspecificas && datos.capacidadesEspecificas[mesaId] !== undefined) {
+                        return datos.capacidadesEspecificas[mesaId];
+                    }
+                    return datos.capacidadPorMesa || 4;
+                }
+            }
+            return 4;
+        }
+
+        function renderizarGrupoMesasAdmin(listaMesas, ocupadasMap, contenedorDestino) {
+            listaMesas.forEach(mesaId => {
+                const reserva = ocupadasMap[String(mesaId)] || null;
+                const estaOcupada = !!reserva;
+                const clase = estaOcupada ? 'bg-red-950 border-red-600 text-red-300' : 'bg-gray-900 border-gray-700 text-green-300';
+                const label = estaOcupada ? 'Ocupada' : 'Libre';
+                const tooltip = estaOcupada ? `${reserva.nombreCliente || 'Cliente'} (${reserva.cantidadPersonasInicial || 1})` : `Mesa ${mesaId} disponible`;
+
+                const node = document.createElement('div');
+                node.className = `border rounded-xl p-2 text-center cursor-pointer transition hover:border-orange-400 ${clase}`;
+                node.setAttribute('title', tooltip);
+                node.setAttribute('onclick', `seleccionarMesaMapa('${mesaId}', ${JSON.stringify(reserva || null).replace(/"/g, '&quot;')})`);
+                node.innerHTML = `<div class="text-[10px] uppercase tracking-wide text-gray-300">${mesaId}</div><div class="text-[9px] font-bold mt-1">${label}</div>`;
+                contenedorDestino.appendChild(node);
+            });
+        }
+
+        async function cargarMapaSoho() {
+            const fecha = document.getElementById('mapaFecha').value;
+            document.getElementById('tituloPlanoSede').textContent = `Plano de Mesas - Sede Soho (${fecha})`;
+
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === 'Soho' && (r.fecha || r.nocheOperativa) === fecha);
+            const ocupadasMap = {};
+            reservasSede.forEach(r => {
+                if (r.mesa && r.mesa !== 'Sin Asignar' && r.mesa !== 'Asignar') {
+                    ocupadasMap[String(r.mesa)] = r;
+                }
+            });
+
+            const grid = document.getElementById('gridPlanoMesas');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const panel = document.createElement('div');
+            panel.className = 'w-full space-y-6';
+
+            const plantas = [
+                { titulo: '1er Piso - Planta Principal y Terraza', secciones: [
+                    ['1er Piso - Terraza Exterior', 'cluster-terraza'],
+                    ['1er Piso - Zona General #1', 'cluster-general'],
+                    ['1er Piso - Zona Disco / Casino', 'cluster-general']
+                ] },
+                { titulo: '2do Piso - Balcón y Palcos Exclusivos', secciones: [
+                    ['2do Piso - Palco Reyes (Sobre Disco)', 'cluster-palco'],
+                    ['2do Piso - VIP Sector Disco', 'cluster-general'],
+                    ['2do Piso - VIP Sector General', 'cluster-general'],
+                    ['2do Piso - Mesas Redondas General', 'cluster-general']
+                ] }
+            ];
+
+            plantas.forEach(planta => {
+                const section = document.createElement('div');
+                section.className = 'border border-gray-700 rounded-xl bg-gray-950/70 p-3';
+                section.innerHTML = `<div class="mb-3 text-xs font-bold uppercase tracking-widest text-orange-400">${planta.titulo}</div>`;
+                planta.secciones.forEach(([nombreZona, clase]) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'mb-3';
+                    wrapper.innerHTML = `<div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400">${nombreZona}</div>`;
+                    const grupo = document.createElement('div');
+                    grupo.className = `grid grid-cols-5 md:grid-cols-7 gap-2`;
+                    renderizarGrupoMesasAdmin(estructuraSohoAdmin[nombreZona].mesas, ocupadasMap, grupo);
+                    wrapper.appendChild(grupo);
+                    section.appendChild(wrapper);
+                });
+                panel.appendChild(section);
+            });
+
+            grid.appendChild(panel);
+            document.getElementById('detalleMesaInfo').innerHTML = '<p class="text-gray-500 italic">Selecciona una mesa del plano de Soho para verla, asignarla o liberarla.</p>';
+            document.getElementById('accionesMesaContainer').classList.add('hidden');
+            mesaSeleccionadaMapa = null;
+        }
 
         // Configuración de Aforos por Defecto (Función 1)
         let aforosConfig = {
@@ -1268,6 +1391,8 @@ async function guardarConfiguracionGeneral(event) {
                         .mapa-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px; }
                         .mesa-box { border: 2px solid #333; padding: 10px; text-align: center; border-radius: 8px; background: #f9fafb; }
                         .ocupada { background: #fee2e2; border-color: #ef4444; }
+                        .seccion { margin-top: 24px; }
+                        .zona { display: grid; grid-template-columns: repeat(5, minmax(70px, 1fr)); gap: 8px; margin-top: 10px; }
                     </style>
                 </head>
                 <body>
@@ -1275,21 +1400,38 @@ async function guardarConfiguracionGeneral(event) {
                     <h2>Sede: ${sede} | Fecha Operativa: ${fecha}</h2>
                     <hr>
                     <h3>Distribución de Mesas (Plano Asignado)</h3>
-                    <div class="mapa-grid">
             `;
 
-            for (let i = 1; i <= 20; i++) {
-                let mesaNum = String(i);
-                let encontrada = reservasSede.find(r => String(r.mesa) === mesaNum);
-                let claseOcupada = encontrada ? 'ocupada' : '';
-                let textoEstado = encontrada ? `Ocupada por:<br><b>${encontrada.nombreCliente}</b>` : 'Libre';
+            if (sede === 'Soho') {
+                contenidoHtml += '<div class="seccion">';
+                Object.entries(estructuraSohoAdmin).forEach(([zonaNombre, zonaData]) => {
+                    const mesas = zonaData.mesas;
+                    contenidoHtml += `<div class="seccion"><strong>${zonaNombre}</strong><div class="zona">`;
+                    mesas.forEach(mesaNum => {
+                        const encontrada = reservasSede.find(r => String(r.mesa) === String(mesaNum));
+                        const texto = encontrada ? `Ocupada<br><small>${encontrada.nombreCliente}</small>` : 'Libre';
+                        const clase = encontrada ? 'mesa-box ocupada' : 'mesa-box';
+                        contenidoHtml += `<div class="${clase}"><strong>${mesaNum}</strong><br><small>${texto}</small></div>`;
+                    });
+                    contenidoHtml += '</div></div>';
+                });
+                contenidoHtml += '</div>';
+            } else {
+                contenidoHtml += '<div class="mapa-grid">';
+                for (let i = 1; i <= 20; i++) {
+                    let mesaNum = String(i);
+                    let encontrada = reservasSede.find(r => String(r.mesa) === mesaNum);
+                    let claseOcupada = encontrada ? 'ocupada' : '';
+                    let textoEstado = encontrada ? `Ocupada por:<br><b>${encontrada.nombreCliente}</b>` : 'Libre';
 
-                contenidoHtml += `
-                    <div class="mesa-box ${claseOcupada}">
-                        <strong>Mesa #${mesaNum}</strong><br>
-                        <small>${textoEstado}</small>
-                    </div>
-                `;
+                    contenidoHtml += `
+                        <div class="mesa-box ${claseOcupada}">
+                            <strong>Mesa #${mesaNum}</strong><br>
+                            <small>${textoEstado}</small>
+                        </div>
+                    `;
+                }
+                contenidoHtml += '</div>';
             }
 
             contenidoHtml += `
@@ -1358,7 +1500,7 @@ async function guardarConfiguracionGeneral(event) {
                 totalCortesias += Number(r.cortesias) || 0;
                 if (r.estadoAsistencia === 'No-Show') noShowCount++;
 
-                const creador = r.usuarioCreador || 'Web Pública';
+                const creador = r.usuarioCreador || 'VIP NORTE';
                 if (!ventasPorUsuario[creador]) ventasPorUsuario[creador] = { reservas: 0, personas: 0, dinero: 0 };
                 ventasPorUsuario[creador].reservas += 1;
                 ventasPorUsuario[creador].personas += Number(r.cantidadPersonasInicial) || 0;
@@ -1610,44 +1752,102 @@ async function guardarConfiguracionGeneral(event) {
             const tbody = document.getElementById('tablaUsuarios');
             tbody.innerHTML = '';
             usuarios.forEach(u => {
+                const activo = u.activo !== false;
+                const estadoTexto = u.estado || (activo ? 'Activo' : 'Suspendido');
+                const claseEstado = activo ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300';
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-850">
-                        <td class="p-4 font-bold text-white">${u.username} <span class="text-xs text-gray-400 block">Pass: ${u.password}</span></td>
+                    <tr class="hover:bg-gray-850 ${activo ? '' : 'opacity-70'}">
+                        <td class="p-4 font-bold text-white">
+                            ${u.username}
+                            <span class="text-xs text-gray-400 block">Pass: ${u.password || 'Sin contraseña'}</span>
+                        </td>
                         <td class="p-4"><span class="px-2 py-1 rounded text-xs font-semibold ${u.rol === 'Administrador' ? 'bg-orange-900 text-orange-300' : 'bg-blue-900 text-blue-300'}">${u.rol}</span></td>
                         <td class="p-4 font-semibold text-yellow-400">${u.sede}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded text-xs font-semibold ${claseEstado}">${estadoTexto}</span>
+                        </td>
                         <td class="p-4 text-center space-x-2">
-                            <button onclick="eliminarUsuario('${u.id}')" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs font-bold transition">Eliminar</button>
+                            <button onclick="editarUsuario('${u.id}', '${u.username}', '${u.password || ''}', '${u.rol}', '${u.sede}', ${activo})" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            <button onclick="toggleUsuarioActivo('${u.id}', ${activo})" class="${activo ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} px-3 py-1 rounded text-xs font-bold transition">${activo ? 'Suspender' : 'Activar'}</button>
+                            <button onclick="eliminarUsuario('${u.id}')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs font-bold transition">Eliminar</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
+        function editarUsuario(id, username, password, rol, sede, activo) {
+            document.getElementById('usuarioId').value = id;
+            document.getElementById('nuevoUsername').value = username;
+            document.getElementById('nuevoPassword').value = password;
+            document.getElementById('nuevoRol').value = rol;
+            document.getElementById('nuevaSede').value = sede;
+            document.getElementById('tituloFormUsuario').textContent = 'Editar Usuario';
+            const submitBtn = document.querySelector('#seccionUsuarios button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Actualizar Usuario';
+        }
+
         async function guardarUsuario(e) {
             e.preventDefault();
-            await fetch('/api/usuarios', {
-                method: 'POST',
+            const usuarioId = document.getElementById('usuarioId').value;
+            const payload = {
+                username: document.getElementById('nuevoUsername').value,
+                password: document.getElementById('nuevoPassword').value,
+                rol: document.getElementById('nuevoRol').value,
+                sede: document.getElementById('nuevaSede').value
+            };
+
+            const url = usuarioId ? `/api/usuarios/${usuarioId}` : '/api/usuarios';
+            const method = usuarioId ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: document.getElementById('nuevoUsername').value,
-                    password: document.getElementById('nuevoPassword').value,
-                    rol: document.getElementById('nuevoRol').value,
-                    sede: document.getElementById('nuevaSede').value
-                })
+                body: JSON.stringify(payload)
             });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.mensaje || 'No se pudo guardar el usuario.');
+                return;
+            }
             resetFormUsuario();
             cargarUsuarios();
         }
 
         function resetFormUsuario() {
+            document.getElementById('usuarioId').value = '';
             document.getElementById('nuevoUsername').value = '';
             document.getElementById('nuevoPassword').value = '';
+            document.getElementById('tituloFormUsuario').textContent = 'Crear Nuevo Usuario';
+            const submitBtn = document.querySelector('#seccionUsuarios button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Guardar Usuario';
+        }
+
+        async function toggleUsuarioActivo(id, activoActual) {
+            const nuevoEstado = !activoActual;
+            const res = await fetch(`/api/usuarios/${id}/suspend`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activo: nuevoEstado })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.mensaje || (nuevoEstado ? 'Usuario activado con éxito.' : 'Usuario suspendido con éxito.'));
+                cargarUsuarios();
+            } else {
+                alert(data.mensaje || 'No fue posible cambiar el estado del usuario.');
+            }
         }
 
         async function eliminarUsuario(id) {
             if (confirm('¿Eliminar usuario?')) {
-                await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-                cargarUsuarios();
+                const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    cargarUsuarios();
+                } else {
+                    alert(data.mensaje || 'No se pudo eliminar el usuario.');
+                }
             }
         }
         async function cargarConfiguracion() {
