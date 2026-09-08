@@ -142,6 +142,10 @@
             <!-- Tabla Reservas -->
             <h2 class="text-xl font-bold mb-4 text-gray-200">Control de Asistencia y Accesos</h2>
             <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 shadow">
+                <div class="p-3 border-b border-gray-800 flex flex-wrap gap-2">
+                    <input id="adminBusquedaReservas" oninput="cargarAdmin()" type="search" placeholder="Buscar por nombre, celular o promotor..." class="flex-1 min-w-[240px] bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                    <button onclick="exportarReservasExcel()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg text-xs font-bold">Exportar Excel</button>
+                </div>
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-800 text-xs uppercase text-gray-400">
@@ -799,7 +803,7 @@
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
-            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === 'Soho' && (r.fecha || r.nocheOperativa) === fecha);
+            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === 'Soho' && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado');
             const ocupadasMap = {};
             reservasSede.forEach(r => {
                 if (r.mesa && r.mesa !== 'Sin Asignar' && r.mesa !== 'Asignar') {
@@ -1122,12 +1126,16 @@ try {
             const hoyObj = new Date();
             const hoyStr = `${hoyObj.getFullYear()}-${String(hoyObj.getMonth() + 1).padStart(2, '0')}-${String(hoyObj.getDate()).padStart(2, '0')}`;
 
+            const terminoBusqueda = (document.getElementById('adminBusquedaReservas')?.value || '').trim().toLowerCase();
             const filtradas = data.filter(r => {
                 const sedeReserva = r.sede || 'Salvaje';
                 if (sedeSel !== 'TODAS' && sedeReserva !== sedeSel) return false;
 
                 const fechaReserva = r.fecha || r.nocheOperativa;
                 if (!fechaReserva) return false;
+                if (terminoBusqueda && ![
+                    r.nombreCliente, r.telefono, r.promotor, r.id, r.sede
+                ].some(valor => String(valor || '').toLowerCase().includes(terminoBusqueda))) return false;
 
                 if (fechaInputVal) return fechaReserva === fechaInputVal;
 
@@ -1172,7 +1180,8 @@ try {
             }
 
             filtradas.forEach(r => {
-                let colorEstado = 'bg-yellow-900 text-yellow-300';
+                let colorEstado = 'bg-blue-900 text-blue-300';
+                if (r.estadoAsistencia === 'Cancelado') colorEstado = 'bg-gray-700 text-gray-300';
                 if (r.estadoAsistencia === 'Presente') colorEstado = 'bg-green-900 text-green-300';
                 if (r.estadoAsistencia === 'No-Show') colorEstado = 'bg-red-900 text-red-300';
                 if (r.estadoAsistencia === 'Prueba') colorEstado = 'bg-purple-900 text-purple-300';
@@ -1204,6 +1213,7 @@ try {
                         <td class="p-3 text-center space-x-1">
                             <button onclick="abrirModalDetalle('${r.id}', ${r.cantidadPersonasInicial || 1}, ${r.personasLlegadas || 0}, ${r.cortesias || 0}, ${r.pagaronCover || 0}, ${r.precioCover || 0})" class="bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded text-xs font-bold transition">Detalle</button>
                             <button onclick="abrirEdicionReservaAdmin('${r.id}', '${r.nombreCliente}', '${r.telefono}', '${r.email || ''}', '${r.sede || 'Salvaje'}', '${r.fecha}', '${r.zona}', '${r.mesa}', '${motivoReserva}', '${promotorVal}')" class="bg-yellow-600 hover:bg-yellow-700 px-2.5 py-1 rounded text-xs font-bold transition text-black">Editar</button>
+                            ${r.estadoAsistencia === 'Cancelado' ? '' : `<button onclick="cancelarReservaAdmin('${r.id}')" class="bg-gray-600 hover:bg-gray-500 px-2.5 py-1 rounded text-xs font-bold transition">Cancelar</button>`}
                             <button onclick="eliminarReservaAdmin('${r.id}')" class="bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs font-bold transition">Eliminar</button>
                         </td>
                     </tr>
@@ -1297,7 +1307,7 @@ try {
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha);
+            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado');
 
             let mapaOcupacion = {};
             reservasSede.forEach(r => {
@@ -1378,7 +1388,7 @@ try {
             const fecha = document.getElementById('mapaFecha').value;
             const res = await fetch('/api/reservas');
             const data = await res.json();
-            const pendientes = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha);
+            const pendientes = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado');
 
             if (pendientes.length === 0) {
                 alert('No hay reservas creadas para esta sede y fecha.');
@@ -1456,7 +1466,7 @@ try {
 
             const res = await fetch('/api/reservas');
             const data = await res.json();
-            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha);
+            const reservasSede = data.filter(r => (r.sede || 'Salvaje') === sede && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado');
 
             let ventanaPdf = window.open('', '_blank');
             let contenidoHtml = `
@@ -1527,6 +1537,7 @@ try {
                                 <th>Promotor</th>
                                 <th>Cantidad de Personas</th>
                                 <th>Motivo de Reserva</th>
+                                <th>Notas / Comentarios</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
@@ -1534,7 +1545,7 @@ try {
             `;
 
             if (reservasSede.length === 0) {
-                contenidoHtml += `<tr><td colspan="6" style="text-align: center;">No hay reservas registradas para esta fecha en esta sede.</td></tr>`;
+                contenidoHtml += `<tr><td colspan="7" style="text-align: center;">No hay reservas registradas para esta fecha en esta sede.</td></tr>`;
             } else {
                 reservasSede.forEach(r => {
                     const motivoReserva = r.motivo || r.motivoReserva || 'Cumpleaños';
@@ -1546,6 +1557,7 @@ try {
                             <td>${promotorVal}</td>
                             <td>${r.cantidadPersonasInicial || 1} personas</td>
                             <td>${motivoReserva}</td>
+                            <td>${r.nota || r.comentario || r.comentarios || 'Sin notas'}</td>
                             <td>${r.estadoAsistencia}</td>
                         </tr>
                     `;
@@ -1764,11 +1776,60 @@ try {
             cargarAdmin();
         }
 
-        async function eliminarReservaAdmin(id) {
-            if (confirm(`¿Estás completamente seguro de eliminar la reserva #${id}?`)) {
-                await fetch(`/api/admin/reservas/${id}`, { method: 'DELETE' });
-                cargarAdmin();
+        async function cancelarReservaAdmin(id) {
+            if (!confirm(`¿Cancelar la reserva #${id}? Se conservará en el historial y no ocupará mesa.`)) return;
+            const res = await fetch(`/api/admin/reservas/${encodeURIComponent(id)}/cancelar`, { method: 'PATCH' });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.mensaje || 'No se pudo cancelar la reserva.');
+                return;
             }
+            cargarAdmin();
+        }
+
+        async function eliminarReservaAdmin(id) {
+            if (!confirm(`¿Eliminar definitivamente la reserva #${id}? Esta acción no se puede deshacer.`)) return;
+            const codigo = prompt('Ingresa el código de eliminación para confirmar:');
+            if (codigo === null) return;
+            const res = await fetch(`/api/admin/reservas/${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigoEliminacion: codigo })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.mensaje || 'No se pudo eliminar la reserva.');
+                return;
+            }
+            cargarAdmin();
+        }
+
+        async function exportarReservasExcel() {
+            const res = await fetch('/api/reservas');
+            const data = await res.json();
+            const sede = document.getElementById('adminSede').value;
+            const fecha = document.getElementById('adminFecha').value;
+            const termino = (document.getElementById('adminBusquedaReservas')?.value || '').trim().toLowerCase();
+            const reservas = data.filter(r => {
+                const fechaReserva = r.fecha || r.nocheOperativa;
+                if (sede !== 'TODAS' && (r.sede || 'Salvaje') !== sede) return false;
+                if (fecha && fechaReserva !== fecha) return false;
+                if (termino && ![r.nombreCliente, r.telefono, r.promotor, r.id, r.sede].some(v => String(v || '').toLowerCase().includes(termino))) return false;
+                return true;
+            });
+            const filas = reservas.map(r => `<tr>
+                <td>${r.telefono || ''}</td><td>${r.nombreCliente || ''}</td><td>${r.sede || ''}</td>
+                <td>${r.fecha || r.nocheOperativa || ''}</td><td>${r.cantidadPersonasInicial || 0}</td>
+                <td>${r.personasLlegadas || 0}</td><td>${(Number(r.pagaronCover) || 0) * (Number(r.precioCover) || 0)}</td>
+                <td>${r.promotor || 'VIP NORTE'}</td>
+            </tr>`).join('');
+            const html = `<table><thead><tr><th>Numero celular</th><th>Nombre de reserva</th><th>Discoteca</th><th>Fecha</th><th>Personas reservadas</th><th>Personas asistieron</th><th>Dinero cover</th><th>Promotor</th></tr></thead><tbody>${filas}</tbody></table>`;
+            const blob = new Blob([`<html><meta charset="UTF-8">${html}</html>`], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const enlace = document.createElement('a');
+            enlace.href = URL.createObjectURL(blob);
+            enlace.download = `reservas-${fecha || 'filtro'}.xls`;
+            enlace.click();
+            URL.revokeObjectURL(enlace.href);
         }
 
         function abrirModalCrearReserva() { document.getElementById('modalCrearReserva').classList.remove('hidden'); }
@@ -1941,5 +2002,5 @@ try {
 
 
 
-@ UN PRODUCTO DE ENTRETENIMIENTO MEDELLIN v2
+@ UN PRODUCTO DE ENTRETENIMIENTO MEDELLIN 
 BY JR & LG
