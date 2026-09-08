@@ -557,13 +557,14 @@
             const res = await fetch('/api/reservas');
             const data = await res.json();
 
-            const reservaEncontrada = data.find(r => {
+            const reservasEncontradas = data.filter(r => {
                 const sedeRes = r.sede || 'Salvaje';
                 if (sedeActualStaff !== 'TODAS' && sedeRes !== sedeActualStaff) return false;
                 const idMatch = r.id.toLowerCase() === queryInput.toLowerCase();
                 const telMatch = r.telefono && r.telefono.replace(/\s+/g, '').includes(queryInput.replace(/\s+/g, ''));
-                return idMatch || telMatch;
+            return (idMatch || telMatch) && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado';
             });
+            const reservaEncontrada = reservasEncontradas[0];
 
             if (!reservaEncontrada) {
                 errorDiv.textContent = `⚠️ No se encontró ninguna reserva activa en la sede ${sedeActualStaff} con el dato "${queryInput}".`;
@@ -593,8 +594,8 @@
 
             const badgeEstado = document.getElementById('resConsultaEstadoBadge');
             badgeEstado.textContent = reservaEncontrada.estadoAsistencia || 'Reservado';
-            badgeEstado.className = 'px-3 py-1 rounded-full text-xs font-bold ' + 
-                (reservaEncontrada.estadoAsistencia === 'Presente' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300');
+            badgeEstado.className = 'px-3 py-1 rounded-full text-xs font-bold ' +
+                (reservaEncontrada.estadoAsistencia === 'Presente' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300');
 
             const planInicial = Number(reservaEncontrada.cantidadPersonasInicial) || 1;
             document.getElementById('resConsultaInicial').value = planInicial;
@@ -916,7 +917,7 @@
             const data = await res.json();
             const reservasSede = data.filter(r => {
                 const sedeRes = r.sede || 'Salvaje';
-                return (sedeActualStaff === 'TODAS' || sedeRes === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha;
+                return (sedeActualStaff === 'TODAS' || sedeRes === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado';
             });
 
             const grid = document.getElementById('gridPlanoMesasStaff');
@@ -1005,6 +1006,7 @@
                     <p><b>Cliente:</b> ${reserva.nombreCliente}</p>
                     <p><b>Personas:</b> ${reserva.cantidadPersonasInicial || 1}</p>
                     <p><b>Motivo:</b> ${motivoReserva}</p>
+                    <p><b>Notas / Comentarios:</b> ${reserva.nota || reserva.comentario || reserva.comentarios || 'Sin notas'}</p>
                 `;
                 accionesDiv.innerHTML = `<button onclick="liberarMesaStaff('${reserva.id}')" class="w-full bg-red-600 hover:bg-red-700 py-2 rounded text-xs font-bold">Liberar Mesa</button>`;
             } else {
@@ -1093,7 +1095,7 @@
             const res = await fetch('/api/reservas');
             const data = await res.json();
             
-            const reservasSede = data.filter(r => (sedeActualStaff === 'TODAS' || (r.sede || 'Salvaje') === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha);
+            const reservasSede = data.filter(r => (sedeActualStaff === 'TODAS' || (r.sede || 'Salvaje') === sedeActualStaff) && (r.fecha || r.nocheOperativa) === fecha && String(r.estadoAsistencia || '').toLowerCase() !== 'cancelado');
             let mapaOcupacion = {};
             reservasSede.forEach(r => { mapaOcupacion[String(r.mesa)] = r; });
 
@@ -1172,6 +1174,7 @@
                                 <th>Nombre del Cliente</th>
                                 <th>Cantidad de Personas</th>
                                 <th>Motivo de Reserva</th>
+                                <th>Notas / Comentarios</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
@@ -1186,6 +1189,7 @@
                         <td>${r.nombreCliente}</td>
                         <td>${r.cantidadPersonasInicial || 1} personas</td>
                         <td>${motivoReserva}</td>
+                        <td>${r.nota || r.comentario || r.comentarios || 'Sin notas'}</td>
                         <td>${r.estadoAsistencia || 'Reservado'}</td>
                     </tr>
                 `;
