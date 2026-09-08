@@ -9,6 +9,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use('/admin.html', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de Resend usando la variable de entorno RESEND_API_KEY
@@ -751,7 +757,8 @@ app.get('/api/reservas/buscar', async (req, res) => {
         }
 
         if (isMemoryMode()) {
-            const reservas = construirFiltroReservasMemoria({ query, sede });
+            const reservas = construirFiltroReservasMemoria({ query, sede })
+                .filter(r => String(r.estadoAsistencia || 'Reservado').toLowerCase() !== 'cancelado');
             return res.json(reservas);
         }
 
@@ -767,6 +774,7 @@ app.get('/api/reservas/buscar', async (req, res) => {
             filtro.sede = sede;
         }
 
+        filtro.estadoAsistencia = { $ne: 'Cancelado' };
         const reservas = await Reserva.find(filtro);
         res.json(reservas);
     } catch (e) {
@@ -1284,6 +1292,9 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
             if (!reserva) {
                 return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
             }
+            if (String(reserva.estadoAsistencia || '').toLowerCase() === 'cancelado' && mesa && mesa !== 'Sin Asignar' && mesa !== 'Asignar') {
+                return res.status(400).json({ success: false, mensaje: 'Una reserva cancelada no puede ocupar ni asignarse a una mesa.' });
+            }
             if (mesa) {
                 const mesaLibre = desbloquearMesaEnMemoria(sede || reserva.sede, fecha || reserva.fecha, mesa, req.params.id);
                 if (!mesaLibre) {
@@ -1305,6 +1316,13 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
             aplicarReglaPromocionCover(reserva);
             return res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva });
         }
+        const reservaExistente = await Reserva.findOne({ id: req.params.id });
+        if (!reservaExistente) {
+            return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        }
+        if (String(reservaExistente.estadoAsistencia || '').toLowerCase() === 'cancelado' && mesa && mesa !== 'Sin Asignar' && mesa !== 'Asignar') {
+            return res.status(400).json({ success: false, mensaje: 'Una reserva cancelada no puede ocupar ni asignarse a una mesa.' });
+        }
         if (mesa) {
             const mesaLibre = await verificarDisponibilidadMesa(sede, fecha, mesa, req.params.id);
             if (!mesaLibre) {
@@ -1312,6 +1330,7 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
                     success: false,
                     mensaje: `No se puede asignar: La Mesa #${mesa} ya se encuentra reservada para esa sede y fecha.`
                 });
+
             }
         }
 
@@ -1344,6 +1363,30 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
         res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva: reservaActualizada });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al actualizar la reserva' });
+    }
+});
+
+// Cancelar una reserva sin eliminar su historial.
+app.patch('/api/admin/reservas/:id/cancelar', async (req, res) => {
+    try {
+        if (isMemoryMode()) {
+            const reserva = buscarReservaEnMemoria(req.params.id);
+            if (!reserva) return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+            reserva.estadoAsistencia = 'Cancelado';
+            reserva.mesa = 'Sin Asignar';
+            reserva.mesaAsignada = 'Sin Asignar';
+            return res.json({ success: true, mensaje: 'Reserva cancelada y conservada en el historial', reserva });
+        }
+
+        const reserva = await Reserva.findOneAndUpdate(
+            { id: req.params.id },
+            { $set: { estadoAsistencia: 'Cancelado', mesa: 'Sin Asignar', mesaAsignada: 'Sin Asignar' } },
+            { new: true }
+        );
+        if (!reserva) return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        res.json({ success: true, mensaje: 'Reserva cancelada y conservada en el historial', reserva });
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'Error al cancelar la reserva' });
     }
 });
 
@@ -1392,6 +1435,9 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
 // Eliminar reserva por ID
 app.delete('/api/admin/reservas/:id', async (req, res) => {
     try {
+        if (String(req.body?.codigoEliminacion || req.query.codigoEliminacion || '') !== '1212') {
+            return res.status(403).json({ success: false, mensaje: 'Código de eliminación incorrecto.' });
+        }
         if (isMemoryMode()) {
             const index = memoryDb.reservas.findIndex(r => String(r.id) === String(req.params.id));
             if (index === -1) {
