@@ -413,6 +413,12 @@
         <div class="header-section">
             <h1 id="headerTitulo">RESERVAS VIP NORTE</h1>
             <p id="headerSubtitulo">Reserva tu mesa en línea y asegura tu lugar en la mejor fiesta</p>
+            <div id="enlacesSedes" style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                <a href="/soho" style="color:#fdba74; font-size:0.78rem; font-weight:700;">Reservas Soho</a>
+                <a href="/salvaje" style="color:#fdba74; font-size:0.78rem; font-weight:700;">Reservas Salvaje</a>
+                <a href="/220-voltios" style="color:#fdba74; font-size:0.78rem; font-weight:700;">Reservas 220 Voltios</a>
+                <a href="/" style="color:#a1a1aa; font-size:0.78rem; font-weight:700;">Portal general</a>
+            </div>
         </div>
 
         <div class="tabs-container">
@@ -521,7 +527,7 @@
                     <div class="form-group">
                         <label for="promotor">Promotor / Código</label>
                         <input type="text" id="promotor" class="form-control" placeholder="Promotor que te atendió">
-                        <small style="display:block; margin-top:6px; color:#a1a1aa; font-size:0.72rem;">Tip: escribe el codigo de tú  <strong>PROMOTOR</strong> . </small>
+                        <small style="display:block; margin-top:6px; color:#a1a1aa; font-size:0.72rem;">Tip: si escribes <strong>FREDYFREE</strong> o <strong>PRUEBASISTEMA</strong>, el cover queda en <strong>$0</strong> para esa reserva y el estado pasa a <strong>Prueba</strong> en el sistema.</small>
                     </div>
 
                     <div class="full-width form-group">
@@ -606,6 +612,39 @@
         };
 
         let mesaSohoSeleccionada = null;
+        const sedesFijas = {
+            '/soho': 'Soho',
+            '/soho.html': 'Soho',
+            '/reservas-soho': 'Soho',
+            '/salvaje': 'Salvaje',
+            '/salvaje.html': 'Salvaje',
+            '/reservas-salvaje': 'Salvaje',
+            '/220-voltios': '220 Voltios',
+            '/220-voltios.html': '220 Voltios',
+            '/reservas-220-voltios': '220 Voltios'
+        };
+        const parametrosPortal = new URLSearchParams(window.location.search);
+        const sedeFija = sedesFijas[window.location.pathname.toLowerCase()] || parametrosPortal.get('sede');
+
+        function aplicarSedeFija() {
+            if (!sedeFija) return;
+            const sedeNormalizada = Object.values(sedesFijas).find(sede => sede.toLowerCase() === String(sedeFija).toLowerCase());
+            if (!sedeNormalizada) return;
+            const selectSede = document.getElementById('sede');
+            if (selectSede) {
+                selectSede.value = sedeNormalizada;
+                selectSede.disabled = true;
+                selectSede.setAttribute('aria-readonly', 'true');
+                const grupoSede = selectSede.closest('.form-group');
+                if (grupoSede) grupoSede.style.display = 'none';
+            }
+            const titulo = `RESERVAS ${sedeNormalizada.toUpperCase()}`;
+            document.getElementById('headerTitulo').textContent = titulo;
+            document.getElementById('tituloPagina').textContent = `${titulo} - VIP Norte`;
+            document.getElementById('headerSubtitulo').textContent = `Reserva en ${sedeNormalizada} y asegura tu lugar en la mejor fiesta`;
+            document.getElementById('enlacesSedes').style.display = 'none';
+            cambiarSedeFormulario();
+        }
 
         function obtenerCapacidadMesaSoho(mesaId) {
             for (const [nombreZona, datos] of Object.entries(estructuraSohoCompleta)) {
@@ -646,7 +685,8 @@
         }
 
         function cambiarSedeFormulario() {
-            const sede = document.getElementById('sede').value;
+            const sede = sedeFija || document.getElementById('sede').value;
+            document.getElementById('sede').value = sede;
             const selectZona = document.getElementById('zona');
             const selectMesa = document.getElementById('mesa');
             const grupoZonaStd = document.getElementById('grupoZonaStd');
@@ -858,6 +898,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             establecerFechaMinima();
+            aplicarSedeFija();
             cargarConfiguracion();
         });
 
@@ -964,6 +1005,7 @@
                     if (tabConsultar) tabConsultar.innerText = config.tituloConsulta || 'Consultar Mi Reserva';
 
                     aplicarConfiguracionFormulario(config);
+                    aplicarSedeFija();
                 }
             } catch (error) {
                 console.warn('No se pudo cargar la configuración dinámica.', error);
