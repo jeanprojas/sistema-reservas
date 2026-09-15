@@ -15,6 +15,15 @@ app.use('/admin.html', (req, res, next) => {
     res.set('Expires', '0');
     next();
 });
+app.get(['/soho', '/soho.html', '/reservas-soho', '/reservas-soho.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get(['/salvaje', '/salvaje.html', '/reservas-salvaje', '/reservas-salvaje.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get(['/220-voltios', '/220-voltios.html', '/reservas-220-voltios', '/reservas-220-voltios.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de Resend usando la variable de entorno RESEND_API_KEY
