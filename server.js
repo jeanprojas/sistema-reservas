@@ -296,6 +296,53 @@ function obtenerDataReserva(r) {
     };
 }
 
+// Sincroniza una reserva con Google Sheets sin bloquear la operación si el
+// servicio externo está temporalmente indisponible.
+async function sincronizarReservaGoogle(reserva) {
+    const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+    if (!webhookUrl || !reserva) return;
+
+    const personasPagaronCover = Number(reserva.pagaronCover || 0);
+    const precioCover = Number(reserva.precioCover || 0);
+    const payload = {
+        token: process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN || '',
+        id_reserva: reserva.id || '',
+        codigo_pin: reserva.codigoQr || '',
+        fecha_creacion: reserva.creadoEn || new Date().toISOString(),
+        fecha_reserva: reserva.fecha || '',
+        nombre_cliente: reserva.nombreCliente || '',
+        celular: reserva.telefono || '',
+        correo: reserva.email || '',
+        discoteca: reserva.sede || '',
+        zona: reserva.zona || '',
+        mesa: reserva.mesaAsignada || reserva.mesa || '',
+        personas_reservadas: Number(reserva.cantidadPersonasInicial || 0),
+        personas_llegadas: Number(reserva.personasLlegadas || 0),
+        cortesias: Number(reserva.cortesias || 0),
+        personas_pagaron_cover: personasPagaronCover,
+        precio_cover: precioCover,
+        total_generado: Number(reserva.totalGenerado ?? (personasPagaronCover * precioCover)),
+        promotor: reserva.promotor || '',
+        motivo: reserva.motivoReserva || reserva.motivo || '',
+        notas: reserva.nota || reserva.comentarios || '',
+        estado_asistencia: reserva.estadoAsistencia || '',
+        estado_reserva: reserva.estado || reserva.estadoAsistencia || ''
+    };
+
+    try {
+        const respuesta = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!respuesta.ok) {
+            console.error(`Google Sheets respondió ${respuesta.status} al sincronizar ${payload.id_reserva}`);
+        }
+    } catch (error) {
+        console.error(`No se pudo sincronizar la reserva ${payload.id_reserva} con Google Sheets:`, error.message);
+    }
+}
+
 function buscarReservaEnMemoria(id) {
     return memoryDb.reservas.find(r => String(r.id) === String(id));
 }
@@ -858,6 +905,7 @@ app.put('/api/reservas/:id/modificar', async (req, res) => {
                 reserva.mesaAsignada = mesa;
             }
 
+            await sincronizarReservaGoogle(reserva);
             return res.json({ success: true, mensaje: 'Reserva modificada correctamente', reserva });
         }
 
@@ -909,6 +957,7 @@ app.put('/api/reservas/:id/modificar', async (req, res) => {
         }
 
         await reserva.save();
+        await sincronizarReservaGoogle(reserva);
         res.json({ success: true, mensaje: 'Reserva modificada correctamente', reserva });
     } catch (e) {
         console.error('Error al modificar reserva:', e);
@@ -963,6 +1012,7 @@ app.post('/api/reservas', async (req, res) => {
             };
             aplicarReglaPromocionCover(nuevaReserva);
             memoryDb.reservas.push(nuevaReserva);
+            await sincronizarReservaGoogle(nuevaReserva);
 
             if (nuevaReserva.email) {
                 await enviarCorreoReserva(
@@ -1021,6 +1071,7 @@ app.post('/api/reservas', async (req, res) => {
 
         aplicarReglaPromocionCover(nuevaReserva);
         await nuevaReserva.save();
+        await sincronizarReservaGoogle(nuevaReserva);
 
         if (nuevaReserva.email) {
             await enviarCorreoReserva(
@@ -1084,6 +1135,7 @@ app.post('/api/admin/reservas', async (req, res) => {
             };
             aplicarReglaPromocionCover(nuevaReserva);
             memoryDb.reservas.push(nuevaReserva);
+            await sincronizarReservaGoogle(nuevaReserva);
             return res.status(201).json({ success: true, mensaje: 'Reserva administrativa creada con éxito', reserva: nuevaReserva });
         }
 
@@ -1323,6 +1375,7 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
             }
             Object.assign(reserva, req.body);
             aplicarReglaPromocionCover(reserva);
+            await sincronizarReservaGoogle(reserva);
             return res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva });
         }
         const reservaExistente = await Reserva.findOne({ id: req.params.id });
@@ -1369,6 +1422,7 @@ app.put('/api/admin/reservas/:id', async (req, res) => {
             await reservaActualizada.save();
         }
 
+        await sincronizarReservaGoogle(reservaActualizada);
         res.json({ success: true, mensaje: 'Reserva actualizada con éxito', reserva: reservaActualizada });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al actualizar la reserva' });
@@ -1384,6 +1438,7 @@ app.patch('/api/admin/reservas/:id/cancelar', async (req, res) => {
             reserva.estadoAsistencia = 'Cancelado';
             reserva.mesa = 'Sin Asignar';
             reserva.mesaAsignada = 'Sin Asignar';
+            await sincronizarReservaGoogle(reserva);
             return res.json({ success: true, mensaje: 'Reserva cancelada y conservada en el historial', reserva });
         }
 
@@ -1393,6 +1448,7 @@ app.patch('/api/admin/reservas/:id/cancelar', async (req, res) => {
             { new: true }
         );
         if (!reserva) return res.status(404).json({ success: false, mensaje: 'Reserva no encontrada' });
+        await sincronizarReservaGoogle(reserva);
         res.json({ success: true, mensaje: 'Reserva cancelada y conservada en el historial', reserva });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al cancelar la reserva' });
@@ -1417,6 +1473,7 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
             if (req.body.personasLlegadas !== undefined) {
                 reserva.personasLlegadas = Number(req.body.personasLlegadas);
             }
+            await sincronizarReservaGoogle(reserva);
             return res.json({ success: true, mensaje: 'Estado de reserva actualizado con éxito', reserva });
         }
 
@@ -1435,6 +1492,7 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
         }
 
         await reserva.save();
+        await sincronizarReservaGoogle(reserva);
         res.json({ success: true, mensaje: 'Estado de reserva actualizado con éxito', reserva });
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al actualizar estado de la reserva' });
