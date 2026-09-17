@@ -300,7 +300,7 @@ function obtenerDataReserva(r) {
 // servicio externo está temporalmente indisponible.
 async function sincronizarReservaGoogle(reserva) {
     const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
-    if (!webhookUrl || !reserva) return;
+    if (!webhookUrl || !reserva) return false;
 
     const personasPagaronCover = Number(reserva.pagaronCover || 0);
     const precioCover = Number(reserva.precioCover || 0);
@@ -337,9 +337,17 @@ async function sincronizarReservaGoogle(reserva) {
         });
         if (!respuesta.ok) {
             console.error(`Google Sheets respondió ${respuesta.status} al sincronizar ${payload.id_reserva}`);
+            return false;
         }
+        const resultado = await respuesta.json().catch(() => null);
+        if (!resultado || resultado.status !== 'success') {
+            console.error(`Google Sheets rechazó la reserva ${payload.id_reserva}:`, resultado);
+            return false;
+        }
+        return true;
     } catch (error) {
         console.error(`No se pudo sincronizar la reserva ${payload.id_reserva} con Google Sheets:`, error.message);
+        return false;
     }
 }
 
@@ -801,6 +809,50 @@ app.get('/api/admin/reservas', async (req, res) => {
         res.json(reservas);
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener reservas para admin' });
+    }
+});
+
+// Sincronizar todo el historial existente con Google Sheets.
+app.post('/api/admin/sincronizar-sheets', async (req, res) => {
+    try {
+        if (!process.env.GOOGLE_SHEETS_WEBHOOK_URL || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) {
+            return res.status(503).json({
+                success: false,
+                mensaje: 'La integración con Google Sheets no está configurada en el servidor.'
+            });
+        }
+
+        const reservas = isMemoryMode()
+            ? memoryDb.reservas
+            : await Reserva.find({}).sort({ creadoEn: 1 });
+
+        let sincronizadas = 0;
+        const errores = [];
+
+        for (const reserva of reservas) {
+            const correcto = await sincronizarReservaGoogle(
+                reserva.toObject ? reserva.toObject() : reserva
+            );
+            if (correcto) {
+                sincronizadas++;
+            } else {
+                errores.push(String(reserva.id || 'sin-id'));
+            }
+        }
+
+        res.json({
+            success: errores.length === 0,
+            mensaje: `Sincronización terminada: ${sincronizadas} de ${reservas.length} reservas.`,
+            total: reservas.length,
+            sincronizadas,
+            errores
+        });
+    } catch (e) {
+        console.error('Error al sincronizar historial con Google Sheets:', e);
+        res.status(500).json({
+            success: false,
+            mensaje: 'No se pudo sincronizar el historial de reservas.'
+        });
     }
 });
 
