@@ -145,6 +145,7 @@
                 <div class="p-3 border-b border-gray-800 flex flex-wrap gap-2">
                     <input id="adminBusquedaReservas" oninput="cargarAdmin()" type="search" placeholder="Buscar por nombre, celular o promotor..." class="flex-1 min-w-[240px] bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
                     <button onclick="exportarReservasExcel()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg text-xs font-bold">Exportar Excel</button>
+                    <button onclick="sincronizarHistorialGoogle()" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-xs font-bold">Sincronizar historial</button>
                 </div>
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -1830,6 +1831,35 @@ try {
             enlace.download = `reservas-${fecha || 'filtro'}.xls`;
             enlace.click();
             URL.revokeObjectURL(enlace.href);
+        }
+
+        async function sincronizarHistorialGoogle() {
+            if (!confirm('Se enviarán todas las reservas existentes a Google Sheets. Las filas con el mismo ID se actualizarán sin duplicarse. ¿Continuar?')) {
+                return;
+            }
+
+            const boton = document.querySelector('button[onclick="sincronizarHistorialGoogle()"]');
+            if (boton) {
+                boton.disabled = true;
+                boton.textContent = 'Sincronizando...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/sincronizar-sheets', { method: 'POST' });
+                const data = await res.json();
+                alert(data.mensaje || 'Sincronización terminada.');
+                if (!res.ok || !data.success) {
+                    console.error('Errores de sincronización:', data.errores || []);
+                }
+            } catch (error) {
+                alert('No fue posible iniciar la sincronización del historial.');
+                console.error(error);
+            } finally {
+                if (boton) {
+                    boton.disabled = false;
+                    boton.textContent = 'Sincronizar historial';
+                }
+            }
         }
 
         function abrirModalCrearReserva() { document.getElementById('modalCrearReserva').classList.remove('hidden'); }
