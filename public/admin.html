@@ -146,6 +146,7 @@
                     <input id="adminBusquedaReservas" oninput="cargarAdmin()" type="search" placeholder="Buscar por nombre, celular o promotor..." class="flex-1 min-w-[240px] bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
                     <button onclick="exportarReservasExcel()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg text-xs font-bold">Exportar Excel</button>
                     <button onclick="sincronizarHistorialGoogle()" class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-xs font-bold">Sincronizar historial</button>
+                    <span id="googleSheetsSyncStatus" class="self-center text-xs text-gray-400" aria-live="polite"></span>
                 </div>
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -729,6 +730,7 @@
     <script>
         let filtroModoActual = 'hoy';
         let mesaSeleccionadaMapa = null;
+        let temporizadorEstadoSheets = null;
 
         const estructuraSohoAdmin = {
             '1er Piso - Terraza Exterior': {
@@ -1841,16 +1843,19 @@ try {
             const boton = document.querySelector('button[onclick="sincronizarHistorialGoogle()"]');
             if (boton) {
                 boton.disabled = true;
-                boton.textContent = 'Sincronizando...';
+                boton.textContent = 'Programando...';
             }
 
             try {
                 const res = await fetch('/api/admin/sincronizar-sheets', { method: 'POST' });
                 const data = await res.json();
-                alert(data.mensaje || 'Sincronización terminada.');
                 if (!res.ok || !data.success) {
-                    console.error('Errores de sincronización:', data.errores || []);
+                    alert(data.mensaje || 'No se pudo programar la sincronización.');
+                    return;
                 }
+                document.getElementById('googleSheetsSyncStatus').textContent =
+                    `${data.programadas} reservas en cola; las actualizaciones recientes tienen prioridad.`;
+                consultarEstadoSincronizacionSheets();
             } catch (error) {
                 alert('No fue posible iniciar la sincronización del historial.');
                 console.error(error);
@@ -1859,6 +1864,26 @@ try {
                     boton.disabled = false;
                     boton.textContent = 'Sincronizar historial';
                 }
+            }
+        }
+
+        async function consultarEstadoSincronizacionSheets() {
+            if (temporizadorEstadoSheets) clearTimeout(temporizadorEstadoSheets);
+            try {
+                const res = await fetch('/api/admin/sincronizar-sheets/estado');
+                if (!res.ok) return;
+                const data = await res.json();
+                const estado = document.getElementById('googleSheetsSyncStatus');
+                if (!estado) return;
+
+                if (data.pendientes > 0) {
+                    estado.textContent = `Google Sheets: ${data.pendientes} pendientes${data.conErrores ? ` (${data.conErrores} con reintento)` : ''}.`;
+                    temporizadorEstadoSheets = setTimeout(consultarEstadoSincronizacionSheets, 5000);
+                } else {
+                    estado.textContent = 'Google Sheets actualizado.';
+                }
+            } catch (error) {
+                console.error('No se pudo consultar el estado de Google Sheets:', error);
             }
         }
 
