@@ -1003,7 +1003,8 @@ app.post('/api/admin/sincronizar-sheets', async (req, res) => {
         if (!process.env.GOOGLE_SHEETS_WEBHOOK_URL || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) {
             return res.status(503).json({ success: false, mensaje: 'La integración con Google Sheets no está configurada en el servidor.' });
         }
-        const reservas = await Reserva.find({}).then(rows => rows.map(row => row.toObject ? row.toObject() : row));
+        const filasReservas = await Reserva.find({});
+        const reservas = filasReservas.map(row => row.toObject ? row.toObject() : row);
         const resultado = await sincronizarReservasGoogleBatch(reservas, 6);
         const duracionMs = Date.now() - inicio;
         const mensaje = resultado.fallidas === 0
@@ -1022,24 +1023,17 @@ app.get('/api/admin/sincronizar-sheets/estado', async (req, res) => {
             return res.json({
                 success: true,
                 pendientes: reservasEnColaGoogleMemoria.size,
-                total: memoryDb.reservas.length
+                total: memoryDb.reservas.length,
+                conErrores: [...reservasEnColaGoogleMemoria.values()].filter(item => Number(item.intentos || 0) > 0).length
             });
         }
-
-        const [pendientes, total, conErrores] = await Promise.all([
-            Reserva.countDocuments({ sheetsSyncPending: true }),
-            Reserva.countDocuments({}),
-            Reserva.countDocuments({
-                sheetsSyncPending: true,
-                sheetsSyncAttempts: { $gt: 0 }
-            })
-        ]);
+        const filas = await Reserva.find({});
+        const total = filas.length;
+        const pendientes = filas.filter(r => r.sheetsSyncPending === true).length;
+        const conErrores = filas.filter(r => r.sheetsSyncPending === true && Number(r.sheetsSyncAttempts || 0) > 0).length;
         res.json({ success: true, pendientes, total, conErrores });
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            mensaje: 'No se pudo consultar el estado de sincronización.'
-        });
+        res.status(500).json({ success: false, mensaje: 'No se pudo consultar el estado de sincronización.' });
     }
 });
 

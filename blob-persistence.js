@@ -54,16 +54,24 @@ async function listCollection(modelName) {
         cursor = result.cursor;
     } while (cursor);
 
-    const docs = [];
-    for (const blob of blobs) {
-        try {
-            const doc = await readJson(blob.pathname);
-            if (doc) docs.push(doc);
-        } catch (error) {
-            console.warn(`VIP Norte Blob: no se pudo leer ${blob.pathname}:`, error.message);
+    const docs = new Array(blobs.length);
+    let readCursor = 0;
+    const concurrency = Math.min(20, Math.max(1, blobs.length));
+    async function worker() {
+        while (true) {
+            const index = readCursor++;
+            if (index >= blobs.length) return;
+            const blob = blobs[index];
+            try {
+                const doc = await readJson(blob.pathname);
+                if (doc) docs[index] = doc;
+            } catch (error) {
+                console.warn(`VIP Norte Blob: no se pudo leer ${blob.pathname}:`, error.message);
+            }
         }
     }
-    return docs;
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    return docs.filter(Boolean);
 }
 
 function valueAt(doc, key) {
