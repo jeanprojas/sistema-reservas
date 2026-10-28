@@ -1770,10 +1770,10 @@ try {
                     fecha: fechaDestino,
                     zona: document.getElementById('adminEditZona').value,
                     mesa: mesaDestino,
-                    motivo: motivoSeleccionado,
                     motivoReserva: motivoSeleccionado,
                     promotor: promotorInput === '' ? 'VIP NORTE' : promotorInput,
-                    nota: notaTexto
+                    nota: notaTexto,
+                    comentarios: notaTexto
                 };
                 const respuesta = await fetch(`/api/admin/reservas/${encodeURIComponent(id)}`, {
                     method: 'PUT',
