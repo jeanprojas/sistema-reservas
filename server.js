@@ -788,21 +788,53 @@ app.post(['/api/configuracion-index', '/api/admin/configuracion', '/api/configur
 });
 
 // ================= GESTIÓN DE USUARIOS =================
+// Exportación temporal y autenticada para migración: nunca devuelve credenciales sin validar un administrador.
+app.post('/api/migration/usuarios-export', async (req, res) => {
+    try {
+        const username = String(req.body?.username || '').trim();
+        const password = String(req.body?.password || '');
+        if (!username || !password) return res.status(400).json({ success: false, mensaje: 'Credenciales requeridas' });
+
+        let administrador;
+        let usuarios;
+        if (isMemoryMode()) {
+            administrador = memoryDb.usuarios.find(u => u.username === username && u.password === password && u.activo !== false);
+            usuarios = memoryDb.usuarios;
+        } else {
+            administrador = await Usuario.findOne({ username, password, activo: { $ne: false } });
+            usuarios = await Usuario.find({});
+        }
+        if (!administrador || !['Administrador', 'Admin'].includes(String(administrador.rol || ''))) {
+            return res.status(401).json({ success: false, mensaje: 'Credenciales de administrador anterior no válidas' });
+        }
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.json(usuarios.map(usuario => {
+            const raw = usuario.toObject ? usuario.toObject() : usuario;
+            return {
+                id: raw.id, username: raw.username, password: raw.password,
+                password_hash: raw.password_hash, rol: raw.rol, sede: raw.sede,
+                activo: raw.activo, estado: raw.estado, payload: raw.payload || {}
+            };
+        }));
+    } catch (e) {
+        res.status(500).json({ success: false, mensaje: 'No fue posible exportar los usuarios para migración' });
+    }
+});
+
 app.get('/api/usuarios', async (req, res) => {
     try {
-        if (isMemoryMode()) {
-            return res.json(memoryDb.usuarios.map(usuario => ({
-                ...usuario,
-                activo: usuario.activo !== false,
-                estado: usuario.estado || (usuario.activo === false ? 'Suspendido' : 'Activo')
-            })));
-        }
+        const safeUser = usuario => {
+            const raw = usuario.toObject ? usuario.toObject() : usuario;
+            const { password, password_hash, password_legacy, ...safe } = raw;
+            return {
+                ...safe,
+                activo: safe.activo !== false,
+                estado: safe.estado || (safe.activo === false ? 'Suspendido' : 'Activo')
+            };
+        };
+        if (isMemoryMode()) return res.json(memoryDb.usuarios.map(safeUser));
         const usuarios = await Usuario.find({});
-        res.json(usuarios.map(usuario => ({
-            ...usuario.toObject(),
-            activo: usuario.activo !== false,
-            estado: usuario.estado || (usuario.activo === false ? 'Suspendido' : 'Activo')
-        })));
+        res.json(usuarios.map(safeUser));
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener usuarios' });
     }
