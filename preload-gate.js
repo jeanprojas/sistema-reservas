@@ -1,9 +1,15 @@
-// Load runtime-only persistence after dependencies are installed.
-// During Vercel's dependency installation mongoose is not present yet, so the
-// adapter must not be loaded. At runtime mongoose is installed and available.
+// Load the durable persistence adapter before the existing Express server.
+// Vercel also exposes NODE_OPTIONS while installing dependencies. mongoose is
+// absent during that phase, so the adapter is skipped until runtime.
 try {
     require.resolve('mongoose');
-    require('./blob-persistence.js');
+    const originalLog = console.log;
+    console.log = () => {};
+    try {
+        require('./blob-persistence.js');
+    } finally {
+        console.log = originalLog;
+    }
 } catch (error) {
     if (error && error.code !== 'MODULE_NOT_FOUND') throw error;
 }
