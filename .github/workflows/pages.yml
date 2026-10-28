@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          mkdir -p _site
+          mkdir -p _site/soho _site/salvaje _site/220-voltios _site/reservas-soho _site/reservas-salvaje _site/reservas-220-voltios
           cp -R public/. _site/
           cp public/index.html _site/soho/index.html
           cp public/index.html _site/salvaje/index.html
@@ -29,7 +29,8 @@ jobs:
           cp public/index.html _site/reservas-220-voltios/index.html
           python3 - <<'PY'
           from pathlib import Path
-          for p in [Path('_site/index.html'),Path('_site/admin.html'),Path('_site/staff.html'),*Path('_site').glob('*/index.html')]:
+          pages=[Path('_site/index.html'),Path('_site/admin.html'),Path('_site/staff.html'),*Path('_site').glob('*/index.html')]
+          for p in pages:
               s=p.read_text(encoding='utf-8')
               if 'api-bridge.js' not in s:
                   s=s.replace('</head>','    <script src="/api-bridge.js"></script>\n</head>',1)
