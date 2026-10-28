@@ -27,6 +27,7 @@
       <label for="username">Usuario</label><input id="username" autocomplete="username" required>
       <label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password" required>
       <button id="loginButton" type="submit">Ingresar</button>
+      <div id="loginStatus" class="status" role="status" aria-live="polite"></div>
     </form>
   </section>
 
@@ -43,9 +44,10 @@
   const loginPanel=document.getElementById('loginPanel');
   const migrationPanel=document.getElementById('migrationPanel');
   const status=document.getElementById('status');
+  const loginStatus=document.getElementById('loginStatus');
   const startButton=document.getElementById('startButton');
   const progress=document.getElementById('progress');
-  const showLogin=(message='')=>{loginPanel.hidden=false;migrationPanel.hidden=true;if(message)status.textContent=message;};
+  const showLogin=(message='')=>{loginPanel.hidden=false;migrationPanel.hidden=true;if(message)loginStatus.textContent=message;};
   const showMigration=()=>{loginPanel.hidden=true;migrationPanel.hidden=false;status.textContent='Sesión validada. Listo para iniciar.';};
   async function validateSession(){
     if(!localStorage.getItem('vip_session_token')){showLogin();return;}
@@ -64,11 +66,11 @@
       const data=await r.json();
       if(!r.ok||!data.success||data.rol!=='Administrador'){
         localStorage.removeItem('vip_session_token');
-        status.textContent=data.mensaje||'Acceso denegado. Se requiere el perfil Administrador.';
+        loginStatus.textContent=data.mensaje||'Acceso denegado. Se requiere el perfil Administrador.';
         return;
       }
       showMigration();
-    }catch(e){status.textContent='No fue posible iniciar sesión. Intenta nuevamente.';}
+    }catch(e){loginStatus.textContent='No fue posible iniciar sesión. Intenta nuevamente.';}
     finally{button.disabled=false;}
   });
   startButton.addEventListener('click',async()=>{
