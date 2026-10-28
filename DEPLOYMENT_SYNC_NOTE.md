@@ -1,5 +1,12 @@
-# Deployment sync note
+# VIP Norte — deployment sync
 
-Production deployment trigger after configuring the Google Sheets webhook environment variables.
+Production runtime is now designed for:
 
-The application reads `GOOGLE_SHEETS_WEBHOOK_URL` and `GOOGLE_SHEETS_WEBHOOK_TOKEN` from Vercel environment variables.
+- Frontend: GitHub Pages.
+- Backend/API: Supabase Edge Functions.
+- Primary data: Supabase PostgreSQL.
+- Google Sheets: asynchronous Supabase worker + Google Apps Script.
+
+Vercel and Render are legacy infrastructure only and are not part of the new runtime path.
+
+The Google Sheets webhook credentials must be stored only as Supabase Function secrets. They must never be committed to GitHub or exposed to the browser.
