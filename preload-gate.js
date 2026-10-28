@@ -1,6 +1,9 @@
 // Load runtime-only persistence after dependencies are installed.
-// npm sets npm_lifecycle_event during install/build scripts; skipping the
-// adapter there prevents NODE_OPTIONS from interfering with dependency setup.
-if (!process.env.npm_lifecycle_event) {
+// During Vercel's dependency installation mongoose is not present yet, so the
+// adapter must not be loaded. At runtime mongoose is installed and available.
+try {
+    require.resolve('mongoose');
     require('./blob-persistence.js');
+} catch (error) {
+    if (error && error.code !== 'MODULE_NOT_FOUND') throw error;
 }
