@@ -247,6 +247,12 @@ class BlobModel {
         return { acknowledged: true, matchedCount: 1, modifiedCount: 1 };
     }
 
+    static async create(data) {
+        const doc = new BlobModel(data || {}, this);
+        await doc.save();
+        return doc;
+    }
+
     static async findOneAndUpdate(filter, update, options = {}) {
         const Model = this;
         let row = await Model.findOne(filter);
