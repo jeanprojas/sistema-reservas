@@ -4,7 +4,7 @@
   "description": "Sistema de reservas y control de pista para Salvaje y Soho",
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./runtime-diagnostic.js -r ./blob-persistence.js -r ./hotfix-google-sheets.js server.js"
+    "start": "node -r ./preload-gate.js -r ./hotfix-google-sheets.js server.js"
   },
   "dependencies": {
     "@vercel/blob": "^2.6.1",
