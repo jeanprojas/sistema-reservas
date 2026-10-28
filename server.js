@@ -355,7 +355,7 @@ async function enviarReservaGoogle(reserva) {
         clave_unica: String(reserva.id || '')
     };
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
         const respuesta = await fetch(webhookUrl, {
             method: 'POST',
@@ -429,7 +429,7 @@ async function sincronizarReservaGoogle(reserva) {
     }
 }
 
-async function sincronizarReservasGoogleBatch(reservas, concurrency = 6) {
+async function sincronizarReservasGoogleBatch(reservas, concurrency = 12) {
     const lista = Array.isArray(reservas) ? reservas : [];
     const resultados = { total: lista.length, exitosas: 0, fallidas: 0, errores: [] };
     let cursor = 0;
@@ -1005,7 +1005,7 @@ app.post('/api/admin/sincronizar-sheets', async (req, res) => {
         }
         const filasReservas = await Reserva.find({});
         const reservas = filasReservas.map(row => row.toObject ? row.toObject() : row);
-        const resultado = await sincronizarReservasGoogleBatch(reservas, 6);
+        const resultado = await sincronizarReservasGoogleBatch(reservas, 12);
         const duracionMs = Date.now() - inicio;
         const mensaje = resultado.fallidas === 0
             ? `Sincronización completa: ${resultado.exitosas} reservas enviadas correctamente a Google Sheets en ${(duracionMs / 1000).toFixed(1)} s.`
