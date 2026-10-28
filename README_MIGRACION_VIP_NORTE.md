@@ -1,24 +1,36 @@
 # VIP Norte — Migración de infraestructura
 
-Este repositorio corresponde exclusivamente al sistema de reservas de VIP Norte Discotecas.
+Este repositorio corresponde exclusivamente al sistema de reservas de **VIP Norte Discotecas**. No comparte aplicación, datos, Supabase, dominios ni credenciales con Los Cantaritos Paisas.
 
-## Arquitectura objetivo
+## Arquitectura nueva
 
-- Frontend estático: GitHub Pages.
-- Backend y persistencia: Supabase.
-- Base de datos: PostgreSQL/Supabase.
-- Sincronización: Supabase Edge Function -> Google Apps Script -> Google Sheets.
-- Vercel: eliminado de la arquitectura de producción.
-- Render: legado; debe quedar deshabilitado/eliminado después de validar producción.
-
-## Regla de datos
-
-Supabase es la fuente primaria. Google Sheets es una copia sincronizada. Una falla de Sheets no debe impedir guardar una reserva.
+- Frontend: GitHub Pages.
+- API/backend: Supabase Edge Function `vip-api-v2`.
+- Base primaria: Supabase PostgreSQL, proyecto independiente `vip-norte-reservas`.
+- Sincronización: PostgreSQL -> `sheets_sync_jobs` -> `vip-sheets-worker` -> Google Apps Script -> Google Sheets.
+- Reintentos: persistentes en PostgreSQL; el worker corre cada minuto mediante Supabase Cron.
+- Vercel: fuera de la ruta de producción.
+- Render: fuera de la nueva ruta de producción; el servicio legado debe mantenerse apagado hasta completar la verificación y después eliminarse.
 
 ## Compatibilidad
 
-Las páginas existentes continúan usando rutas `/api/...`; `public/api-bridge.js` las dirige al Edge Function de Supabase sin obligar a reescribir toda la interfaz.
+La interfaz existente continúa utilizando rutas `/api/...`. `public/api-bridge.js` las redirige al Edge Function de Supabase, por lo que no es necesario reescribir las pantallas actuales.
 
-## Datos históricos
+## Integridad de datos
 
-No se elimina `data/reservas.json`, ni los archivos del backend legado. Se conservan para recuperación/auditoría hasta completar la validación final.
+Supabase es la fuente primaria. Google Sheets es una copia sincronizada. Una falla temporal de Sheets no debe impedir guardar una reserva.
+
+Las eliminaciones de reservas se conservan como estados (`Eliminada`/`Cancelado`) en lugar de borrar físicamente el registro.
+
+## Histórico
+
+No se elimina `data/reservas.json`, ni los archivos del backend legado. Permanecen en GitHub como respaldo/auditoría hasta que el histórico externo de MongoDB haya sido verificado y recuperado.
+
+## Google Sheets
+
+Las credenciales del webhook no se guardan en GitHub ni en el navegador. Deben existir como secretos de Supabase Function:
+
+- `GOOGLE_SHEETS_WEBHOOK_URL`
+- `GOOGLE_SHEETS_WEBHOOK_TOKEN`
+
+El worker ya está desplegado y la cola ya está programada; si faltan esos secretos, los trabajos permanecen pendientes y se reintentan sin perder las reservas.
