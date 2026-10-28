@@ -957,17 +957,30 @@ app.delete('/api/usuarios/:id', async (req, res) => {
 app.get('/api/reservas', async (req, res) => {
     try {
         const { fecha, sede } = req.query;
+        const paginar = req.query.page !== undefined;
+        const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
+        const limit = Math.min(200, Math.max(1, Number.parseInt(String(req.query.limit || '100'), 10) || 100));
         if (isMemoryMode()) {
-            const reservas = construirFiltroReservasMemoria({ fecha, sede });
-            return res.json([...reservas].sort((a, b) => new Date(b.creadoEn || b.fecha) - new Date(a.creadoEn || a.fecha)));
+            const reservas = [...construirFiltroReservasMemoria({ fecha, sede })]
+                .sort((a, b) => new Date(b.creadoEn || b.fecha) - new Date(a.creadoEn || a.fecha));
+            if (paginar) {
+                const total = reservas.length;
+                return res.json({ data: reservas.slice((page - 1) * limit, page * limit), total, page, limit, totalPages: Math.ceil(total / limit) });
+            }
+            return res.json(reservas);
         }
 
-        let filtro = {};
-
+        const filtro = {};
         if (fecha) filtro.fecha = fecha;
         if (sede && sede !== 'TODAS') filtro.sede = sede;
 
-        const reservas = await Reserva.find(filtro).sort({ creadoEn: -1 });
+        let consulta = Reserva.find(filtro).sort({ creadoEn: -1 });
+        if (paginar) {
+            const total = await Reserva.countDocuments(filtro);
+            const data = await consulta.skip((page - 1) * limit).limit(limit);
+            return res.json({ data, total, page, limit, totalPages: Math.ceil(total / limit) });
+        }
+        const reservas = await consulta;
         res.json(reservas);
     } catch (e) {
         res.status(500).json({ success: false, mensaje: 'Error al obtener reservas' });
