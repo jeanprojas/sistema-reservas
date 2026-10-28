@@ -76,19 +76,19 @@
   startButton.addEventListener('click',async()=>{
     if(!confirm('¿Confirmas copiar el histórico de Render a Supabase? No se eliminarán reservas y no se enviarán a Google Sheets en esta etapa.'))return;
     startButton.disabled=true;progress.hidden=false;progress.value=0;status.textContent='Conectando con el sistema histórico…';
-    let page=1,totalPages=null,total=0,upserted=0,received=0,invalid=0;
+    let page=1,totalPages=null,total=0,upserted=0,received=0,invalid=0,usersImported=0;
     try{
       while(true){
         const r=await fetch('/api/admin/migrar-historico-render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page,limit:100})});
         const data=await r.json();
         if(!r.ok||!data.success)throw new Error(data.mensaje||data.error||('Falló el lote '+page));
-        totalPages=Number(data.totalPages||1);total=Number(data.total||0);upserted+=Number(data.upserted||0);received+=Number(data.received||0);invalid+=Number(data.invalid||0);
+        totalPages=Number(data.totalPages||1);total=Number(data.total||0);upserted+=Number(data.upserted||0);received+=Number(data.received||0);invalid+=Number(data.invalid||0);usersImported+=Number(data.usersImported||0);
         progress.max=Math.max(1,totalPages);progress.value=page;
-        status.textContent='Lote '+page+' de '+totalPages+'\nRegistros históricos: '+total+'\nProcesados en esta ejecución: '+received+'\nInsertados/actualizados: '+upserted+'\nRegistros sin ID omitidos: '+invalid;
+        status.textContent='Lote '+page+' de '+totalPages+'\nRegistros históricos: '+total+'\nProcesados en esta ejecución: '+received+'\nInsertados/actualizados: '+upserted+'\nUsuarios importados/actualizados: '+usersImported+'\nRegistros sin ID omitidos: '+invalid;
         if(data.done)break;
         page++;
       }
-      status.textContent+='\n\nMigración finalizada. No se eliminó ningún registro. Falta validar la sincronización con Google Sheets y probar los paneles.';
+      status.textContent+='\n\nMigración finalizada. No se eliminó ningún registro. También se migraron usuarios para conservar los accesos. Falta validar Google Sheets y probar los paneles.';
     }catch(e){
       status.textContent+='\n\nLa migración se detuvo en el lote '+page+': '+(e&&e.message?e.message:String(e))+'. Puedes volver a iniciarla; los lotes previos no se duplican porque se usa el ID original.';
     }finally{startButton.disabled=false;}
