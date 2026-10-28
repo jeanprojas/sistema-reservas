@@ -1,0 +1,49 @@
+name: Prepare Vercel persistence
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Inject durable persistence adapter
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'server.js';
+          let source = fs.readFileSync(path, 'utf8');
+          const marker = "require('./blob-persistence.js');";
+          if (!source.includes(marker)) {
+            const anchor = "const fs = require('fs');";
+            if (!source.includes(anchor)) {
+              throw new Error('No se encontró el punto seguro de inyección en server.js');
+            }
+            source = source.replace(anchor, `${anchor}\n${marker}`);
+            fs.writeFileSync(path, source, 'utf8');
+          }
+          NODE
+
+      - name: Commit only when server changed
+        shell: bash
+        run: |
+          if git diff --quiet -- server.js; then
+            echo "server.js ya tiene el adaptador; no se crea otro commit.";
+            exit 0;
+          fi
+          git config user.name "VIP Norte Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add server.js
+          git commit -m "chore: enable durable Vercel persistence"
+          git push origin HEAD:main
