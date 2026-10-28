@@ -345,74 +345,128 @@ function crearPayloadGoogleReserva(reserva) {
 
 async function enviarReservaGoogle(reserva) {
     const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
-    if (!webhookUrl || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) {
-        throw new Error('La integración de Google Sheets no está configurada.');
-    }
+    const token = process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN;
+    if (!webhookUrl || !token) throw new Error('La integración de Google Sheets no está configurada.');
 
-    const payload = crearPayloadGoogleReserva(reserva);
+    const payload = {
+        ...crearPayloadGoogleReserva(reserva),
+        operacion: 'upsert',
+        origen: 'VIP_NORTE_APP',
+        clave_unica: String(reserva.id || '')
+    };
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
         const respuesta = await fetch(webhookUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*',
+                'Authorization': `Bearer ${token}`,
+                'X-Webhook-Token': token
+            },
             body: JSON.stringify(payload),
-            signal: controller.signal
+            signal: controller.signal,
+            redirect: 'follow'
         });
-        if (!respuesta.ok) {
-            throw new Error(`Google Sheets respondió HTTP ${respuesta.status}.`);
-        }
-        const resultado = await respuesta.json();
-        if (!resultado || resultado.status !== 'success') {
-            throw new Error(`Google Sheets rechazó la reserva ${payload.id_reserva}.`);
-        }
-    } finally {
-        clearTimeout(timeout);
+        const texto = (await respuesta.text()).trim();
+        if (!respuesta.ok) throw new Error(`Google Sheets respondió HTTP ${respuesta.status}: ${texto.slice(0, 250)}`);
+        let resultado = null;
+        try { resultado = texto ? JSON.parse(texto) : null; } catch (_) {}
+        const status = String(resultado?.status || resultado?.result || resultado?.message || '').toLowerCase();
+        const success = resultado?.success === true || resultado?.ok === true ||
+            ['success','ok','created','updated','inserted'].includes(status) ||
+            ['ok','success','created','updated','inserted','true'].includes(texto.toLowerCase());
+        const contentType = String(respuesta.headers.get('content-type') || '').toLowerCase();
+        if (!success && contentType.includes('text/html')) throw new Error(`Google Sheets devolvió una respuesta no válida: ${texto.slice(0, 250)}`);
+        if (!success && texto) throw new Error(`Google Sheets no confirmó la reserva ${payload.id_reserva}: ${texto.slice(0, 250)}`);
+    } finally { clearTimeout(timeout); }
+}
+
+async function marcarReservaSheetsPendiente(reserva, prioridad = 1) {
+    const id = String(reserva?.id || '');
+    if (!id) return false;
+    const pendiente = await Reserva.findOneAndUpdate(
+        { id },
+        {
+            $inc: { sheetsSyncVersion: 1 },
+            $set: {
+                sheetsSyncPending: true,
+                sheetsSyncAttempts: Number(reserva.sheetsSyncAttempts || 0),
+                sheetsSyncNextAttemptAt: new Date(),
+                sheetsSyncPriority: prioridad
+            }
+        },
+        { new: true }
+    );
+    return Boolean(pendiente);
+}
+
+async function sincronizarReservaGoogle(reserva) {
+    const id = String(reserva?.id || '');
+    if (!id || !process.env.GOOGLE_SHEETS_WEBHOOK_URL || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) return false;
+    try {
+        // Vercel no depende de un worker en memoria: la reserva se sincroniza en la misma operación.
+        await enviarReservaGoogle(reserva);
+        const version = Number(reserva.sheetsSyncVersion || 0);
+        await Reserva.updateOne(
+            { id, ...(version ? { sheetsSyncVersion: version } : {}) },
+            {
+                $set: {
+                    sheetsSyncPending: false,
+                    sheetsSyncedVersion: version,
+                    sheetsSyncAttempts: 0,
+                    sheetsSyncPriority: 0
+                },
+                $unset: { sheetsSyncLeaseUntil: 1, sheetsSyncLeaseToken: 1 }
+            }
+        );
+        return true;
+    } catch (error) {
+        console.error(`Sincronización inmediata falló para ${id}: ${error.message}`);
+        await marcarReservaSheetsPendiente(reserva, 10).catch(queueError => console.error(`No se pudo dejar ${id} en cola de reintento: ${queueError.message}`));
+        return false;
     }
 }
 
-// Marca la reserva pendiente en MongoDB y deja que un trabajador en segundo
-// plano contacte con Google, evitando que la latencia externa bloquee la API.
-async function sincronizarReservaGoogle(reserva) {
-    const id = String(reserva?.id || '');
-    if (!id || !process.env.GOOGLE_SHEETS_WEBHOOK_URL || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) {
-        return false;
+async function sincronizarReservasGoogleBatch(reservas, concurrency = 6) {
+    const lista = Array.isArray(reservas) ? reservas : [];
+    const resultados = { total: lista.length, exitosas: 0, fallidas: 0, errores: [] };
+    let cursor = 0;
+    async function trabajador() {
+        while (true) {
+            const index = cursor++;
+            if (index >= lista.length) return;
+            const reserva = lista[index];
+            try {
+                await enviarReservaGoogle(reserva);
+                resultados.exitosas++;
+                await Reserva.updateOne(
+                    { id: String(reserva.id) },
+                    {
+                        $set: {
+                            sheetsSyncPending: false,
+                            sheetsSyncedVersion: Number(reserva.sheetsSyncVersion || 0),
+                            sheetsSyncAttempts: 0,
+                            sheetsSyncPriority: 0
+                        },
+                        $unset: { sheetsSyncLeaseUntil: 1, sheetsSyncLeaseToken: 1 }
+                    }
+                );
+            } catch (error) {
+                resultados.fallidas++;
+                resultados.errores.push({ id: String(reserva.id || ''), error: error.message });
+                await marcarReservaSheetsPendiente(reserva, 0).catch(() => {});
+            }
+        }
     }
-
-    if (isMemoryMode()) {
-        const actual = reservasEnColaGoogleMemoria.get(id);
-        reservasEnColaGoogleMemoria.set(id, {
-            reserva: JSON.parse(JSON.stringify(reserva)),
-            version: (actual?.version || 0) + 1,
-            intentos: 0,
-            proximoIntento: Date.now()
-        });
-        return true;
-    }
-
-    try {
-        const pendiente = await Reserva.findOneAndUpdate(
-            { id },
-            {
-                $inc: { sheetsSyncVersion: 1 },
-                $set: {
-                    sheetsSyncPending: true,
-                    sheetsSyncAttempts: 0,
-                    sheetsSyncNextAttemptAt: new Date(),
-                    sheetsSyncPriority: 1
-                }
-            },
-            { new: true }
-        );
-        return Boolean(pendiente);
-    } catch (error) {
-        console.error(`No se pudo encolar la reserva ${id} para Google Sheets:`, error.message);
-        return false;
-    }
+    const cantidadTrabajadores = Math.min(Math.max(1, concurrency), lista.length || 1);
+    await Promise.all(Array.from({ length: cantidadTrabajadores }, () => trabajador()));
+    return resultados;
 }
 
 function obtenerRetrasoReintento(intentos) {
-    return Math.min(300000, 1000 * (2 ** Math.min(intentos, 8)));
+    return Math.min(120000, 1000 * (2 ** Math.min(intentos, 7)));
 }
 
 async function reclamarTrabajoGoogle() {
@@ -428,90 +482,31 @@ async function reclamarTrabajoGoogle() {
                 { sheetsSyncLeaseUntil: { $lt: ahora } }
             ]
         },
-        {
-            $set: {
-                sheetsSyncLeaseUntil: new Date(ahora.getTime() + 60000),
-                sheetsSyncLeaseToken: token
-            }
-        },
-        {
-            new: true,
-            sort: { sheetsSyncPriority: -1, sheetsSyncNextAttemptAt: 1 }
-        }
+        { $set: { sheetsSyncLeaseUntil: new Date(ahora.getTime() + 60000), sheetsSyncLeaseToken: token } },
+        { new: true }
     );
-
-    return trabajo ? {
-        reserva: trabajo.toObject(),
-        version: Number(trabajo.sheetsSyncVersion || 0),
-        intentos: Number(trabajo.sheetsSyncAttempts || 0),
-        token
-    } : null;
+    return trabajo ? { reserva: trabajo.toObject(), version: Number(trabajo.sheetsSyncVersion || 0), intentos: Number(trabajo.sheetsSyncAttempts || 0), token } : null;
 }
 
 async function finalizarTrabajoGoogle(trabajo, correcto) {
     const id = String(trabajo.reserva.id);
-    if (trabajo.memoria) {
-        const actual = reservasEnColaGoogleMemoria.get(id);
-        if (!actual || actual.version !== trabajo.version) return;
-        if (correcto) {
-            reservasEnColaGoogleMemoria.delete(id);
-        } else {
-            actual.intentos++;
-            actual.proximoIntento = Date.now() + obtenerRetrasoReintento(actual.intentos);
-        }
-        return;
-    }
-
     const filtroLease = { id, sheetsSyncLeaseToken: trabajo.token };
     if (correcto) {
-        const actualizada = await Reserva.updateOne(
+        await Reserva.updateOne(
             { ...filtroLease, sheetsSyncVersion: trabajo.version },
             {
-                $set: {
-                    sheetsSyncPending: false,
-                    sheetsSyncedVersion: trabajo.version,
-                    sheetsSyncAttempts: 0,
-                    sheetsSyncPriority: 0
-                },
-                $unset: {
-                    sheetsSyncLeaseUntil: 1,
-                    sheetsSyncLeaseToken: 1
-                }
+                $set: { sheetsSyncPending: false, sheetsSyncedVersion: trabajo.version, sheetsSyncAttempts: 0, sheetsSyncPriority: 0 },
+                $unset: { sheetsSyncLeaseUntil: 1, sheetsSyncLeaseToken: 1 }
             }
         );
-        if (actualizada.matchedCount === 0) {
-            await Reserva.updateOne(filtroLease, {
-                $unset: {
-                    sheetsSyncLeaseUntil: 1,
-                    sheetsSyncLeaseToken: 1
-                }
-            });
-        }
         return;
     }
-
     await Reserva.updateOne(
         { ...filtroLease, sheetsSyncVersion: trabajo.version },
         {
             $inc: { sheetsSyncAttempts: 1 },
-            $set: {
-                sheetsSyncNextAttemptAt: new Date(
-                    Date.now() + obtenerRetrasoReintento(trabajo.intentos + 1)
-                )
-            },
-            $unset: {
-                sheetsSyncLeaseUntil: 1,
-                sheetsSyncLeaseToken: 1
-            }
-        }
-    );
-    await Reserva.updateOne(
-        { ...filtroLease, sheetsSyncVersion: { $ne: trabajo.version } },
-        {
-            $unset: {
-                sheetsSyncLeaseUntil: 1,
-                sheetsSyncLeaseToken: 1
-            }
+            $set: { sheetsSyncNextAttemptAt: new Date(Date.now() + obtenerRetrasoReintento(trabajo.intentos + 1)) },
+            $unset: { sheetsSyncLeaseUntil: 1, sheetsSyncLeaseToken: 1 }
         }
     );
 }
@@ -520,36 +515,18 @@ async function procesarColaGoogleSheets() {
     if (procesandoColaGoogle) return;
     procesandoColaGoogle = true;
     try {
-        for (let cantidad = 0; cantidad < 5; cantidad++) {
-            let trabajo = null;
-            const ahora = Date.now();
-            const entradaMemoria = [...reservasEnColaGoogleMemoria.entries()]
-                .filter(([, item]) => item.proximoIntento <= ahora)
-                .sort((a, b) => a[1].proximoIntento - b[1].proximoIntento)[0];
-            if (entradaMemoria) {
-                trabajo = {
-                    reserva: entradaMemoria[1].reserva,
-                    version: entradaMemoria[1].version,
-                    intentos: entradaMemoria[1].intentos,
-                    memoria: true
-                };
-            } else if (!isMemoryMode()) {
-                trabajo = await reclamarTrabajoGoogle();
-            }
-
+        const trabajos = [];
+        for (let cantidad = 0; cantidad < 10; cantidad++) {
+            const trabajo = await reclamarTrabajoGoogle();
             if (!trabajo) break;
-
-            let correcto = false;
-            try {
-                await enviarReservaGoogle(trabajo.reserva);
-                correcto = true;
-            } catch (error) {
-                console.error(
-                    `Sincronización pendiente para ${trabajo.reserva.id}: ${error.message}`
-                );
-            }
-            await finalizarTrabajoGoogle(trabajo, correcto);
+            trabajos.push(trabajo);
         }
+        await Promise.all(trabajos.map(async trabajo => {
+            let correcto = false;
+            try { await enviarReservaGoogle(trabajo.reserva); correcto = true; }
+            catch (error) { console.error(`Sincronización pendiente para ${trabajo.reserva.id}: ${error.message}`); }
+            await finalizarTrabajoGoogle(trabajo, correcto);
+        }));
     } catch (error) {
         console.error('Error procesando la cola de Google Sheets:', error.message);
     } finally {
@@ -1018,50 +995,24 @@ app.get('/api/admin/reservas', async (req, res) => {
     }
 });
 
-// Sincronizar todo el historial existente con Google Sheets.
+// Sincronización completa del historial con Google Sheets.
+// Se ejecuta dentro de la petición y en paralelo para que Vercel no dependa de un worker persistente.
 app.post('/api/admin/sincronizar-sheets', async (req, res) => {
+    const inicio = Date.now();
     try {
         if (!process.env.GOOGLE_SHEETS_WEBHOOK_URL || !process.env.GOOGLE_SHEETS_WEBHOOK_TOKEN) {
-            return res.status(503).json({
-                success: false,
-                mensaje: 'La integración con Google Sheets no está configurada en el servidor.'
-            });
+            return res.status(503).json({ success: false, mensaje: 'La integración con Google Sheets no está configurada en el servidor.' });
         }
-
-        let total;
-        if (isMemoryMode()) {
-            total = memoryDb.reservas.length;
-            for (const reserva of memoryDb.reservas) {
-                await sincronizarReservaGoogle(reserva);
-            }
-        } else {
-            total = await Reserva.countDocuments({});
-            await Reserva.updateMany(
-                {},
-                {
-                    $inc: { sheetsSyncVersion: 1 },
-                    $set: {
-                        sheetsSyncPending: true,
-                        sheetsSyncAttempts: 0,
-                        sheetsSyncNextAttemptAt: new Date(),
-                        sheetsSyncPriority: 0
-                    }
-                }
-            );
-        }
-
-        res.json({
-            success: true,
-            mensaje: `Se programaron ${total} reservas para sincronización. Los cambios nuevos tienen prioridad.`,
-            total,
-            programadas: total
-        });
+        const reservas = await Reserva.find({}).then(rows => rows.map(row => row.toObject ? row.toObject() : row));
+        const resultado = await sincronizarReservasGoogleBatch(reservas, 6);
+        const duracionMs = Date.now() - inicio;
+        const mensaje = resultado.fallidas === 0
+            ? `Sincronización completa: ${resultado.exitosas} reservas enviadas correctamente a Google Sheets en ${(duracionMs / 1000).toFixed(1)} s.`
+            : `Sincronización terminada con ${resultado.exitosas} correctas y ${resultado.fallidas} pendientes de reintento.`;
+        res.json({ success: resultado.fallidas === 0, mensaje, total: resultado.total, sincronizadas: resultado.exitosas, pendientes: resultado.fallidas, duracionMs, errores: resultado.errores.slice(0, 20) });
     } catch (e) {
         console.error('Error al sincronizar historial con Google Sheets:', e);
-        res.status(500).json({
-            success: false,
-            mensaje: 'No se pudo sincronizar el historial de reservas.'
-        });
+        res.status(500).json({ success: false, mensaje: 'No se pudo completar la sincronización del historial.', error: e.message });
     }
 });
 
