@@ -12,6 +12,14 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "has": [
+        { "type": "host", "value": "vipnortediscotecas.com" },
+        { "type": "host", "value": "www.vipnortediscotecas.com" }
+      ],
+      "dest": "/home.html"
+    },
+    {
       "src": "/api/cron/google-sheets",
       "dest": "/api/cron/google-sheets.js"
     },
