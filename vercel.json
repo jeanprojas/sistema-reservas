@@ -14,7 +14,13 @@
     {
       "src": "/",
       "has": [
-        { "type": "host", "value": "vipnortediscotecas.com" },
+        { "type": "host", "value": "vipnortediscotecas.com" }
+      ],
+      "dest": "/home.html"
+    },
+    {
+      "src": "/",
+      "has": [
         { "type": "host", "value": "www.vipnortediscotecas.com" }
       ],
       "dest": "/home.html"
