@@ -1,0 +1,50 @@
+name: Deploy VIP Norte to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare static site
+        shell: bash
+        run: |
+          set -e
+          mkdir -p _site
+          cp -R public/. _site/
+          cp public/index.html _site/soho/index.html
+          cp public/index.html _site/salvaje/index.html
+          cp public/index.html _site/220-voltios/index.html
+          cp public/index.html _site/reservas-soho/index.html
+          cp public/index.html _site/reservas-salvaje/index.html
+          cp public/index.html _site/reservas-220-voltios/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in [Path('_site/index.html'),Path('_site/admin.html'),Path('_site/staff.html'),*Path('_site').glob('*/index.html')]:
+              s=p.read_text(encoding='utf-8')
+              if 'api-bridge.js' not in s:
+                  s=s.replace('</head>','    <script src="/api-bridge.js"></script>\n</head>',1)
+                  p.write_text(s,encoding='utf-8')
+          PY
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
