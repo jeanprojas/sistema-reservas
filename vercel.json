@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/cron/google-sheets.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/cron/google-sheets",
+      "dest": "/api/cron/google-sheets.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/google-sheets",
+      "schedule": "* * * * *"
+    }
+  ]
+}
