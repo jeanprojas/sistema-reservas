@@ -21,22 +21,12 @@ jobs:
           set -e
           mkdir -p _site/soho _site/salvaje _site/220-voltios _site/reservas-soho _site/reservas-salvaje _site/reservas-220-voltios
           cp -R public/. _site/
-          cp public/index.html _site/soho/index.html
-          cp public/index.html _site/salvaje/index.html
-          cp public/index.html _site/220-voltios/index.html
-          cp public/index.html _site/reservas-soho/index.html
-          cp public/index.html _site/reservas-salvaje/index.html
-          cp public/index.html _site/reservas-220-voltios/index.html
-          python3 - <<'PY'
-          from pathlib import Path
-          pages=[Path('_site/index.html'),Path('_site/admin.html'),Path('_site/staff.html'),*Path('_site').glob('*/index.html')]
-          for p in pages:
-              s=p.read_text(encoding='utf-8')
-              if 'api-bridge.js' not in s:
-                  s=s.replace('</head>','    <script src="./api-bridge.js"></script>\n</head>',1)
-                  p.write_text(s,encoding='utf-8')
-          PY
+          for d in soho salvaje 220-voltios reservas-soho reservas-salvaje reservas-220-voltios; do
+            cp public/index.html "_site/$d/index.html"
+            cp public/api-bridge.js "_site/$d/api-bridge.js"
+          done
           touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
