@@ -17,9 +17,7 @@
 
     let nextInit = { ...init, headers };
 
-    // Compatibility layer for the legacy VIP Norte public reservation form.
-    // The old frontend sends `motivo` and `instagram`; the new PostgreSQL API
-    // stores the former as motivoReserva and keeps the latter inside payload.
+    // Compatibility layer for the legacy public reservation form.
     if (source.pathname === '/api/reservas' && (init.method || 'GET').toUpperCase() === 'POST' && typeof init.body === 'string') {
       try {
         const body = JSON.parse(init.body);
@@ -35,8 +33,7 @@
       } catch (_) {}
     }
 
-    // Legacy public search sends ?query=. The API accepts the same value as
-    // telefono/codigo/id; map it to telefono for backwards compatibility.
+    // Legacy public search sends ?query=. Keep the API's existing parameter contract.
     if (source.pathname === '/api/reservas/buscar' && source.searchParams.has('query') &&
         !source.searchParams.has('telefono') && !source.searchParams.has('codigo') && !source.searchParams.has('id')) {
       const q = source.searchParams.get('query') || '';
@@ -46,29 +43,61 @@
       nextInit.__vipTarget = API + targetPath + '?' + rewritten.toString();
     }
 
-    const response = await nativeFetch(nextInit.__vipTarget || target, nextInit);
-
-    // Keep the response contract expected by the legacy frontend.
-    if (source.pathname === '/api/reservas' && (init.method || 'GET').toUpperCase() === 'POST') {
-      try {
-        const data = await response.clone().json();
-        if (response.ok && data && !data.success) {
-          return new Response(JSON.stringify({ ...data, success: true, mensaje: 'Reserva creada correctamente.' }), {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
-          });
-        }
-      } catch (_) {}
-    }
-
+    let response = await nativeFetch(nextInit.__vipTarget || target, nextInit);
     try {
       const data = await response.clone().json();
-      if (data?.token) localStorage.setItem('vip_session_token', data.token);
-      if (data?.usuario && !data.username) {
-        data.username = data.usuario.username;
-        data.rol = data.usuario.rol;
-        data.sede = data.usuario.sede;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        let changed = false;
+
+        // Old admin/staff screens expect success=true; Supabase returns ok=true for login.
+        if (source.pathname === '/api/login' && data.ok && data.success === undefined) {
+          data.success = true;
+          changed = true;
+        }
+        if (data.error && !data.mensaje) {
+          data.mensaje = data.error;
+          changed = true;
+        }
+        if (source.pathname === '/api/admin/sincronizar-sheets' && response.ok && data.ok) {
+          if (data.success === undefined) { data.success = true; changed = true; }
+          if (data.programadas === undefined && data.queued !== undefined) { data.programadas = data.queued; changed = true; }
+        }
+        if (source.pathname === '/api/admin/sincronizar-sheets/estado' && Array.isArray(data.jobs)) {
+          if (data.pendientes === undefined) {
+            data.pendientes = data.jobs.filter(j => ['pending', 'processing'].includes(String(j.status))).length;
+            changed = true;
+          }
+          if (data.conErrores === undefined) {
+            data.conErrores = data.jobs.filter(j => Number(j.attempts || 0) > 0 || String(j.status) === 'failed').length;
+            changed = true;
+          }
+        }
+
+        // Public form expects a success flag when a reservation was inserted.
+        if (source.pathname === '/api/reservas' && (init.method || 'GET').toUpperCase() === 'POST' && response.ok && !data.success) {
+          data.success = true;
+          data.mensaje = data.mensaje || 'Reserva creada correctamente.';
+          changed = true;
+        }
+
+        if (data.token) localStorage.setItem('vip_session_token', data.token);
+        if (data.usuario && !data.username) {
+          data.username = data.usuario.username;
+          data.rol = data.usuario.rol;
+          data.sede = data.usuario.sede;
+          changed = true;
+        }
+
+        if (changed) {
+          const responseHeaders = new Headers(response.headers);
+          responseHeaders.delete('content-length');
+          responseHeaders.set('content-type', 'application/json; charset=utf-8');
+          response = new Response(JSON.stringify(data), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders
+          });
+        }
       }
     } catch (_) {}
 
