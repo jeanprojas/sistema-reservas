@@ -14,11 +14,11 @@ old = '''    const docs = [];
     }
     return docs;'''
 new = '''    const docs = new Array(blobs.length);
-    let cursor = 0;
+    let readCursor = 0;
     const concurrency = Math.min(20, Math.max(1, blobs.length));
     async function worker() {
         while (true) {
-            const index = cursor++;
+            const index = readCursor++;
             if (index >= blobs.length) return;
             const blob = blobs[index];
             try {
