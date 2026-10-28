@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const { Resend } = require('resend');
 const fs = require('fs');
+require('./blob-persistence.js');
 
 
 const app = express();
