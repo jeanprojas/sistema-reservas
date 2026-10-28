@@ -19,6 +19,7 @@ jobs:
         shell: bash
         run: |
           set -e
+          rm -rf _site
           mkdir -p _site/soho _site/salvaje _site/220-voltios _site/reservas-soho _site/reservas-salvaje _site/reservas-220-voltios
           cp -R public/. _site/
           for d in soho salvaje 220-voltios reservas-soho reservas-salvaje reservas-220-voltios; do
@@ -26,7 +27,6 @@ jobs:
             cp public/api-bridge.js "_site/$d/api-bridge.js"
           done
           touch _site/.nojekyll
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
