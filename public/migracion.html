@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Migración de histórico | VIP Norte</title>
+  <script src="/api-bridge.js"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#09090b;color:#f4f4f5;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}
+    main{width:min(760px,100%);background:#18181b;border:1px solid #3f3f46;border-radius:18px;padding:28px;box-shadow:0 18px 55px #0006}
+    h1{margin:0 0 8px;font-size:1.65rem}p{color:#d4d4d8}.muted{color:#a1a1aa;font-size:.92rem}
+    label{display:block;font-weight:650;margin:14px 0 6px}input{width:100%;padding:12px;border-radius:9px;background:#09090b;border:1px solid #52525b;color:white;font-size:1rem}
+    button{padding:12px 16px;border:0;border-radius:9px;background:#ea580c;color:white;font-weight:750;cursor:pointer;margin-top:16px}button:disabled{opacity:.5;cursor:wait}
+    .panel{border:1px solid #3f3f46;border-radius:12px;padding:18px;margin-top:18px}.status{margin-top:16px;white-space:pre-wrap;overflow-wrap:anywhere}.warning{border-left:4px solid #f59e0b;padding:10px 12px;background:#272014;border-radius:6px}
+    progress{width:100%;height:14px;margin-top:12px;accent-color:#ea580c} [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Migración del histórico · VIP Norte</h1>
+  <p>Herramienta administrativa para copiar reservas históricas desde Render hacia PostgreSQL en Supabase, conservando los identificadores.</p>
+  <div class="warning"><strong>Importante:</strong> esta operación no elimina registros. Si una reserva ya existe con el mismo ID, actualiza sus datos históricos. No envía el histórico a Google Sheets; eso se valida por separado para evitar duplicados mientras corregimos los permisos de la hoja.</div>
+
+  <section id="loginPanel" class="panel" hidden>
+    <h2>Acceso de administrador</h2>
+    <form id="loginForm">
+      <label for="username">Usuario</label><input id="username" autocomplete="username" required>
+      <label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password" required>
+      <button id="loginButton" type="submit">Ingresar</button>
+    </form>
+  </section>
+
+  <section id="migrationPanel" class="panel" hidden>
+    <p id="sessionLabel" class="muted">Sesión administrativa validada.</p>
+    <p>Se importarán los registros por lotes de 100. Puedes volver a iniciar el proceso si se interrumpe: la migración es idempotente por ID y no borra reservas.</p>
+    <button id="startButton" type="button">Iniciar migración del histórico</button>
+    <progress id="progress" value="0" max="100" hidden></progress>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+</main>
+<script>
+(() => {
+  const loginPanel=document.getElementById('loginPanel');
+  const migrationPanel=document.getElementById('migrationPanel');
+  const status=document.getElementById('status');
+  const startButton=document.getElementById('startButton');
+  const progress=document.getElementById('progress');
+  const showLogin=(message='')=>{loginPanel.hidden=false;migrationPanel.hidden=true;if(message)status.textContent=message;};
+  const showMigration=()=>{loginPanel.hidden=true;migrationPanel.hidden=false;status.textContent='Sesión validada. Listo para iniciar.';};
+  async function validateSession(){
+    if(!localStorage.getItem('vip_session_token')){showLogin();return;}
+    try{
+      const r=await fetch('/api/admin/sincronizar-sheets/estado');
+      if(r.ok){showMigration();return;}
+      localStorage.removeItem('vip_session_token');
+      showLogin('La sesión no es válida o no tiene permisos de administrador. Ingresa con una cuenta administradora.');
+    }catch(e){showLogin('No se pudo validar la sesión. Comprueba la conexión e intenta ingresar de nuevo.');}
+  }
+  document.getElementById('loginForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const button=document.getElementById('loginButton');button.disabled=true;
+    try{
+      const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('username').value.trim(),password:document.getElementById('password').value})});
+      const data=await r.json();
+      if(!r.ok||!data.success||data.rol!=='Administrador'){
+        localStorage.removeItem('vip_session_token');
+        status.textContent=data.mensaje||'Acceso denegado. Se requiere el perfil Administrador.';
+        return;
+      }
+      showMigration();
+    }catch(e){status.textContent='No fue posible iniciar sesión. Intenta nuevamente.';}
+    finally{button.disabled=false;}
+  });
+  startButton.addEventListener('click',async()=>{
+    if(!confirm('¿Confirmas copiar el histórico de Render a Supabase? No se eliminarán reservas y no se enviarán a Google Sheets en esta etapa.'))return;
+    startButton.disabled=true;progress.hidden=false;progress.value=0;status.textContent='Conectando con el sistema histórico…';
+    let page=1,totalPages=null,total=0,upserted=0,received=0,invalid=0;
+    try{
+      while(true){
+        const r=await fetch('/api/admin/migrar-historico-render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page,limit:100})});
+        const data=await r.json();
+        if(!r.ok||!data.success)throw new Error(data.mensaje||data.error||('Falló el lote '+page));
+        totalPages=Number(data.totalPages||1);total=Number(data.total||0);upserted+=Number(data.upserted||0);received+=Number(data.received||0);invalid+=Number(data.invalid||0);
+        progress.max=Math.max(1,totalPages);progress.value=page;
+        status.textContent='Lote '+page+' de '+totalPages+'\nRegistros históricos: '+total+'\nProcesados en esta ejecución: '+received+'\nInsertados/actualizados: '+upserted+'\nRegistros sin ID omitidos: '+invalid;
+        if(data.done)break;
+        page++;
+      }
+      status.textContent+='\n\nMigración finalizada. No se eliminó ningún registro. Falta validar la sincronización con Google Sheets y probar los paneles.';
+    }catch(e){
+      status.textContent+='\n\nLa migración se detuvo en el lote '+page+': '+(e&&e.message?e.message:String(e))+'. Puedes volver a iniciarla; los lotes previos no se duplican porque se usa el ID original.';
+    }finally{startButton.disabled=false;}
+  });
+  validateSession();
+})();
+</script>
+</body>
+</html>
