@@ -55,7 +55,9 @@
           changed = true;
         }
         if (data.error && !data.mensaje) {
-          data.mensaje = data.error;
+          data.mensaje = typeof data.error === 'string'
+            ? data.error
+            : (data.error.message || data.error.details || JSON.stringify(data.error));
           changed = true;
         }
         if (source.pathname === '/api/admin/sincronizar-sheets' && response.ok && data.ok) {
