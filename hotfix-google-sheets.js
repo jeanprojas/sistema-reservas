@@ -20,6 +20,7 @@ if (typeof originalFetch === 'function') {
         );
         headers.set('Authorization', `Bearer ${token}`);
         headers.set('X-Webhook-Token', token);
+        headers.set('Accept', 'application/json, text/plain, */*');
 
         const nextInit = { ...init, headers };
         const response = await originalFetch(input, nextInit);
@@ -38,16 +39,22 @@ if (typeof originalFetch === 'function') {
             }
 
             const status = String(parsed?.status || '').toLowerCase();
+            const result = String(parsed?.result || parsed?.message || '').toLowerCase();
             const success = parsed?.success === true || parsed?.ok === true;
             const acceptedStatus = ['success', 'ok', 'created', 'updated', 'inserted'].includes(status);
+            const acceptedResult = ['success', 'ok', 'created', 'updated', 'inserted'].includes(result);
             const plainSuccess = ['ok', 'success', 'created', 'updated', 'inserted', 'true'].includes(text.toLowerCase());
 
-            if (success || acceptedStatus || plainSuccess) {
+            if (success || acceptedStatus || acceptedResult || plainSuccess) {
                 return new Response(JSON.stringify({ status: 'success' }), {
                     status: response.status,
                     headers: { 'content-type': 'application/json' }
                 });
             }
+
+            console.warn(
+                `VIP Norte: Google Sheets respondió HTTP ${response.status} con formato no reconocido: ${text.slice(0, 500)}`
+            );
         } catch (error) {
             console.warn('VIP Norte: no fue posible normalizar la respuesta de Google Sheets:', error.message);
         }
