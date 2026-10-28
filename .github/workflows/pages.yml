@@ -33,7 +33,7 @@ jobs:
           for p in pages:
               s=p.read_text(encoding='utf-8')
               if 'api-bridge.js' not in s:
-                  s=s.replace('</head>','    <script src="/api-bridge.js"></script>\n</head>',1)
+                  s=s.replace('</head>','    <script src="./api-bridge.js"></script>\n</head>',1)
                   p.write_text(s,encoding='utf-8')
           PY
           touch _site/.nojekyll
