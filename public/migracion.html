@@ -33,7 +33,10 @@
 
   <section id="migrationPanel" class="panel" hidden>
     <p id="sessionLabel" class="muted">Sesión administrativa validada.</p>
-    <p>Se importarán los registros por lotes de 100. Puedes volver a iniciar el proceso si se interrumpe: la migración es idempotente por ID y no borra reservas.</p>
+    <p>Se importarán reservas por lotes de 100 y se migrarán los usuarios para conservar sus accesos. Puedes volver a iniciar el proceso si se interrumpe: la migración es idempotente por ID y no borra reservas.</p>
+    <label for="legacyUsername">Usuario administrador del sistema anterior</label><input id="legacyUsername" autocomplete="username" required>
+    <label for="legacyPassword">Contraseña del administrador del sistema anterior</label><input id="legacyPassword" type="password" autocomplete="current-password" required>
+    <p class="muted">Estas credenciales se usan una sola vez para autenticar la exportación de usuarios desde Render. No se guardan en el navegador ni se muestran en el resultado.</p>
     <button id="startButton" type="button">Iniciar migración del histórico</button>
     <progress id="progress" value="0" max="100" hidden></progress>
     <div id="status" class="status" role="status" aria-live="polite"></div>
@@ -77,12 +80,18 @@
     if(!confirm('¿Confirmas copiar el histórico de Render a Supabase? No se eliminarán reservas y no se enviarán a Google Sheets en esta etapa.'))return;
     startButton.disabled=true;progress.hidden=false;progress.value=0;status.textContent='Conectando con el sistema histórico…';
     let page=1,totalPages=null,total=0,upserted=0,received=0,invalid=0,usersImported=0;
+    let legacyAdminUsername=document.getElementById('legacyUsername').value.trim();
+    let legacyAdminPassword=document.getElementById('legacyPassword').value;
+    if(!legacyAdminUsername||!legacyAdminPassword){status.textContent='Ingresa el usuario y la contraseña del administrador anterior para conservar los accesos.';startButton.disabled=false;return;}
     try{
       while(true){
-        const r=await fetch('/api/admin/migrar-historico-render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page,limit:100})});
+        const requestBody={page,limit:100};
+        if(page===1){requestBody.legacyAdminUsername=legacyAdminUsername;requestBody.legacyAdminPassword=legacyAdminPassword;}
+        const r=await fetch('/api/admin/migrar-historico-render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(requestBody)});
         const data=await r.json();
         if(!r.ok||!data.success)throw new Error(data.mensaje||data.error||('Falló el lote '+page));
         totalPages=Number(data.totalPages||1);total=Number(data.total||0);upserted+=Number(data.upserted||0);received+=Number(data.received||0);invalid+=Number(data.invalid||0);usersImported+=Number(data.usersImported||0);
+        if(page===1){legacyAdminPassword='';document.getElementById('legacyPassword').value='';}
         progress.max=Math.max(1,totalPages);progress.value=page;
         status.textContent='Lote '+page+' de '+totalPages+'\nRegistros históricos: '+total+'\nProcesados en esta ejecución: '+received+'\nInsertados/actualizados: '+upserted+'\nUsuarios importados/actualizados: '+usersImported+'\nRegistros sin ID omitidos: '+invalid;
         if(data.done)break;
