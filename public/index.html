@@ -742,7 +742,7 @@
 
             let mesasOcupadasSet = new Set();
             try {
-                const res = await fetch(`/api/reservas?fecha=${fecha}&sede=Soho`);
+                const res = await fetch(`/api/reservas/disponibilidad?fecha=${encodeURIComponent(fecha)}&sede=Soho`);
                 if (res.ok) {
                     const reservas = await res.json();
                     reservas.forEach(r => {
