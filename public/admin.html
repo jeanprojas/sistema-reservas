@@ -1739,45 +1739,59 @@ try {
             const fechaDestino = document.getElementById('adminEditFecha').value;
             const mesaDestino = String(document.getElementById('adminEditMesa').value).trim();
 
-            const resCheck = await fetch('/api/reservas');
-            const dataCheck = await resCheck.json();
-            const conflicto = dataCheck.find(r => 
-                (r.sede || 'Salvaje') === sedeDestino && 
-                (r.fecha || r.nocheOperativa) === fechaDestino && 
-                String(r.mesa) === mesaDestino && 
-                r.id !== id
-            );
+            try {
+                const resCheck = await fetch('/api/reservas');
+                if (!resCheck.ok) {
+                    const err = await resCheck.json().catch(() => ({}));
+                    alert(err.mensaje || err.error || 'No se pudieron validar los conflictos de mesa.');
+                    return;
+                }
+                const dataCheck = await resCheck.json();
+                const conflicto = dataCheck.find(r =>
+                    (r.sede || 'Salvaje') === sedeDestino &&
+                    (r.fecha || r.nocheOperativa) === fechaDestino &&
+                    String(r.mesa) === mesaDestino &&
+                    r.id !== id &&
+                    !['cancelado', 'cancelada', 'eliminada'].includes(String(r.estadoAsistencia || r.estado || '').toLowerCase())
+                );
+                if (conflicto) {
+                    alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
+                    return;
+                }
 
-            if (conflicto) {
-                alert(`⚠️ CONFLICTO DE ASIGNACIÓN: La Mesa #${mesaDestino} ya se encuentra ocupada por la reserva de ${conflicto.nombreCliente} (ID: ${conflicto.id}) para esta fecha.`);
-                return;
+                const motivoSeleccionado = document.getElementById('adminEditMotivo').value;
+                const promotorInput = document.getElementById('adminEditPromotor').value.trim();
+                const notaTexto = document.getElementById('adminEditNota')?.value ?? '';
+                const payload = {
+                    nombreCliente: document.getElementById('adminEditNombre').value,
+                    telefono: document.getElementById('adminEditTelefono').value,
+                    email: document.getElementById('adminEditEmail').value,
+                    sede: sedeDestino,
+                    fecha: fechaDestino,
+                    zona: document.getElementById('adminEditZona').value,
+                    mesa: mesaDestino,
+                    motivo: motivoSeleccionado,
+                    motivoReserva: motivoSeleccionado,
+                    promotor: promotorInput === '' ? 'VIP NORTE' : promotorInput,
+                    nota: notaTexto
+                };
+                const respuesta = await fetch(`/api/admin/reservas/${encodeURIComponent(id)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const resultado = await respuesta.json().catch(() => ({}));
+                if (!respuesta.ok || resultado.success === false || resultado.ok === false) {
+                    alert(resultado.mensaje || resultado.error || 'No se pudo guardar la reserva. El formulario sigue abierto para conservar los cambios.');
+                    return;
+                }
+                alert('Reserva actualizada correctamente.');
+                cerrarModalEditarReservaAdmin();
+                await cargarAdmin();
+            } catch (error) {
+                console.error('Error guardando la reserva:', error);
+                alert('No se pudo guardar la reserva por un error de conexión. El formulario sigue abierto para conservar los cambios.');
             }
-
-            const motivoSeleccionado = document.getElementById('adminEditMotivo').value;
-            const promotorInput = document.getElementById('adminEditPromotor').value.trim();
-            const notaTexto = document.getElementById('adminEditNota')?.value.trim() || '';
-            const payload = {
-                nombreCliente: document.getElementById('adminEditNombre').value,
-                telefono: document.getElementById('adminEditTelefono').value,
-                email: document.getElementById('adminEditEmail').value,
-                sede: sedeDestino,
-                fecha: fechaDestino,
-                zona: document.getElementById('adminEditZona').value,
-                mesa: mesaDestino,
-                motivo: motivoSeleccionado,
-                motivoReserva: motivoSeleccionado,
-                promotor: promotorInput === '' ? 'VIP NORTE' : promotorInput,
-                nota: notaTexto,
-                comentario: notaTexto,
-                comentarios: notaTexto
-            };
-            await fetch(`/api/admin/reservas/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            cerrarModalEditarReservaAdmin();
-            cargarAdmin();
         }
 
         async function cancelarReservaAdmin(id) {
