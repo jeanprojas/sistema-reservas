@@ -632,22 +632,44 @@
 
         function aplicarSedeFija() {
             if (!sedeFija) return;
-            const sedeNormalizada = Object.values(sedesFijas).find(sede => sede.toLowerCase() === String(sedeFija).toLowerCase());
+
+            const sedesValidas = {
+                'soho': 'Soho',
+                'salvaje': 'Salvaje',
+                '220 voltios': '220 Voltios',
+                '220-voltios': '220 Voltios'
+            };
+            const claveSede = String(sedeFija).trim().toLowerCase();
+            const sedeNormalizada = sedesValidas[claveSede];
             if (!sedeNormalizada) return;
+
             const selectSede = document.getElementById('sede');
             if (selectSede) {
+                // En enlaces individuales mostramos únicamente la discoteca de la URL.
+                // Se conserva visible el campo para que el cliente confirme dónde reserva.
+                selectSede.innerHTML = '';
+                const opcionUnica = document.createElement('option');
+                opcionUnica.value = sedeNormalizada;
+                opcionUnica.textContent = sedeNormalizada;
+                opcionUnica.selected = true;
+                selectSede.appendChild(opcionUnica);
                 selectSede.value = sedeNormalizada;
                 selectSede.disabled = true;
                 selectSede.setAttribute('aria-readonly', 'true');
+                selectSede.required = false;
                 const grupoSede = selectSede.closest('.form-group');
-                if (grupoSede) grupoSede.style.display = 'none';
+                if (grupoSede) grupoSede.style.display = 'flex';
             }
+
             const titulo = `RESERVAS ${sedeNormalizada.toUpperCase()}`;
             document.getElementById('headerTitulo').textContent = titulo;
             document.getElementById('tituloPagina').textContent = `${titulo} - VIP Norte`;
             document.getElementById('headerSubtitulo').textContent = `Reserva en ${sedeNormalizada} y asegura tu lugar en la mejor fiesta`;
-            document.getElementById('enlacesSedes').style.display = 'none';
+            const enlaces = document.getElementById('enlacesSedes');
+            if (enlaces) enlaces.style.display = 'none';
             cambiarSedeFormulario();
+            // Reafirmar el valor después de configurar zonas y mesas.
+            if (selectSede) selectSede.value = sedeNormalizada;
         }
 
         function obtenerCapacidadMesaSoho(mesaId) {
