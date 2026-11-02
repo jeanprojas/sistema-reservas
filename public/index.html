@@ -1195,6 +1195,7 @@
                 const reservas = await res.json();
                 const coincidencias = Array.isArray(reservas) ? reservas.filter(r => 
                     (r.telefono && r.telefono.includes(termino)) || 
+                    (r.numeroReserva && r.numeroReserva.toLowerCase().includes(termino.toLowerCase())) ||
                     (r.id && r.id.toLowerCase().includes(termino.toLowerCase())) ||
                     (r.nombreCliente && r.nombreCliente.toLowerCase().includes(termino.toLowerCase()))
                 ) : [];
@@ -1207,7 +1208,7 @@
                     return `
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
                             <div style="flex: 1; min-width: 250px;">
-                                <h3 style="color: #00FFEF; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.id || 'N/A'}</h3>
+                                <h3 style="color: #00FFEF; font-size: 1.1rem; margin-top: 0; margin-bottom: 12px;">Reserva #${coincidencia.numeroReserva || coincidencia.id || 'N/A'}</h3>
                                 <p style="margin-bottom: 6px;"><b>Cliente:</b> ${coincidencia.nombreCliente}</p>
                                 <p style="margin-bottom: 6px;"><b>Fecha:</b> ${coincidencia.fecha}</p>
                                 <p style="margin-bottom: 6px;"><b>Sede / Zona:</b> ${coincidencia.sede} - ${coincidencia.zona}</p>
