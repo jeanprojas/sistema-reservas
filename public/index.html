@@ -627,7 +627,7 @@
         const parametrosPortal = new URLSearchParams(window.location.search);
         // GitHub Pages sirve cada sede desde su carpeta y añade una barra final.
         // Normalizamos la ruta para que /soho y /soho/ apliquen exactamente la misma sede.
-        const rutaActual = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
+        const rutaActual = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
         const sedeFija = sedesFijas[rutaActual] || parametrosPortal.get('sede');
 
         function aplicarSedeFija() {
