@@ -625,7 +625,10 @@
             '/reservas-220-voltios': '220 Voltios'
         };
         const parametrosPortal = new URLSearchParams(window.location.search);
-        const sedeFija = sedesFijas[window.location.pathname.toLowerCase()] || parametrosPortal.get('sede');
+        // GitHub Pages sirve cada sede desde su carpeta y añade una barra final.
+        // Normalizamos la ruta para que /soho y /soho/ apliquen exactamente la misma sede.
+        const rutaActual = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
+        const sedeFija = sedesFijas[rutaActual] || parametrosPortal.get('sede');
 
         function aplicarSedeFija() {
             if (!sedeFija) return;
