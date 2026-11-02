@@ -1,0 +1,35 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "@supabase/supabase-js";
+const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const cors={"Access-Control-Allow-Origin":"https://app.vipnortediscotecas.com","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST,OPTIONS"};
+const json=(x:any,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{...cors,"Content-Type":"application/json"}});
+function firstNonEmpty(...values:unknown[]):string{for(const v of values){if(v!==undefined&&v!==null&&String(v).trim()!=="")return String(v)}return ""}
+function responseDiagnostic(status:number,contentType:string,finalUrl:string,text:string):string{
+ let host="",path="";try{const u=new URL(finalUrl);host=u.host;path=u.pathname}catch{}
+ const low=text.toLowerCase();
+ if(host.includes("accounts.google.com")||low.includes("servicelogin")||low.includes("accounts.google.com"))return "Google Apps Script redirigió a inicio de sesión. La implementación debe ejecutarse como propietario y permitir acceso a cualquier persona. Verifica que la URL sea la de Aplicación web terminada en /exec.";
+ if(contentType.includes("text/html")||/^\\s*<!doctype html|^\\s*<html/i.test(text))return "Google devolvió HTML en lugar de JSON. GOOGLE_SHEETS_WEBHOOK_URL debe ser la URL publicada de Aplicación web terminada en /exec (no editor ni ejecuciones), con acceso 'Cualquier persona'. HTTP "+status+"; destino final "+host+path+".";
+ return "Respuesta no JSON de Apps Script. HTTP "+status+"; Content-Type "+contentType+"; destino "+host+path+".";
+}
+async function syncJob(job:any){
+ const url="https://script.google.com/macros/s/AKfycbwMKDyZhuOiOp9atOZx4X-NchatGsfY4IU8ruZgjhn2noBkhk2dX6EUioFUrWJ1yIM/exec",token=Deno.env.get("GOOGLE_SHEETS_WEBHOOK_TOKEN");
+ if(!url||!token)throw new Error("Faltan GOOGLE_SHEETS_WEBHOOK_URL/GOOGLE_SHEETS_WEBHOOK_TOKEN en Supabase");
+ const {data:r,error:re}=await db.from("reservas").select("*").eq("id",job.reserva_id).maybeSingle();if(re)throw re;if(!r)throw new Error("Reserva no encontrada: "+job.reserva_id);
+ const paid=Number(r.pagaron_cover??r.personas_pagaron_cover??0),price=Number(r.precio_cover??0);
+ const legacy=r.payload?.legacyRecord||{};const note=firstNonEmpty(r.nota,r.comentarios,r.notas,r.payload?.nota,r.payload?.comentarios,legacy.nota,legacy.comentarios);
+ const payload={token,id_reserva:r.id,codigo_pin:r.codigo_qr??r.pin??"",fecha_creacion:r.creado_en??r.created_at??"",fecha_reserva:r.fecha??r.fecha_reserva??"",nombre_cliente:r.nombre_cliente??"",celular:r.telefono??r.celular??"",correo:r.email??r.correo??"",discoteca:r.sede??r.discoteca??"",zona:r.zona??"",mesa:r.mesa??r.mesa_asignada??"",personas_reservadas:r.cantidad_personas_inicial??r.personas_reservadas??0,personas_llegadas:r.personas_llegadas??0,cortesias:r.payload?.cortesias??r.cortesias??r.cortesias_qr??0,personas_pagaron_cover:paid,precio_cover:price,total_generado:r.total_generado??paid*price,promotor:r.promotor??"",motivo:r.motivo_reserva??r.motivo??"",notas:note,estado_asistencia:r.estado_asistencia??"",estado_reserva:r.estado??r.estado_reserva??"",instagram:r.payload?.instagram??r.instagram??"",sheets_sync_version:job.version};
+ let resp:Response;try{resp=await fetch(url,{method:"POST",redirect:"follow",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000)})}catch(e){throw new Error("No se pudo conectar con Apps Script: "+(e instanceof Error?e.message:String(e)))}
+ const responseText=await resp.text(),contentType=resp.headers.get("content-type")||"";let result:any=null;try{result=JSON.parse(responseText)}catch{}
+ if(!result||typeof result!=="object")throw new Error(responseDiagnostic(resp.status,contentType,resp.url||url,responseText.slice(0,1200)));
+ if(!resp.ok)throw new Error("Apps Script HTTP "+resp.status+": "+String(result.message||result.error||responseText).slice(0,500));
+ const accepted=result.status==="success"||result.success===true||result.ok===true;
+ if(!accepted)throw new Error("Apps Script rechazó la reserva: "+String(result.message||result.error||JSON.stringify(result)).slice(0,500));
+ if(String(result.id_reserva??result.id??"")!==String(r.id))throw new Error("Apps Script respondió éxito pero el ID confirmado no coincide con "+r.id+".");
+ if(result.spreadsheet_id&&result.spreadsheet_id!=="1Pq2kbf_Z7F7XFcm5pdfcsYOaWw1jqBDwscIs5MuzP1Q")throw new Error("Apps Script confirmó un documento distinto al esperado.");
+ if(result.sheet_name&&result.sheet_name!=="Hoja 1")throw new Error("Apps Script confirmó una pestaña distinta a la esperada.");
+ if(result.notas_guardadas!==undefined&&String(result.notas_guardadas??"")!==note)throw new Error("La nota confirmada por Apps Script no coincide con Supabase.");
+ if(result.row_index!==undefined&&(!Number.isInteger(Number(result.row_index))||Number(result.row_index)<2))throw new Error("Apps Script devolvió un número de fila inválido.");
+ const {error:je}=await db.from("sheets_sync_jobs").update({status:"completed",completed_at:new Date().toISOString(),last_error:null,locked_at:null}).eq("id",job.id).eq("version",job.version);if(je)throw je;
+ const {error:ue}=await db.from("reservas").update({sheets_synced_version:job.version,sheets_sync_pending:false,sheets_sync_attempts:0,sheets_sync_lease_until:null,sheets_sync_lease_token:null}).eq("id",job.reserva_id).eq("sheets_sync_version",job.version);if(ue)throw ue;
+}
+Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:cors});try{const body=await req.json().catch(()=>({}));const limit=Math.max(1,Math.min(Number(body.limit||10),50));let query=db.from("sheets_sync_jobs").select("*").eq("status","pending").lte("next_attempt_at",new Date().toISOString()).order("priority",{ascending:false}).order("created_at",{ascending:true}).limit(limit);if(body.reservation_id)query=query.eq("reserva_id",String(body.reservation_id));const {data:jobs,error}=await query;if(error)throw error;let ok=0,failed=0;for(const j of jobs||[]){const {error:le}=await db.from("sheets_sync_jobs").update({status:"processing",locked_at:new Date().toISOString()}).eq("id",j.id).eq("status","pending");if(le){failed++;continue}try{await syncJob(j);ok++}catch(e){failed++;const attempts=Number(j.attempts||0)+1,delay=Math.min(3600,Math.pow(2,attempts)*30);await db.from("sheets_sync_jobs").update({status:attempts>=10?"failed":"pending",attempts,next_attempt_at:new Date(Date.now()+delay*1000).toISOString(),last_error:e instanceof Error?e.message:String(e),locked_at:null}).eq("id",j.id)}}return json({ok:true,processed:ok,failed,pending:(jobs||[]).length-ok-failed})}catch(e){return json({ok:false,error:e instanceof Error?e.message:String(e)},500)}});
